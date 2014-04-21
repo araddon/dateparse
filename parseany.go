@@ -97,7 +97,7 @@ func parseFeatures(datestr string) Features {
 			features[HAS_T] = HAS_T
 		case 'A', 'P':
 			if next == 'M' {
-				u.Info("Found feature AMPM")
+				//u.Info("Found feature AMPM")
 				features[HAS_AMPM] = HAS_AMPM
 			}
 		}
@@ -116,7 +116,7 @@ func parseFeatures(datestr string) Features {
 				//u.Info("is whitespace")
 				state = s_WHITESPACE
 			} else {
-				u.Error("unrecognized input? ", char, " ", string(char))
+				//u.Error("unrecognized input? ", char, " ", string(char))
 			}
 		case S_ALPHA:
 			if unicode.IsLetter(char) {
@@ -130,7 +130,7 @@ func parseFeatures(datestr string) Features {
 				//u.Info("is whitespace")
 				state = s_WHITESPACE
 			} else {
-				u.Error("unrecognized input? ", char, " ", string(char))
+				//u.Error("unrecognized input? ", char, " ", string(char))
 			}
 			lexeme = lexeme + string(char)
 		case S_NUMERIC:
@@ -139,10 +139,10 @@ func parseFeatures(datestr string) Features {
 			} else if unicode.IsNumber(char) {
 				features[HAS_NUMERIC] = HAS_NUMERIC
 			} else if char == ' ' {
-				u.Info("is whitespace")
+				//u.Info("is whitespace")
 				state = s_WHITESPACE
 			} else {
-				u.Error("unrecognized input? ", char, " ", string(char))
+				//u.Error("unrecognized input? ", char, " ", string(char))
 			}
 			lexeme = lexeme + string(char)
 		}
@@ -169,7 +169,7 @@ func ParseAny(datestr string) (time.Time, error) {
 		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
 			// 03/03/2012 10:11:59
 			// 3/1/2012 10:11:59
-			u.Debugf("trying format:  3/1/2012 10:11:59 ")
+			//u.Debugf("trying format:  3/1/2012 10:11:59 ")
 			//May 8, 2009 5:57:51 PM      2006-01-02 15:04:05.000
 			if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
 				return t, nil
@@ -188,7 +188,7 @@ func ParseAny(datestr string) (time.Time, error) {
 	case f.Has(HAS_ALPHA) && f.Has(HAS_COMMA):
 		switch {
 		case f.Has(HAS_AMPM):
-			u.Debugf("trying format:  2006-01-02 15:04:05 PM ")
+			//u.Debugf("trying format:  2006-01-02 15:04:05 PM ")
 			//May 8, 2009 5:57:51 PM      2006-01-02 15:04:05.000
 			if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
 				return t, nil
