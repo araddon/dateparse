@@ -59,7 +59,8 @@ func TestParse(t *testing.T) {
 	//u.Debugf("%v", f)
 	//u.Debugf("%v", ts)
 	assert.T(t, ts.In(time.UTC).Unix() == 1241805471)
-	ts, _ = ParseAny("03/19/2012 10:11:59")
+	ts, err = ParseAny("03/19/2012 10:11:59")
+	assert.T(t, err == nil)
 	//u.Debug(ts.Unix(), ts)
 	assert.T(t, ts.Unix() == 1332151919)
 
