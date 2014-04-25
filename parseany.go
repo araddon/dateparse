@@ -3,6 +3,7 @@ package dateparse
 import (
 	"fmt"
 	u "github.com/araddon/gou"
+	"strconv"
 	"time"
 	"unicode"
 	//"unicode/utf8"
@@ -212,6 +213,21 @@ func ParseAny(datestr string) (time.Time, error) {
 				u.Error(err)
 			}
 		}
+	case f.Has(HAS_NUMERIC) && !f.Has(HAS_ALPHA) && !f.Has(HAS_WHITESPACE):
+		if len(datestr) >= len("13980450781991351") {
+			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+				return time.Unix(0, nanoSecs), nil
+			} else {
+				u.Error(err)
+			}
+		} else {
+			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+				return time.Unix(secs, 0), nil
+			} else {
+				u.Error(err)
+			}
+		}
+
 	default:
 		u.Errorf("Could not find format: %s", datestr)
 	}
