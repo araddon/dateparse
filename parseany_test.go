@@ -1,6 +1,7 @@
 package dateparse
 
 import (
+	"fmt"
 	u "github.com/araddon/gou"
 	"github.com/bmizerany/assert"
 	"testing"
@@ -52,13 +53,19 @@ func init() {
 
 func TestParse(t *testing.T) {
 	//f := parseFeatures("May 8, 2009 5:57:51 PM")
-	ts, _ := ParseAny("May 8, 2009 5:57:51 PM")
+	ts, err := ParseAny("May 8, 2009 5:57:51 PM")
+	assert.T(t, err == nil)
 	//u.Debug(" ", ts.Unix())
 	//u.Debugf("%v", f)
 	//u.Debugf("%v", ts)
-	assert.T(t, ts.Unix() == 1241805471)
+	assert.T(t, ts.In(time.UTC).Unix() == 1241805471)
 	ts, _ = ParseAny("03/19/2012 10:11:59")
-	u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.Unix(), ts)
 	assert.T(t, ts.Unix() == 1332151919)
+
+	ts2, err := ParseAny("2009-08-12T22:15:09-07:00")
+	assert.T(t, err == nil)
+	//u.Debug(ts2.In(time.UTC), " ", ts2.Unix())
+	assert.T(t, "2009-08-13 05:15:09 +0000 UTC" == fmt.Sprintf("%v", ts2.In(time.UTC)))
 
 }

@@ -156,6 +156,22 @@ func parseFeatures(datestr string) Features {
 func ParseAny(datestr string) (time.Time, error) {
 	f := parseFeatures(datestr)
 	switch {
+	case f.Has(HAS_T):
+		//RFC3339     = "2006-01-02T15:04:05Z07:00"
+		if len(datestr) == len(time.RFC3339) {
+			if t, err := time.Parse(time.RFC3339, datestr); err == nil {
+				return t, nil
+			} else {
+				u.Error(err)
+			}
+		} else if len(datestr) == len(time.RFC3339Nano) {
+			// RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+			if t, err := time.Parse(time.RFC3339Nano, datestr); err == nil {
+				return t, nil
+			} else {
+				u.Error(err)
+			}
+		}
 	case f.Has(HAS_DASH) && !f.Has(HAS_SLASH):
 		switch {
 		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
