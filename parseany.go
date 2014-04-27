@@ -212,10 +212,19 @@ func ParseAny(datestr string) (time.Time, error) {
 			} else {
 				u.Error("unknown format: ", datestr)
 			}
-		case !f.Has(HAS_SLASH):
+		default:
 			// 3/1/2014
 			// 10/13/2014
 			// 01/02/2006
+			if t, err := time.Parse("01/02/2006", datestr); err == nil {
+				return t, nil
+			} else {
+				if t, err := time.Parse("1/2/2006", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
+			}
 		}
 	case f.Has(HAS_ALPHA) && f.Has(HAS_COMMA):
 		switch {
