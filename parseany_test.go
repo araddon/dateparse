@@ -65,6 +65,16 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.Unix(), ts)
 	assert.T(t, ts.Unix() == 1332151919)
 
+	ts, err = ParseAny("4/8/2014 22:05")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, ts.Unix() == 1396994700)
+
+	ts, err = ParseAny("04/08/2014 22:05")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, ts.Unix() == 1396994700)
+
 	// Unix Time Stamp
 	ts, err = ParseAny("1332151919")
 	assert.T(t, err == nil)

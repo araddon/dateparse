@@ -4,6 +4,7 @@ import (
 	"fmt"
 	u "github.com/araddon/gou"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 	//"unicode/utf8"
@@ -186,16 +187,30 @@ func ParseAny(datestr string) (time.Time, error) {
 		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
 			// 03/03/2012 10:11:59
 			// 3/1/2012 10:11:59
-			//u.Debugf("trying format:  3/1/2012 10:11:59 ")
-			//May 8, 2009 5:57:51 PM      2006-01-02 15:04:05.000
-			if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("1/2/2006 15:04:05", datestr); err == nil {
+			// 4/8/2014 22:05
+			colonCt := strings.Count(datestr, ":")
+			if len(datestr) >= len("03/03/2012 10:11:59") {
+				if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
 					return t, nil
 				} else {
-					u.Error(err)
+					if t, err := time.Parse("1/2/2006 15:04:05", datestr); err == nil {
+						return t, nil
+					} else {
+						u.Error(err)
+					}
 				}
+			} else if colonCt == 1 {
+				if t, err := time.Parse("01/02/2006 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					if t, err := time.Parse("1/2/2006 15:04", datestr); err == nil {
+						return t, nil
+					} else {
+						u.Error(err)
+					}
+				}
+			} else {
+				u.Error("unknown format: ", datestr)
 			}
 		case !f.Has(HAS_SLASH):
 			// 3/1/2014
