@@ -182,7 +182,7 @@ func ParseAny(datestr string) (time.Time, error) {
 			//2006-01-02
 			//2006-01-02
 			if len(datestr) == len("2014-04-26 05:24:37.3186369") {
-				if t, err := time.Parse("2006-01-02 03:04:05.0000000", datestr); err == nil {
+				if t, err := time.Parse("2006-01-02 15:04:05.0000000", datestr); err == nil {
 					return t, nil
 				} else {
 					u.Error(err)

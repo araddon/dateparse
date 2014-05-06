@@ -92,9 +92,9 @@ func TestParse(t *testing.T) {
 	assert.T(t, "2009-08-13 05:15:09 +0000 UTC" == fmt.Sprintf("%v", ts2.In(time.UTC)))
 
 	//2014-04-26 05:24:37.3186369
-	ts, err = ParseAny("2014-04-26 05:24:37.3186369")
+	ts, err = ParseAny("2014-04-26 17:24:37.3186369")
 	assert.T(t, err == nil)
 	u.Debug(ts.Unix(), ts)
-	assert.T(t, "2014-04-26 05:24:37.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+	assert.T(t, "2014-04-26 17:24:37.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 }
