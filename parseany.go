@@ -177,10 +177,26 @@ func ParseAny(datestr string) (time.Time, error) {
 	case f.Has(HAS_DASH) && !f.Has(HAS_SLASH):
 		switch {
 		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
+			//2014-04-26 05:24:37.3186369
 			//2006-01-02 15:04:05.000
-		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
 			//2006-01-02
 			//2006-01-02
+			if len(datestr) == len("2014-04-26 05:24:37.3186369") {
+				if t, err := time.Parse("2006-01-02 03:04:05.0000000", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
+			} else if len(datestr) == len("2014-04-26 05:24:37.3186369") {
+				if t, err := time.Parse("2006-01-02 03:04:05.000", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
+			}
+
+		default:
+
 		}
 	case f.Has(HAS_SLASH):
 		switch {
