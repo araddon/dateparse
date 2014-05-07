@@ -94,7 +94,26 @@ func TestParse(t *testing.T) {
 	//2014-04-26 05:24:37.3186369
 	ts, err = ParseAny("2014-04-26 17:24:37.3186369")
 	assert.T(t, err == nil)
-	u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.Unix(), ts)
 	assert.T(t, "2014-04-26 17:24:37.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	//2014-04-26 17:24:37.123
+	ts, err = ParseAny("2014-04-26 17:24:37.123")
+	assert.T(t, err == nil)
+	u.Debugf("unix=%v   ts='%v'", ts.Unix(), ts)
+	assert.T(t, "2014-04-26 17:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//2014-04-26 05:24:37 PM
+	ts, err = ParseAny("2014-04-26 05:24:37 PM")
+	assert.T(t, err == nil)
+	u.Debug(ts.Unix(), ts)
+	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
+
+// func TestParseAMPM(t *testing.T) {
+// 	//2014-04-26 05:24:37 PM
+// 	ts, err := ParseAny("2014-04-26 05:24:37 PM")
+// 	assert.T(t, err == nil)
+// 	u.Debug(ts.Unix(), ts)
+// 	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+// }

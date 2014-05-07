@@ -116,7 +116,7 @@ func parseFeatures(datestr string) Features {
 				features[HAS_NUMERIC] = HAS_NUMERIC
 			} else if char == ' ' {
 				//u.Info("is whitespace")
-				state = s_WHITESPACE
+				//state = s_WHITESPACE
 			} else {
 				//u.Error("unrecognized input? ", char, " ", string(char))
 			}
@@ -136,13 +136,14 @@ func parseFeatures(datestr string) Features {
 			}
 			lexeme = lexeme + string(char)
 		case S_NUMERIC:
+			//u.Infof("numeric:  %v", string(char))
 			if unicode.IsLetter(char) {
 				features[HAS_ALPHA] = HAS_ALPHA
 			} else if unicode.IsNumber(char) {
 				features[HAS_NUMERIC] = HAS_NUMERIC
 			} else if char == ' ' {
 				//u.Info("is whitespace")
-				state = s_WHITESPACE
+				//state = s_WHITESPACE
 			} else {
 				//u.Error("unrecognized input? ", char, " ", string(char))
 			}
@@ -157,6 +158,8 @@ func parseFeatures(datestr string) Features {
 // Given an unknown date format, detect the type, parse, return time
 func ParseAny(datestr string) (time.Time, error) {
 	f := parseFeatures(datestr)
+	//u.Infof("%s alpha?%v colon?%v  whitespace?%v dash?%v slash?%v AMPM?%v", datestr, f.Has(HAS_ALPHA),
+	//	f.Has(HAS_COLON), f.Has(HAS_WHITESPACE), f.Has(HAS_DASH), f.Has(HAS_SLASH), f.Has(HAS_AMPM))
 	switch {
 	case f.Has(HAS_T):
 		//RFC3339     = "2006-01-02T15:04:05Z07:00"
@@ -176,7 +179,7 @@ func ParseAny(datestr string) (time.Time, error) {
 		}
 	case f.Has(HAS_DASH) && !f.Has(HAS_SLASH):
 		switch {
-		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON):
+		case f.Has(HAS_WHITESPACE) && f.Has(HAS_COLON) && !f.Has(HAS_ALPHA):
 			//2014-04-26 05:24:37.3186369
 			//2006-01-02 15:04:05.000
 			//2006-01-02
@@ -187,8 +190,18 @@ func ParseAny(datestr string) (time.Time, error) {
 				} else {
 					u.Error(err)
 				}
-			} else if len(datestr) == len("2014-04-26 05:24:37.3186369") {
-				if t, err := time.Parse("2006-01-02 03:04:05.000", datestr); err == nil {
+			} else if len(datestr) == len("2014-04-26 05:24:37.000") {
+				if t, err := time.Parse("2006-01-02 15:04:05.000", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
+			}
+
+		case f.Has(HAS_ALPHA):
+			//2006-01-02 03:04:05 PM
+			if len(datestr) == len("2014-04-26 03:24:37 PM") {
+				if t, err := time.Parse("2006-01-02 03:04:05 PM", datestr); err == nil {
 					return t, nil
 				} else {
 					u.Error(err)
