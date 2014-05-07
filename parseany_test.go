@@ -52,12 +52,9 @@ func init() {
 }
 
 func TestParse(t *testing.T) {
-	//f := parseFeatures("May 8, 2009 5:57:51 PM")
+
 	ts, err := ParseAny("May 8, 2009 5:57:51 PM")
 	assert.T(t, err == nil)
-	//u.Debug(" ", ts.Unix())
-	//u.Debugf("%v", f)
-	//u.Debugf("%v", ts)
 	assert.T(t, ts.In(time.UTC).Unix() == 1241805471)
 
 	ts, err = ParseAny("03/19/2012 10:11:59")
@@ -65,20 +62,25 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.Unix(), ts)
 	assert.T(t, ts.Unix() == 1332151919)
 
+	ts, err = ParseAny("3/31/2014")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, ts.Unix() == 1396224000)
+
+	ts, err = ParseAny("03/31/2014")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, ts.Unix() == 1396224000)
+
 	ts, err = ParseAny("4/8/2014 22:05")
 	assert.T(t, err == nil)
 	//u.Debug(ts.Unix(), ts)
-	assert.T(t, ts.Unix() == 1396994700)
+	assert.T(t, "2014-04-08 22:05:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("04/08/2014 22:05")
 	assert.T(t, err == nil)
 	//u.Debug(ts.Unix(), ts)
 	assert.T(t, ts.Unix() == 1396994700)
-
-	ts, err = ParseAny("3/31/2014")
-	assert.T(t, err == nil)
-	//u.Debug(ts.Unix(), ts)
-	assert.T(t, ts.Unix() == 1396224000)
 
 	// Unix Time Stamp
 	ts, err = ParseAny("1332151919")
@@ -100,14 +102,18 @@ func TestParse(t *testing.T) {
 	//2014-04-26 17:24:37.123
 	ts, err = ParseAny("2014-04-26 17:24:37.123")
 	assert.T(t, err == nil)
-	u.Debugf("unix=%v   ts='%v'", ts.Unix(), ts)
+	//u.Debugf("unix=%v   ts='%v'", ts.Unix(), ts)
 	assert.T(t, "2014-04-26 17:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	//2014-04-26 05:24:37 PM
 	ts, err = ParseAny("2014-04-26 05:24:37 PM")
 	assert.T(t, err == nil)
-	u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.Unix(), ts)
 	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 // func TestParseAMPM(t *testing.T) {
