@@ -44,6 +44,7 @@ var _ = time.April
 
 	2016-03-14 00:00:00.000
 	2006-01-02
+	2014-05-11 08:20:13,787
 
 */
 
@@ -114,6 +115,18 @@ func TestParse(t *testing.T) {
 	assert.T(t, err == nil)
 	//u.Debug(ts.Unix(), ts)
 	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-05-11 08:20:13,787")
+	assert.T(t, err == nil)
+	//u.Debug(ts.Unix(), ts)
+	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+}
+
+func TestME(t *testing.T) {
+	ts, err := ParseAny("2014-05-11 08:20:13,787")
+	assert.T(t, err == nil)
+	u.Debug(ts.Unix(), ts)
+	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 // func TestParseAMPM(t *testing.T) {

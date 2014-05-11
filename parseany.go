@@ -53,6 +53,7 @@ iterRunes:
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2014-04-26 17:24:37.3186369
 			// 2016-03-14 00:00:00.000
+			// 2014-05-11 08:20:13,787
 			// 2006-01-02
 			// 2014-04-26 05:24:37 PM
 			switch {
@@ -64,11 +65,20 @@ iterRunes:
 		case 65: // starts digit then dash 02- then whitespace   1 << 2  << 5 + 1
 			// 2014-04-26 17:24:37.3186369
 			// 2016-03-14 00:00:00.000
+			// 2014-05-11 08:20:13,787
 			// 2014-04-26 05:24:37 PM
 			switch r {
 			case 'A', 'P':
 				if len(datestr) == len("2014-04-26 03:24:37 PM") {
 					if t, err := time.Parse("2006-01-02 03:04:05 PM", datestr); err == nil {
+						return t, nil
+					} else {
+						u.Error(err)
+					}
+				}
+			case ',':
+				if len(datestr) == len("2014-05-11 08:20:13,787") {
+					if t, err := time.Parse("2006-01-02 03:04:05,999", datestr); err == nil {
 						return t, nil
 					} else {
 						u.Error(err)
