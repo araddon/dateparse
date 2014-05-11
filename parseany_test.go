@@ -44,7 +44,7 @@ var _ = time.April
 
 	2016-03-14 00:00:00.000
 	2006-01-02
-	2014-05-11 08:20:13,787
+	2014-05-11 08:20:13,787   // i couldn't find parser for this in go?
 
 */
 
@@ -97,42 +97,34 @@ func TestParse(t *testing.T) {
 	//2014-04-26 05:24:37.3186369
 	ts, err = ParseAny("2014-04-26 17:24:37.3186369")
 	assert.T(t, err == nil)
-	//u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 17:24:37.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//2014-04-26 17:24:37.123
 	ts, err = ParseAny("2014-04-26 17:24:37.123")
 	assert.T(t, err == nil)
-	//u.Debugf("unix=%v   ts='%v'", ts.Unix(), ts)
+	//u.Debugf("unix=%v   ts='%v'", ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 17:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("2014-04-26 05:24:37 PM")
 	assert.T(t, err == nil)
-	//u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("2014-04-26")
 	assert.T(t, err == nil)
-	//u.Debug(ts.Unix(), ts)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("2014-05-11 08:20:13,787")
 	assert.T(t, err == nil)
-	//u.Debug(ts.Unix(), ts)
-	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+	u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
-func TestME(t *testing.T) {
-	ts, err := ParseAny("2014-05-11 08:20:13,787")
-	assert.T(t, err == nil)
-	u.Debug(ts.Unix(), ts)
-	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+func TestWIP(t *testing.T) {
+	// ts, err := ParseAny("2014-05-11 08:20:13,787")
+	// assert.T(t, err == nil)
+	// u.Debug(ts.Unix(), ts)
+	// assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
-
-// func TestParseAMPM(t *testing.T) {
-// 	//2014-04-26 05:24:37 PM
-// 	ts, err := ParseAny("2014-04-26 05:24:37 PM")
-// 	assert.T(t, err == nil)
-// 	u.Debug(ts.Unix(), ts)
-// 	assert.T(t, "2014-04-26 17:24:37 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
-// }

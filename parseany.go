@@ -78,8 +78,13 @@ iterRunes:
 				}
 			case ',':
 				if len(datestr) == len("2014-05-11 08:20:13,787") {
-					if t, err := time.Parse("2006-01-02 03:04:05,999", datestr); err == nil {
-						return t, nil
+					// go doesn't seem to parse this one natively?   or did i miss it?
+					if t, err := time.Parse("2006-01-02 03:04:05", datestr[:i]); err == nil {
+						ms, err := strconv.Atoi(datestr[i+1:])
+						if err == nil {
+							return time.Unix(0, t.UnixNano()+int64(ms)*1e6), nil
+						}
+						u.Error(err)
 					} else {
 						u.Error(err)
 					}
