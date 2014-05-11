@@ -108,6 +108,7 @@ iterRunes:
 			}
 		case 256: // starts digit then slash 02/
 			// 03/19/2012 10:11:59
+			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			// 3/1/2014
@@ -122,6 +123,7 @@ iterRunes:
 			}
 		case 2048: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 03/19/2012 10:11:59
+			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			switch r {
@@ -246,6 +248,16 @@ iterRunes:
 			} else {
 				u.Error(err)
 			}
+		} else if len(datestr) == len("01/2/2006 15:04") {
+			if t, err := time.Parse("01/2/2006 15:04", datestr); err == nil {
+				return t, nil
+			} else {
+				if t, err := time.Parse("1/02/2006 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
+			}
 		} else {
 			if t, err := time.Parse("1/2/2006 15:04", datestr); err == nil {
 				return t, nil
@@ -256,12 +268,23 @@ iterRunes:
 	case 268435456: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
-
+		// 03/1/2012 10:11:59
+		// 3/01/2012 10:11:59
 		if len(datestr) == len("01/02/2006 15:04:05") {
 			if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
 				return t, nil
 			} else {
 				u.Error(err)
+			}
+		} else if len(datestr) == len("01/2/2006 15:04:05") {
+			if t, err := time.Parse("01/2/2006 15:04:05", datestr); err == nil {
+				return t, nil
+			} else {
+				if t, err := time.Parse("1/02/2006 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+				}
 			}
 		} else {
 			if t, err := time.Parse("1/2/2006 15:04:05", datestr); err == nil {
