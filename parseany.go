@@ -312,7 +312,7 @@ iterRunes:
 			}
 		}
 	default:
-		u.Infof("no case for: %d", state)
+		u.Infof("no case for: %d : %s", state, datestr)
 	}
 
 	return time.Now(), fmt.Errorf("Could not find date format for %s", datestr)
