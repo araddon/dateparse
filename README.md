@@ -1,7 +1,7 @@
 Go Date Parser 
 ---------------------------
 
-Parse *Any* date format
+Parse Any date format without knowing format in advance.   
 
 
 ```go
