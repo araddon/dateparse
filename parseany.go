@@ -26,6 +26,7 @@ const (
 	ST_ALPHA
 	ST_ALPHAWS
 	ST_ALPHAWSCOMMA
+	ST_ALPHAWSALPHA
 	ST_ALPHACOMMA
 	//ST_ALPHADIGIT
 )
@@ -174,8 +175,8 @@ iterRunes:
 			switch {
 			case r == ' ':
 				state = ST_ALPHAWS
-				// case r == ',':  TODO
-				// 	state = ST_ALPHACOMMA
+			case r == ',':
+				state = ST_ALPHACOMMA
 				// case unicode.IsDigit(r):
 				// 	state = ST_ALPHADIGIT
 			}
@@ -186,7 +187,28 @@ iterRunes:
 			case r == ',':
 				state = ST_ALPHAWSCOMMA
 			case unicode.IsLetter(r):
-				state = state << 9
+				state = ST_ALPHAWSALPHA
+			}
+		case ST_ALPHACOMMA: // Starts alpha then comma
+			// Mon, 02 Jan 2006 15:04:05 MST
+			// Mon, 02 Jan 2006 15:04:05 -0700
+			switch {
+			case r == '-':
+				//RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
+				// TODO:  this doesn't work???
+				if t, err := time.Parse(time.RFC1123Z, datestr); err == nil {
+					return t, nil
+				} else {
+					u.Errorf("'%s'  err=%v", datestr, err)
+					break iterRunes
+				}
+			case unicode.IsLetter(r):
+				if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Errorf("'%s'  err=%v", datestr, err)
+					break iterRunes
+				}
 			}
 		case ST_ALPHAWSCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
@@ -194,6 +216,32 @@ iterRunes:
 				return t, nil
 			} else {
 				u.Error(err)
+			}
+		case ST_ALPHAWSALPHA: // Starts Alpha, whitespace, alpha
+			// ANSIC       = "Mon Jan _2 15:04:05 2006"
+			// UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+			// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
+			if len(datestr) == len("Mon Jan _2 15:04:05 2006") {
+				if t, err := time.Parse(time.ANSIC, datestr); err == nil {
+					return t, nil
+				} else {
+					u.Errorf("'%s'  err=%v", datestr, err)
+					break iterRunes
+				}
+			} else if len(datestr) == len("Mon Jan _2 15:04:05 MST 2006") {
+				if t, err := time.Parse(time.UnixDate, datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+					break iterRunes
+				}
+			} else if len(datestr) == len("Mon Jan 02 15:04:05 -0700 2006") {
+				if t, err := time.Parse(time.RubyDate, datestr); err == nil {
+					return t, nil
+				} else {
+					u.Error(err)
+					break iterRunes
+				}
 			}
 		default:
 			//u.Infof("no case for: %d", state)
@@ -334,6 +382,7 @@ iterRunes:
 				u.Error(err)
 			}
 		}
+
 	default:
 		u.Infof("no case for: %d : %s", state, datestr)
 	}

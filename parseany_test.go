@@ -59,6 +59,27 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2009-05-08 17:57:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
+	ts, err = ParseAny("Mon Jan  2 15:04:05 2006")
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+	ts, err = ParseAny("Mon Jan  2 15:04:05 MST 2006")
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
+	ts, err = ParseAny("Mon Jan 02 15:04:05 -0700 2006")
+	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts)
+	// Are we SURE this is right time?
+	assert.T(t, "2006-01-02 22:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Wat?  Go can't parse a date that it supplies a format for?
+	// ts, err = ParseAny("Mon, 02 Jan 2006 15:04:05 -0700")
+	// //u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	// assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("03/19/2012 10:11:59")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
@@ -140,9 +161,9 @@ func TestParse(t *testing.T) {
 	assert.T(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
-func TestWIP(t *testing.T) {
-	ts, err := ParseAny("2013-04-01 22:43:22")
-	assert.Tf(t, err == nil, "%v", err)
-	u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
-	assert.T(t, "2013-04-01 22:43:22 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
-}
+// func TestWIP(t *testing.T) {
+// 	ts, err := ParseAny("2013-04-01 22:43:22")
+// 	assert.Tf(t, err == nil, "%v", err)
+// 	u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+// 	assert.T(t, "2013-04-01 22:43:22 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+// }
