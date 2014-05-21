@@ -9,8 +9,25 @@ import (
 	"unicode/utf8"
 )
 
+type DateState int
+
 const (
-	ST_START uint64 = 1
+	ST_START DateState = iota
+	ST_DIGIT
+	ST_DIGITDASH
+	ST_DIGITDASHWS
+	ST_DIGITDASHT
+	ST_DIGITCOMMA
+	ST_DIGITCOLON
+	ST_DIGITSLASH
+	ST_DIGITSLASHWS
+	ST_DIGITSLASHWSCOLON
+	ST_DIGITSLASHWSCOLONCOLON
+	ST_ALPHA
+	ST_ALPHAWS
+	ST_ALPHAWSCOMMA
+	ST_ALPHACOMMA
+	//ST_ALPHADIGIT
 )
 
 var _ = u.EMPTY
@@ -18,7 +35,7 @@ var _ = u.EMPTY
 // Given an unknown date format, detect the type, parse, return time
 func ParseAny(datestr string) (time.Time, error) {
 
-	var state uint64 = 1
+	state := ST_START
 
 iterRunes:
 	for i := 0; i < len(datestr); i++ {
@@ -28,27 +45,27 @@ iterRunes:
 		switch state {
 		case ST_START:
 			if unicode.IsDigit(r) {
-				state = state << 1 // 2
+				state = ST_DIGIT
 			} else if unicode.IsLetter(r) {
-				state = state << 2 // 4
+				state = ST_ALPHA
 			}
-		case 2: // starts digit  1 << 2
+		case ST_DIGIT: // starts digits
 			if unicode.IsDigit(r) {
 				continue
 			}
 			switch r {
 			case ' ':
-				state = state << 3
+				state = ST_DIGITDASHWS
 			case ',':
-				state = state << 4
+				state = ST_DIGITCOMMA
 			case '-':
-				state = state << 5
+				state = ST_DIGITDASH
 			case ':':
-				state = state << 6
+				state = ST_DIGITCOLON
 			case '/':
-				state = state << 7
+				state = ST_DIGITSLASH
 			}
-		case 64: // starts digit then dash 02-   1 << 2  << 5
+		case ST_DIGITDASH: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2012-08-03 18:31:59.257000000
@@ -60,11 +77,11 @@ iterRunes:
 			// 2014-04-26 05:24:37 PM
 			switch {
 			case r == ' ':
-				state = state + 1
+				state = ST_DIGITDASHWS
 			case r == 'T':
-				state = state + 3
+				state = ST_DIGITDASHT
 			}
-		case 65: // starts digit then dash 02- then whitespace   1 << 2  << 5 + 1
+		case ST_DIGITDASHWS: // starts digit then dash 02- then whitespace
 			// 2014-04-26 17:24:37.3186369
 			// 2012-08-03 18:31:59.257000000
 			// 2016-03-14 00:00:00.000
@@ -94,7 +111,7 @@ iterRunes:
 					}
 				}
 			}
-		case 67: // starts digit then dash 02-  then T   1 << 2  << 5 + 3
+		case ST_DIGITDASHT: // starts digit then dash 02-  then T
 			// 2006-01-02T15:04:05Z07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
 			if len(datestr) == len("2006-01-02T15:04:05Z07:00") {
@@ -110,7 +127,7 @@ iterRunes:
 					u.Error(err)
 				}
 			}
-		case 256: // starts digit then slash 02/
+		case ST_DIGITSLASH: // starts digit then slash 02/
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
@@ -123,49 +140,55 @@ iterRunes:
 			}
 			switch r {
 			case ' ':
-				state = state << 3
+				state = ST_DIGITSLASHWS
 			}
-		case 2048: // starts digit then slash 02/ more digits/slashes then whitespace
+		case ST_DIGITSLASHWS: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			switch r {
 			case ':':
-				state = state << 8
+				state = ST_DIGITSLASHWSCOLON
 			}
-		case 524288: // starts digit then slash 02/ more digits/slashes then whitespace
+		case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 03/19/2012 10:11:59
+			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			switch r {
 			case ':':
-				state = state << 9
+				state = ST_DIGITSLASHWSCOLONCOLON
 			}
-		case 4: // starts alpha   1 << 2
+		case ST_ALPHA: // starts alpha
+			// May 8, 2009 5:57:51 PM
+			// Mon Jan _2 15:04:05 2006
+			// Mon Jan _2 15:04:05 MST 2006
+			// Mon Jan 02 15:04:05 -0700 2006
+			// Monday, 02-Jan-06 15:04:05 MST
+			// Mon, 02 Jan 2006 15:04:05 MST
+			// Mon, 02 Jan 2006 15:04:05 -0700
 			if unicode.IsLetter(r) {
 				continue
 			}
 			switch {
 			case r == ' ':
-				state = state << 3
-			case r == ',':
-				state = state << 4
-			case unicode.IsDigit(r):
-				state = state << 5
+				state = ST_ALPHAWS
+				// case r == ',':  TODO
+				// 	state = ST_ALPHACOMMA
+				// case unicode.IsDigit(r):
+				// 	state = ST_ALPHADIGIT
 			}
-		case 32: // Starts alpha then whitespace   1 << 2  << 3
+		case ST_ALPHAWS: // Starts alpha then whitespace
 			switch {
-			case r == ' ':
-				state = state << 6
+			// case r == ' ':
+			// 	state = ST_ALPHAWSWS
 			case r == ',':
-				state = state << 7
-			case unicode.IsDigit(r):
-				state = state << 8
+				state = ST_ALPHAWSCOMMA
 			case unicode.IsLetter(r):
 				state = state << 9
 			}
-		case 8192: // Starts Alpha then whitespace then digit  1 << 2  << 8
+		case ST_ALPHAWSCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
 			if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
 				return t, nil
@@ -179,7 +202,7 @@ iterRunes:
 	}
 
 	switch state {
-	case 2:
+	case ST_DIGIT:
 		// unixy timestamps ish
 		if len(datestr) >= len("13980450781991351") {
 			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
@@ -200,7 +223,7 @@ iterRunes:
 				u.Error(err)
 			}
 		}
-	case 64: // starts digit then dash 02-    1 << 2  << 5
+	case ST_DIGITDASH: // starts digit then dash 02-
 		// 2006-01-02
 		if len(datestr) == len("2014-04-26") {
 			if t, err := time.Parse("2006-01-02", datestr); err == nil {
@@ -209,7 +232,7 @@ iterRunes:
 				u.Error(err)
 			}
 		}
-	case 65: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
+	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2014-04-26 17:24:37.3186369
 		// 2012-08-03 18:31:59.257000000
 		// 2016-03-14 00:00:00.000
@@ -239,7 +262,7 @@ iterRunes:
 				u.Error(err)
 			}
 		}
-	case 256: // starts digit then slash 02/
+	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
@@ -258,7 +281,7 @@ iterRunes:
 			}
 		}
 
-	case 524288: // starts digit then slash 02/ more digits/slashes then whitespace
+	case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 		// 4/8/2014 22:05
 		if len(datestr) == len("01/02/2006 15:04") {
 			if t, err := time.Parse("01/02/2006 15:04", datestr); err == nil {
@@ -283,7 +306,7 @@ iterRunes:
 				u.Error(err)
 			}
 		}
-	case 268435456: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
