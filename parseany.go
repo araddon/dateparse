@@ -55,8 +55,6 @@ iterRunes:
 				continue
 			}
 			switch r {
-			case ' ':
-				state = ST_DIGITDASHWS
 			case ',':
 				state = ST_DIGITCOMMA
 			case '-':
