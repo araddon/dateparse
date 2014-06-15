@@ -40,11 +40,17 @@ func ParseAny(datestr string) (time.Time, error) {
 
 	state := ST_START
 
+	// General strategy is to read rune by rune through the date looking for
+	// certain hints of what type of date we are dealing with.
+	// Hopefully we only need to read about 5 or 6 bytes before
+	// we figure it out and then attempt a parse
 iterRunes:
 	for i := 0; i < len(datestr); i++ {
-		r, _ := utf8.DecodeRuneInString(datestr[i:])
+		r, bytesConsumed := utf8.DecodeRuneInString(datestr[i:])
+		if bytesConsumed > 1 {
+			i += (bytesConsumed - 1)
+		}
 
-		//u.Infof("r=%s st=%d ", string(r), state)
 		switch state {
 		case ST_START:
 			if unicode.IsDigit(r) {
