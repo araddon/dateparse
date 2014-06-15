@@ -53,7 +53,12 @@ func init() {
 
 func TestParse(t *testing.T) {
 
-	ts, err := ParseAny("May 8, 2009 5:57:51 PM")
+	zeroTime := time.Time{}.Unix()
+	ts, err := ParseAny("INVALID")
+	assert.T(t, ts.Unix() == zeroTime)
+	assert.T(t, err != nil)
+
+	ts, err = ParseAny("May 8, 2009 5:57:51 PM")
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2009-05-08 17:57:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -73,10 +78,16 @@ func TestParse(t *testing.T) {
 	// Are we SURE this is right time?
 	assert.T(t, "2006-01-02 15:04:05 -0700 -0700" == fmt.Sprintf("%v", ts))
 
+	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
+	ts, err = ParseAny("Monday, 02-Jan-06 15:04:05 MST")
+	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts)
+	assert.T(t, "2006-01-02 15:04:05 +0000 MST" == fmt.Sprintf("%v", ts))
+
 	// Wat?  Go can't parse a date that it supplies a format for?
-	// ts, err = ParseAny("Mon, 02 Jan 2006 15:04:05 -0700")
-	// //u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
-	// assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+	// TODO:  fixme
+	//ts, err = ParseAny("Mon, 02 Jan 2006 15:04:05 -0700")
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	//assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("03/19/2012 10:11:59")
 	assert.Tf(t, err == nil, "%v", err)
