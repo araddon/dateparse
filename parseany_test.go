@@ -35,6 +35,7 @@ import (
 
 
 	Apr 7, 2014 4:58:55 PM
+	2014/07/10 06:55:38.156283
 	03/19/2012 10:11:59
 	04/2/2014 03:00:37
 	3/1/2014
@@ -89,10 +90,8 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	//assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts, err = ParseAny("03/19/2012 10:11:59")
-	assert.Tf(t, err == nil, "%v", err)
-	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
-	assert.T(t, "2012-03-19 10:11:59 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+	//---------------------------------------------
+	//   mm/dd/yyyy ?
 
 	ts, err = ParseAny("3/31/2014")
 	assert.Tf(t, err == nil, "%v", err)
@@ -124,11 +123,61 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-02 03:00:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts, err = ParseAny("1332151919")
+	ts, err = ParseAny("03/19/2012 10:11:59")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2012-03-19 10:11:59 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseAny("03/19/2012 10:11:59.3186369")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2012-03-19 10:11:59.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//---------------------------------------------
+	//   yyyy/mm/dd ?
+
+	ts, err = ParseAny("2014/3/31")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-03-31 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014/03/31")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-03-31 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014/4/8 22:05")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-08 22:05:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014/04/08 22:05")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-08 22:05:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014/04/2 03:00:51")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-02 03:00:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014/4/02 03:00:51")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-02 03:00:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2012/03/19 10:11:59")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2012-03-19 10:11:59 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2012/03/19 10:11:59.3186369")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2012-03-19 10:11:59.3186369 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//---------------------------------------------
+	//   yyyy-mm-dd ?
 	ts, err = ParseAny("2009-08-12T22:15:09-07:00")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
@@ -168,6 +217,12 @@ func TestParse(t *testing.T) {
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("1332151919")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2012-03-19 10:11:59 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 }
 
 // func TestWIP(t *testing.T) {

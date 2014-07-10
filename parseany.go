@@ -40,6 +40,8 @@ func ParseAny(datestr string) (time.Time, error) {
 
 	state := ST_START
 
+	firstSlash := 0
+
 	// General strategy is to read rune by rune through the date looking for
 	// certain hints of what type of date we are dealing with.
 	// Hopefully we only need to read about 5 or 6 bytes before
@@ -51,6 +53,7 @@ iterRunes:
 			i += (bytesConsumed - 1)
 		}
 
+		//u.Infof("char=%s i=%d   datestr=%s", r, i, datestr)
 		switch state {
 		case ST_START:
 			if unicode.IsDigit(r) {
@@ -71,6 +74,7 @@ iterRunes:
 				state = ST_DIGITCOLON
 			case '/':
 				state = ST_DIGITSLASH
+				firstSlash = i
 			}
 		case ST_DIGITDASH: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
@@ -135,6 +139,7 @@ iterRunes:
 				}
 			}
 		case ST_DIGITSLASH: // starts digit then slash 02/
+			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
@@ -150,6 +155,7 @@ iterRunes:
 				state = ST_DIGITSLASHWS
 			}
 		case ST_DIGITSLASHWS: // starts digit then slash 02/ more digits/slashes then whitespace
+			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
@@ -159,6 +165,7 @@ iterRunes:
 				state = ST_DIGITSLASHWSCOLON
 			}
 		case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
+			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
@@ -315,72 +322,158 @@ iterRunes:
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
-
-		if len(datestr) == len("01/02/2006") {
-			if t, err := time.Parse("01/02/2006", datestr); err == nil {
-				return t, nil
+		// 2014/10/13
+		if firstSlash == 4 {
+			if len(datestr) == len("2006/01/02") {
+				if t, err := time.Parse("2006/01/02", datestr); err == nil {
+					return t, nil
+				} else {
+					u.Errorf("hm: %v   %s", err, datestr)
+					return time.Time{}, err
+				}
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("2006/1/2", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		} else {
-			if t, err := time.Parse("1/2/2006", datestr); err == nil {
-				return t, nil
+			if len(datestr) == len("01/02/2006") {
+				if t, err := time.Parse("01/02/2006", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("1/2/2006", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		}
 
 	case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 		// 4/8/2014 22:05
-		if len(datestr) == len("01/02/2006 15:04") {
-			if t, err := time.Parse("01/02/2006 15:04", datestr); err == nil {
-				return t, nil
+		// 04/08/2014 22:05
+		// 2014/4/8 22:05
+		// 2014/04/08 22:05
+		if firstSlash == 4 {
+			if len(datestr) == len("2006/01/02 15:04") {
+				if t, err := time.Parse("2006/01/02 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("2006/01/2 15:04") {
+				if t, err := time.Parse("2006/01/2 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					if t, err := time.Parse("2006/1/02 15:04", datestr); err == nil {
+						return t, nil
+					} else {
+						return time.Time{}, err
+					}
+				}
 			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("01/2/2006 15:04") {
-			if t, err := time.Parse("01/2/2006 15:04", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("1/02/2006 15:04", datestr); err == nil {
+				if t, err := time.Parse("2006/1/2 15:04", datestr); err == nil {
 					return t, nil
 				} else {
 					return time.Time{}, err
 				}
 			}
 		} else {
-			if t, err := time.Parse("1/2/2006 15:04", datestr); err == nil {
-				return t, nil
+			if len(datestr) == len("01/02/2006 15:04") {
+				if t, err := time.Parse("01/02/2006 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("01/2/2006 15:04") {
+				if t, err := time.Parse("01/2/2006 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					if t, err := time.Parse("1/02/2006 15:04", datestr); err == nil {
+						return t, nil
+					} else {
+						return time.Time{}, err
+					}
+				}
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("1/2/2006 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		}
 	case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+		// 2014/07/10 06:55:38.156283
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
-		if len(datestr) == len("01/02/2006 15:04:05") {
-			if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
-				return t, nil
+
+		if firstSlash == 4 {
+			if len(datestr) == len("2014/07/10 06:55:38.156283") {
+				if t, err := time.Parse("2006/01/02 15:04:05.000000", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("2006/01/02 15:04:05") {
+				if t, err := time.Parse("2006/01/02 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("2006/01/2 15:04:05") {
+				if t, err := time.Parse("2006/01/2 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					if t, err := time.Parse("2006/1/02 15:04:05", datestr); err == nil {
+						return t, nil
+					} else {
+						return time.Time{}, err
+					}
+				}
 			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("01/2/2006 15:04:05") {
-			if t, err := time.Parse("01/2/2006 15:04:05", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("1/02/2006 15:04:05", datestr); err == nil {
+				if t, err := time.Parse("2006/1/2 15:04:05", datestr); err == nil {
 					return t, nil
 				} else {
 					return time.Time{}, err
 				}
 			}
 		} else {
-			if t, err := time.Parse("1/2/2006 15:04:05", datestr); err == nil {
-				return t, nil
+			if len(datestr) == len("07/10/2014 06:55:38.156283") {
+				if t, err := time.Parse("01/02/2006 15:04:05.000000", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("01/02/2006 15:04:05") {
+				if t, err := time.Parse("01/02/2006 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("01/2/2006 15:04:05") {
+				if t, err := time.Parse("01/2/2006 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					if t, err := time.Parse("1/02/2006 15:04:05", datestr); err == nil {
+						return t, nil
+					} else {
+						return time.Time{}, err
+					}
+				}
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("1/2/2006 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		}
 	case ST_ALPHACOMMA: // Starts alpha then comma but no DASH
