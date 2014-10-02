@@ -125,6 +125,9 @@ iterRunes:
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
 			// 2006-01-02T15:04:05Z07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
+			// 2006-01-02T15:04:05.999999999Z
+			// 2006-01-02T15:04:05.99999999Z
+			// 2013-06-16T06:57:48.9999999Z
 			if len(datestr) == len("2006-01-02T15:04:05Z07:00") {
 				if t, err := time.Parse("2006-01-02T15:04:05Z07:00", datestr); err == nil {
 					return t, nil
@@ -133,6 +136,27 @@ iterRunes:
 				}
 			} else if len(datestr) == len("2006-01-02T15:04:05.999999999Z07:00") {
 				if t, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else {
+				// updated to include timestamps of different precisions
+				if t, err := time.Parse("2006-01-02T15:04:05.999999999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.99999999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.9999999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.999999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.99999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.9999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.999Z", datestr); err == nil {
+					return t, nil
+				} else if t, err := time.Parse("2006-01-02T15:04:05.99Z", datestr); err == nil {
 					return t, nil
 				} else {
 					return time.Time{}, err
