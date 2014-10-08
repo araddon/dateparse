@@ -301,6 +301,12 @@ iterRunes:
 			} else {
 				return time.Time{}, err
 			}
+		} else if len(datestr) >= len("1384216367189") {
+			if miliSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+				return time.Unix(0, miliSecs*1000*1000), nil
+			} else {
+				return time.Time{}, err
+			}
 		} else {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(secs, 0), nil
