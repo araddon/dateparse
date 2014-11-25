@@ -127,7 +127,12 @@ iterRunes:
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2006-01-02T15:04:05.999999999Z
 			// 2006-01-02T15:04:05.99999999Z
-			// 2013-06-16T06:57:48.9999999Z
+			// 2006-01-02T15:04:05.9999999Z
+			// 2006-01-02T15:04:05.999999Z
+			// 2006-01-02T15:04:05.99999Z
+			// 2006-01-02T15:04:05.9999Z
+			// 2006-01-02T15:04:05.999Z
+			// 2006-01-02T15:04:05.99Z
 			if len(datestr) == len("2006-01-02T15:04:05Z07:00") {
 				if t, err := time.Parse("2006-01-02T15:04:05Z07:00", datestr); err == nil {
 					return t, nil
@@ -317,6 +322,7 @@ iterRunes:
 		// 2012-08-03 18:31:59.257000000
 		// 2016-03-14 00:00:00.000
 		// 2013-04-01 22:43:22
+		// 2014-12-16 06:20:00 UTC
 		if len(datestr) == len("2012-08-03 18:31:59.257000000") {
 			if t, err := time.Parse("2006-01-02 15:04:05.000000000", datestr); err == nil {
 				return t, nil
@@ -329,8 +335,12 @@ iterRunes:
 			} else {
 				return time.Time{}, err
 			}
+			// the strings "2014-04-26 05:24:37.000" and "2014-12-16 06:20:00 UTC"
+			// have the same length so I'll throw them under the same else if..
 		} else if len(datestr) == len("2014-04-26 05:24:37.000") {
 			if t, err := time.Parse("2006-01-02 15:04:05.000", datestr); err == nil {
+				return t, nil
+			} else if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
