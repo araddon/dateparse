@@ -16,6 +16,7 @@ const (
 	ST_DIGIT
 	ST_DIGITDASH
 	ST_DIGITDASHWS
+	ST_DIGITDASHWSALPHA
 	ST_DIGITDASHT
 	ST_DIGITCOMMA
 	ST_DIGITCOLON
@@ -99,6 +100,7 @@ iterRunes:
 			// 2013-04-01 22:43:22
 			// 2014-05-11 08:20:13,787
 			// 2014-04-26 05:24:37 PM
+			// 2014-12-16 06:20:00 UTC
 			switch r {
 			case 'A', 'P':
 				if len(datestr) == len("2014-04-26 03:24:37 PM") {
@@ -120,6 +122,12 @@ iterRunes:
 					} else {
 						return time.Time{}, err
 					}
+				}
+			default:
+				if unicode.IsLetter(r) {
+					// 2014-12-16 06:20:00 UTC
+					state = ST_DIGITDASHWSALPHA
+					break iterRunes
 				}
 			}
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
@@ -348,6 +356,15 @@ iterRunes:
 			}
 		} else if len(datestr) == len("2013-04-01 22:43:22") {
 			if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		}
+	case ST_DIGITDASHWSALPHA: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
+		// 2014-12-16 06:20:00 UTC
+		if len(datestr) == len("2006-01-02 15:04:05 UTC") {
+			if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
