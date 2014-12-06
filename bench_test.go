@@ -19,12 +19,13 @@ func BenchmarkShotgunParse(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		for _, dateStr := range testDates {
-			parseShotgun(dateStr)
+			// This is the non dateparse traditional approach
+			parseShotgunStyle(dateStr)
 		}
 	}
 }
 
-func BenchmarkDateparseParseAny(b *testing.B) {
+func BenchmarkParseAny(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		for _, dateStr := range testDates {
@@ -102,11 +103,8 @@ var (
 	ts, err = ParseAny()
 */
 
-// Normalizes a variety of string representations to a time.Time in UTC.
-func parseShotgun(raw string) (time.Time, error) {
+func parseShotgunStyle(raw string) (time.Time, error) {
 
-	// We shouldn't need these, dupes of above
-	// Well it's not a UNIX timestamp, try ISO standards
 	for _, format := range timeFormats {
 		t, err := time.Parse(format, raw)
 		if err == nil {
