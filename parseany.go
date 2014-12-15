@@ -36,6 +36,10 @@ const (
 
 var _ = u.EMPTY
 
+var (
+	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06"}
+)
+
 // Given an unknown date format, detect the type, parse, return time
 func ParseAny(datestr string) (time.Time, error) {
 
@@ -391,19 +395,13 @@ iterRunes:
 				}
 			}
 		} else {
-			if len(datestr) == len("01/02/2006") {
-				if t, err := time.Parse("01/02/2006", datestr); err == nil {
+			for _, parseFormat := range shortDates {
+				if t, err := time.Parse(parseFormat, datestr); err == nil {
 					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			} else {
-				if t, err := time.Parse("1/2/2006", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
 				}
 			}
+
+			return time.Time{}, fmt.Errorf("Unrecognized dateformat: %v", datestr)
 		}
 
 	case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
