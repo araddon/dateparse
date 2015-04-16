@@ -84,11 +84,10 @@ func TestParse(t *testing.T) {
 	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts)
 	assert.T(t, "2006-01-02 15:04:05 +0000 MST" == fmt.Sprintf("%v", ts))
 
-	// Wat?  Go can't parse a date that it supplies a format for?
-	// TODO:  fixme
-	//ts, err = ParseAny("Mon, 02 Jan 2006 15:04:05 -0700")
-	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
-	//assert.T(t, "2006-01-02 15:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+	// Golang Native Format
+	ts, err = ParseAny("2015-02-18 00:12:00 +0000 UTC")
+	assert.Tf(t, err == nil, "%v", err)
+	assert.T(t, "2015-02-18 00:12:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//---------------------------------------------
 	//   mm/dd/yyyy ?

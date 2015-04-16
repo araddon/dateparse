@@ -105,6 +105,7 @@ iterRunes:
 			// 2014-05-11 08:20:13,787
 			// 2014-04-26 05:24:37 PM
 			// 2014-12-16 06:20:00 UTC
+			// 2015-02-18 00:12:00 +0000 UTC
 			switch r {
 			case 'A', 'P':
 				if len(datestr) == len("2014-04-26 03:24:37 PM") {
@@ -369,6 +370,12 @@ iterRunes:
 		// 2014-12-16 06:20:00 UTC
 		if len(datestr) == len("2006-01-02 15:04:05 UTC") {
 			if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2015-02-18 00:12:00 +0000 UTC") {
+			if t, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
