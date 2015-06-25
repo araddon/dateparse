@@ -137,6 +137,7 @@ iterRunes:
 			}
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
 			// 2006-01-02T15:04:05Z07:00
+			// 2006-01-02T15:04:05
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2006-01-02T15:04:05.999999999Z
 			// 2006-01-02T15:04:05.99999999Z
@@ -154,6 +155,13 @@ iterRunes:
 				}
 			} else if len(datestr) == len("2006-01-02T15:04:05.999999999Z07:00") {
 				if t, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			} else if len(datestr) == len("2006-01-02T15:04:05") {
+				if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
+					u.Errorf("wat? %v", t)
 					return t, nil
 				} else {
 					return time.Time{}, err
