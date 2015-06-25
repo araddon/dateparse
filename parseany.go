@@ -161,7 +161,6 @@ iterRunes:
 				}
 			} else if len(datestr) == len("2006-01-02T15:04:05") {
 				if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
-					u.Errorf("wat? %v", t)
 					return t, nil
 				} else {
 					return time.Time{}, err
