@@ -106,6 +106,7 @@ iterRunes:
 			// 2014-04-26 05:24:37 PM
 			// 2014-12-16 06:20:00 UTC
 			// 2015-02-18 00:12:00 +0000 UTC
+			// 2015-06-25 01:25:37.115208593 +0000 UTC
 			switch r {
 			case 'A', 'P':
 				if len(datestr) == len("2014-04-26 03:24:37 PM") {
@@ -375,14 +376,23 @@ iterRunes:
 		}
 	case ST_DIGITDASHWSALPHA: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2014-12-16 06:20:00 UTC
-		if len(datestr) == len("2006-01-02 15:04:05 UTC") {
+		// 2015-02-18 00:12:00 +0000 UTC
+		// 2015-06-25 01:25:37.115208593 +0000 UTC
+		switch len(datestr) {
+		case len("2006-01-02 15:04:05 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
 			}
-		} else if len(datestr) == len("2015-02-18 00:12:00 +0000 UTC") {
+		case len("2015-02-18 00:12:00 +0000 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		case len("2015-06-25 01:25:37.115208593 +0000 UTC"):
+			if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
