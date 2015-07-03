@@ -84,6 +84,12 @@ func TestParse(t *testing.T) {
 	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts)
 	assert.T(t, "2006-01-02 15:04:05 +0000 MST" == fmt.Sprintf("%v", ts))
 
+	// Easily the worst Date format i have ever seen
+	//  "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)"
+	ts, err = ParseAny("Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)")
+	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts.In(time.UTC))
+	assert.T(t, "2015-07-03 17:04:07 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	// Golang Native Format
 	ts, err = ParseAny("2015-02-18 00:12:00 +0000 UTC")
 	assert.Tf(t, err == nil, "%v", err)
