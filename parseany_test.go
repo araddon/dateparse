@@ -2,10 +2,11 @@ package dateparse
 
 import (
 	"fmt"
-	u "github.com/araddon/gou"
-	"github.com/bmizerany/assert"
 	"testing"
 	"time"
+
+	u "github.com/araddon/gou"
+	"github.com/bmizerany/assert"
 )
 
 /*
@@ -59,6 +60,9 @@ func TestParse(t *testing.T) {
 	assert.T(t, ts.Unix() == zeroTime)
 	assert.T(t, err != nil)
 
+	//u.Debug(time.Now())  //              2015-08-10 10:23:17.675810275 -0700 PDT
+	//u.Debug(time.Now().In(time.UTC))  // 2015-08-10 17:23:17.675849992 +0000 UTC
+
 	ts, err = ParseAny("May 8, 2009 5:57:51 PM")
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2009-05-08 17:57:51 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -83,6 +87,12 @@ func TestParse(t *testing.T) {
 	ts, err = ParseAny("Monday, 02-Jan-06 15:04:05 MST")
 	//u.Debug(fmt.Sprintf("%v", ts.In(time.UTC)), "  ---- ", ts)
 	assert.T(t, "2006-01-02 15:04:05 +0000 MST" == fmt.Sprintf("%v", ts))
+
+	// Another weird one, year on the end after UTC?
+	ts, err = ParseAny("Mon Aug 10 15:44:11 UTC+0100 2015")
+	assert.T(t, err == nil)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2015-08-10 15:44:11 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Easily the worst Date format i have ever seen
 	//  "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)"

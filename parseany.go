@@ -232,6 +232,7 @@ iterRunes:
 			// Monday, 02-Jan-06 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 -0700
+			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if unicode.IsLetter(r) {
 				continue
@@ -250,6 +251,7 @@ iterRunes:
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			// Mon Aug 10 15:44:11 UTC+0100 2015
 			switch {
 			// case r == ' ':
 			// 	state = ST_ALPHAWSWS
@@ -286,26 +288,30 @@ iterRunes:
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
+			// Mon Aug 10 15:44:11 UTC+0100 2015
 			switch {
 			case len(datestr) == len("Mon Jan _2 15:04:05 2006"):
 				if t, err := time.Parse(time.ANSIC, datestr); err == nil {
 					return t, nil
 				} else {
-					//break iterRunes
 					return time.Time{}, err
 				}
 			case len(datestr) == len("Mon Jan _2 15:04:05 MST 2006"):
 				if t, err := time.Parse(time.UnixDate, datestr); err == nil {
 					return t, nil
 				} else {
-					//break iterRunes
 					return time.Time{}, err
 				}
 			case len(datestr) == len("Mon Jan 02 15:04:05 -0700 2006"):
 				if t, err := time.Parse(time.RubyDate, datestr); err == nil {
 					return t, nil
 				} else {
-					//break iterRunes
+					return time.Time{}, err
+				}
+			case len(datestr) == len("Mon Aug 10 15:44:11 UTC+0100 2015"):
+				if t, err := time.Parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr); err == nil {
+					return t, nil
+				} else {
 					return time.Time{}, err
 				}
 			case len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700"):
@@ -315,9 +321,10 @@ iterRunes:
 				if t, err := time.Parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp); err == nil {
 					return t, nil
 				} else {
-					//break iterRunes
 					return time.Time{}, err
 				}
+			default:
+				u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
 			}
 		default:
 			//u.Infof("no case for: %d", state)
