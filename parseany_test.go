@@ -43,6 +43,8 @@ import (
 	10/13/2014
 	01/02/2006
 
+	20140601
+
 	2016-03-14 00:00:00.000
 	2006-01-02
 	2014-05-11 08:20:13,787   // i couldn't find parser for this in go?
@@ -254,6 +256,12 @@ func TestParse(t *testing.T) {
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//  yyyy mm dd
+	ts, err = ParseAny("20140601")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-06-01 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts, err = ParseAny("1332151919")
 	assert.Tf(t, err == nil, "%v", err)

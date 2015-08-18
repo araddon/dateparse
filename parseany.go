@@ -335,6 +335,11 @@ iterRunes:
 	switch state {
 	case ST_DIGIT:
 		// unixy timestamps ish
+		//  13980450781991351    nanoseconds
+		//  13980450781991       microseconds
+		//  1384216367189
+		//  1332151919           seconds
+		//  20140601             yyyymmdd
 		if len(datestr) >= len("13980450781991351") {
 			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(0, nanoSecs), nil
@@ -350,6 +355,12 @@ iterRunes:
 		} else if len(datestr) >= len("1384216367189") {
 			if miliSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(0, miliSecs*1000*1000), nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("20140601") {
+			if t, err := time.Parse("20060102", datestr); err == nil {
+				return t, nil
 			} else {
 				return time.Time{}, err
 			}
