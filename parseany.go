@@ -2,11 +2,13 @@ package dateparse
 
 import (
 	"fmt"
-	u "github.com/araddon/gou"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	u "github.com/araddon/gou"
 )
 
 type DateState int
@@ -24,6 +26,7 @@ const (
 	ST_DIGITSLASHWS
 	ST_DIGITSLASHWSCOLON
 	ST_DIGITSLASHWSCOLONCOLON
+	ST_DIGITSLASHWSCOLONCOLONAMPM
 	ST_ALPHA
 	ST_ALPHAWS
 	ST_ALPHAWSCOMMA
@@ -220,9 +223,21 @@ iterRunes:
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
+			// 3/1/2012 10:11:59 AM
 			switch r {
 			case ':':
 				state = ST_DIGITSLASHWSCOLONCOLON
+			}
+		case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
+			// 2014/07/10 06:55:38.156283
+			// 03/19/2012 10:11:59
+			// 04/2/2014 03:00:37
+			// 3/1/2012 10:11:59
+			// 4/8/2014 22:05
+			// 3/1/2012 10:11:59 AM
+			switch r {
+			case 'A', 'P':
+				state = ST_DIGITSLASHWSCOLONCOLONAMPM
 			}
 		case ST_ALPHA: // starts alpha
 			// May 8, 2009 5:57:51 PM
@@ -427,6 +442,12 @@ iterRunes:
 			} else {
 				return time.Time{}, err
 			}
+		case len("2015-09-30 18:48:56.35272715 +0000 UTC"):
+			if t, err := time.Parse("2006-01-02 15:04:05.00000000 +0000 UTC", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
 		case len("2015-06-25 01:25:37.115208593 +0000 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr); err == nil {
 				return t, nil
@@ -518,13 +539,16 @@ iterRunes:
 				}
 			}
 		}
-	case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case ST_DIGITSLASHWSCOLONCOLON, ST_DIGITSLASHWSCOLONCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 2014/07/10 06:55:38.156283
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
-
+		if state == ST_DIGITSLASHWSCOLONCOLONAMPM {
+			datestr = strings.Replace(datestr, " AM", "", -1)
+			datestr = strings.Replace(datestr, " PM", "", -1)
+		}
 		if firstSlash == 4 {
 			if len(datestr) == len("2014/07/10 06:55:38.156283") {
 				if t, err := time.Parse("2006/01/02 15:04:05.000000", datestr); err == nil {
@@ -586,6 +610,7 @@ iterRunes:
 				}
 			}
 		}
+
 	case ST_ALPHACOMMA: // Starts alpha then comma but no DASH
 		// Mon, 02 Jan 2006 15:04:05 MST
 		if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
