@@ -40,7 +40,7 @@ const (
 var _ = u.EMPTY
 
 var (
-	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06"}
+	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 )
 
 // Given an unknown date format, detect the type, parse, return time
@@ -200,6 +200,7 @@ iterRunes:
 			// 3/1/2014
 			// 10/13/2014
 			// 01/02/2006
+			// 1/2/06
 			if unicode.IsDigit(r) || r == '/' {
 				continue
 			}
