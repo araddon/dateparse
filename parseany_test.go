@@ -49,6 +49,10 @@ import (
 	2006-01-02
 	2014-05-11 08:20:13,787   // i couldn't find parser for this in go?
 
+	// only day or year level resolution
+	2006-01
+	2006
+
 */
 
 func init() {
@@ -267,12 +271,22 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseAny("2014-04")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-01 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("2014-05-11 08:20:13,787")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	//  yyyy mm dd
+	//  yyyymmdd and similar
+	ts, err = ParseAny("2014")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-01-01 00:00:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("20140601")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))

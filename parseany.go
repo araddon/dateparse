@@ -356,6 +356,7 @@ iterRunes:
 		//  1384216367189
 		//  1332151919           seconds
 		//  20140601             yyyymmdd
+		//  2014                 yyyy
 		if len(datestr) >= len("13980450781991351") {
 			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(0, nanoSecs), nil
@@ -380,6 +381,12 @@ iterRunes:
 			} else {
 				return time.Time{}, err
 			}
+		} else if len(datestr) == len("2014") {
+			if t, err := time.Parse("2006", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
 		} else {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(secs, 0), nil
@@ -389,8 +396,15 @@ iterRunes:
 		}
 	case ST_DIGITDASH: // starts digit then dash 02-
 		// 2006-01-02
+		// 2006-01
 		if len(datestr) == len("2014-04-26") {
 			if t, err := time.Parse("2006-01-02", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2014-04") {
+			if t, err := time.Parse("2006-01", datestr); err == nil {
 				return t, nil
 			} else {
 				return time.Time{}, err
