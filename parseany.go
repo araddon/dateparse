@@ -340,7 +340,7 @@ iterRunes:
 					return time.Time{}, err
 				}
 			default:
-				u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
+				//u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
 			}
 		default:
 			//u.Infof("no case for: %d", state)
