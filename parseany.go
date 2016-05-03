@@ -34,13 +34,17 @@ const (
 	ST_ALPHACOMMA
 	ST_ALPHACOMMADASH
 	ST_ALPHACOMMADASHDASH
-	//ST_ALPHADIGIT
+	ST_MONTHCOMMA
+	ST_WEEKDAYCOMMA
+	ST_WEEKDAYABBREVCOMMA
 )
 
 var _ = u.EMPTY
 
 var (
-	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
+	shortDates    = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
+	weekdays      = map[string]bool{"Monday": true, "Tuesday": true, "Wednesday": true, "Thursday": true, "Friday": true, "Saturday": true, "Sunday": true}
+	weekdayAbbrev = map[string]bool{"Mon": true, "Tue": true, "Wed": true, "Thu": true, "Fri": true, "Sat": true, "Sun": true}
 )
 
 // Given an unknown date format, detect the type, parse, return time
@@ -246,6 +250,7 @@ iterRunes:
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Monday, 02-Jan-06 15:04:05 MST
+			// Monday, 02 Jan 2006 15:04:05 -0700
 			// Mon, 02 Jan 2006 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 -0700
 			// Mon Aug 10 15:44:11 UTC+0100 2015
@@ -257,10 +262,55 @@ iterRunes:
 			case r == ' ':
 				state = ST_ALPHAWS
 			case r == ',':
-				state = ST_ALPHACOMMA
-				// case unicode.IsDigit(r):
-				// 	state = ST_ALPHADIGIT
+
+				switch {
+				case weekdays[datestr[:i]] == true:
+					state = ST_WEEKDAYCOMMA
+				case weekdayAbbrev[datestr[:i]] == true:
+					state = ST_WEEKDAYABBREVCOMMA
+				default:
+					state = ST_MONTHCOMMA
+				}
 			}
+		case ST_WEEKDAYCOMMA: // Starts alpha then comma
+			// Monday, 02-Jan-06 15:04:05 MST
+			// Monday, 02 Jan 2006 15:04:05 -0700
+			switch {
+			case r == '-':
+				if i < 15 {
+					t, err := time.Parse("Monday, 02-Jan-06 15:04:05 MST", datestr)
+					if err == nil {
+						return t, nil
+					}
+					return time.Time{}, err
+				} else {
+					t, err := time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr)
+					if err == nil {
+						return t, nil
+					}
+					return time.Time{}, err
+				}
+			}
+		case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
+			// Mon, 02-Jan-06 15:04:05 MST
+			// Mon, 02 Jan 2006 15:04:05 -0700
+			switch {
+			case r == '-':
+				if i < 15 {
+					t, err := time.Parse("Mon, 02-Jan-06 15:04:05 MST", datestr)
+					if err == nil {
+						return t, nil
+					}
+					return time.Time{}, err
+				} else {
+					t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
+					if err == nil {
+						return t, nil
+					}
+					return time.Time{}, err
+				}
+			}
+
 		case ST_ALPHAWS: // Starts alpha then whitespace
 			// May 8, 2009 5:57:51 PM
 			// Mon Jan _2 15:04:05 2006
@@ -279,41 +329,24 @@ iterRunes:
 		case ST_ALPHACOMMA: // Starts alpha then comma
 			// Mon, 02 Jan 2006 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 -0700
-			// Monday, 02-Jan-06 15:04:05 MST
-			// Monday, 02 Jan 2006 15:04:05 -0700
 			switch {
 			case r == '-':
 				state = ST_ALPHACOMMADASH
 			}
-			if t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", datestr); err == nil {
-				return t, nil
-			}
-			if t, err := time.Parse("Monday, 02 Jan 2006 15:04:05 MST", datestr); err == nil {
-				return t, nil
-			}
 		case ST_ALPHACOMMADASH: // Starts alpha then comma and one dash
 			// Mon, 02 Jan 2006 15:04:05 -0700
-			// Monday, 02 Jan 2006 15:04:05 -0700
-			// Monday, 02-Jan-06 15:04:05 MST
 			switch {
 			case r == '-':
 				state = ST_ALPHACOMMADASHDASH
 			}
-			t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
-			if err == nil {
-				return t, nil
-			}
-			if t, err := time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr); err == nil {
-				return t, nil
-			}
 
 		case ST_ALPHAWSCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
-			if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
+			t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr)
+			if err == nil {
 				return t, nil
-			} else {
-				//u.Error(err)
 			}
+			return time.Time{}, err
 		case ST_ALPHAWSALPHA: // Starts Alpha, whitespace, alpha
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			// Mon Jan _2 15:04:05 2006
@@ -640,9 +673,17 @@ iterRunes:
 				}
 			}
 		}
+	case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
+		// Mon, 02 Jan 2006 15:04:05 MST
+		t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", datestr)
+		if err == nil {
+			return t, nil
+		}
+		return time.Time{}, err
 
 	case ST_ALPHACOMMA: // Starts alpha then comma but no DASH
 		// Mon, 02 Jan 2006 15:04:05 MST
+		// Jan 2, 2006 3:04:05 PM
 		if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
 			return t, nil
 		} else {

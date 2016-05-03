@@ -57,6 +57,7 @@ import (
 
 func init() {
 	u.SetupLogging("debug")
+	u.SetColorOutput()
 }
 
 func TestParse(t *testing.T) {
