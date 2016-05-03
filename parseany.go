@@ -280,18 +280,33 @@ iterRunes:
 			// Mon, 02 Jan 2006 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 -0700
 			// Monday, 02-Jan-06 15:04:05 MST
+			// Monday, 02 Jan 2006 15:04:05 -0700
 			switch {
 			case r == '-':
 				state = ST_ALPHACOMMADASH
 			}
-
+			if t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 MST", datestr); err == nil {
+				return t, nil
+			}
+			if t, err := time.Parse("Monday, 02 Jan 2006 15:04:05 MST", datestr); err == nil {
+				return t, nil
+			}
 		case ST_ALPHACOMMADASH: // Starts alpha then comma and one dash
 			// Mon, 02 Jan 2006 15:04:05 -0700
+			// Monday, 02 Jan 2006 15:04:05 -0700
 			// Monday, 02-Jan-06 15:04:05 MST
 			switch {
 			case r == '-':
 				state = ST_ALPHACOMMADASHDASH
 			}
+			t, err := time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
+			if err == nil {
+				return t, nil
+			}
+			if t, err := time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr); err == nil {
+				return t, nil
+			}
+
 		case ST_ALPHAWSCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
 			if t, err := time.Parse("Jan 2, 2006 3:04:05 PM", datestr); err == nil {
