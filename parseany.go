@@ -497,25 +497,41 @@ iterRunes:
 			if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
 				return t, nil
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("2006-01-02 15:04:05 GMT", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		case len("2015-02-18 00:12:00 +0000 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr); err == nil {
 				return t, nil
 			} else {
-				return time.Time{}, err
+				if t, err = time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		case len("2015-09-30 18:48:56.35272715 +0000 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05.00000000 +0000 UTC", datestr); err == nil {
 				return t, nil
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("2006-01-02 15:04:05.00000000 +0000 GMT", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		case len("2015-06-25 01:25:37.115208593 +0000 UTC"):
 			if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr); err == nil {
 				return t, nil
 			} else {
-				return time.Time{}, err
+				if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 GMT", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
 			}
 		}
 	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
