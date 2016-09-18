@@ -47,6 +47,15 @@ var (
 	weekdayAbbrev = map[string]bool{"Mon": true, "Tue": true, "Wed": true, "Thu": true, "Fri": true, "Sat": true, "Sun": true}
 )
 
+// Parse a date, and panic if it can't be parsed
+func MustParse(datestr string) time.Time {
+	t, err := ParseAny(datestr)
+	if err != nil {
+		panic(err.Error())
+	}
+	return t
+}
+
 // Given an unknown date format, detect the type, parse, return time
 func ParseAny(datestr string) (time.Time, error) {
 
