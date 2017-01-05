@@ -1,13 +1,3 @@
-Go Date Parser 
----------------------------
-
-Parse Any date format without knowing format in advance.  Uses
-a Scan/Lex based approach to minimize shotgun based parse attempts.
-See bench_test.go for performance comparison.
-
-
-See https://github.com/araddon/dateparse/blob/master/example/main.go
-```go
 package main
 
 import (
@@ -86,10 +76,8 @@ func main() {
 	}
 	fmt.Println(table.Render())
 }
-```
 
-**outputs**
-```
+/*
 +-------------------------------------------------------+----------------------------------------+
 | Input                                                 | Parsed, and Output as %v               |
 +-------------------------------------------------------+----------------------------------------+
@@ -143,4 +131,4 @@ func main() {
 | 1332151919                                            | 2012-03-19 03:11:59 -0700 PDT          |
 | 1384216367189                                         | 2013-11-11 16:32:47.189 -0800 PST      |
 +-------------------------------------------------------+----------------------------------------+
-```
+*/
