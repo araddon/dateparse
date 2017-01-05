@@ -3,10 +3,10 @@ Go Date Parser
 
 Parse Any date format without knowing format in advance.  Uses
 a Scan/Lex based approach to minimize shotgun based parse attempts.
-See bench_test.go for performance comparison.
+See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
 
 
-See https://github.com/araddon/dateparse/blob/master/example/main.go
+See example https://github.com/araddon/dateparse/blob/master/example/main.go
 ```go
 package main
 

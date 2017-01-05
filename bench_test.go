@@ -2,7 +2,6 @@ package dateparse
 
 import (
 	"fmt"
-	//"github.com/bmizerany/assert"
 	"testing"
 	"time"
 )
