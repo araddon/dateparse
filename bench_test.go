@@ -78,30 +78,6 @@ var (
 	}
 )
 
-/*
-
-	ts, err = ParseAny("May 8, 2009 5:57:51 PM")
-	ts, err = ParseAny("Mon Jan  2 15:04:05 2006")
-	ts, err = ParseAny("Mon Jan  2 15:04:05 MST 2006")
-	ts, err = ParseAny("Mon Jan 02 15:04:05 -0700 2006")
-	ts, err = ParseAny("Monday, 02-Jan-06 15:04:05 MST")
-	ts, err = ParseAny("3/31/2014")
-	ts, err = ParseAny("03/31/2014")
-	ts, err = ParseAny("4/8/2014 22:05")
-	ts, err = ParseAny("04/08/2014 22:05")
-	ts, err = ParseAny("04/2/2014 03:00:51")
-	ts, err = ParseAny("4/02/2014 03:00:51")
-	ts, err = ParseAny("03/19/2012 10:11:59")
-	ts, err = ParseAny("03/19/2012 10:11:59.3186369")
-	ts, err = ParseAny("2014/3/31")
-	ts, err = ParseAny("2014/03/31")
-	ts, err = ParseAny("2014/4/8 22:05")
-	ts, err = ParseAny("2014/04/08 22:05")
-	ts, err = ParseAny("2014/04/2 03:00:51")
-	ts, err = ParseAny("2014/4/02 03:00:51")
-	ts, err = ParseAny()
-*/
-
 func parseShotgunStyle(raw string) (time.Time, error) {
 
 	for _, format := range timeFormats {
