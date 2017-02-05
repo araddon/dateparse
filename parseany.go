@@ -27,6 +27,7 @@ const (
 	ST_DIGITSLASHWSCOLON
 	ST_DIGITSLASHWSCOLONCOLON
 	ST_DIGITSLASHWSCOLONCOLONAMPM
+	ST_DIGITALPHA
 	ST_ALPHA
 	ST_ALPHAWS
 	ST_ALPHAWSCOMMA
@@ -84,6 +85,9 @@ iterRunes:
 			}
 		case ST_DIGIT: // starts digits
 			if unicode.IsDigit(r) {
+				continue
+			} else if unicode.IsLetter(r) {
+				state = ST_DIGITALPHA
 				continue
 			}
 			switch r {
@@ -254,6 +258,25 @@ iterRunes:
 			switch r {
 			case 'A', 'P':
 				state = ST_DIGITSLASHWSCOLONCOLONAMPM
+			}
+		case ST_DIGITALPHA:
+			// 12 Feb 2006, 19:17
+			// 12 Feb 2006, 19:17:22
+			switch {
+			case len(datestr) == len("02 Jan 2006, 15:04"):
+				if t, err := time.Parse("02 Jan 2006, 15:04", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			case len(datestr) == len("02 Jan 2006, 15:04:05"):
+				if t, err := time.Parse("02 Jan 2006, 15:04:05", datestr); err == nil {
+					return t, nil
+				} else {
+					return time.Time{}, err
+				}
+			default:
+				//u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
 			}
 		case ST_ALPHA: // starts alpha
 			// May 8, 2009 5:57:51 PM

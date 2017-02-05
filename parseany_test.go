@@ -117,6 +117,12 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2006-01-02 22:04:05 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	// not sure if this is anything close to a standard, never seen it before
+	ts, err = ParseAny("12 Feb 2006, 19:17")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2006-02-12 19:17:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("2015-02-18 00:12:00 +0000 GMT")
 	assert.Tf(t, err == nil, "%v", err)
 	assert.T(t, "2015-02-18 00:12:00 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
