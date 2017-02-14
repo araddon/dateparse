@@ -3,7 +3,6 @@ package dateparse
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -25,11 +24,9 @@ const (
 	ST_DIGITSLASH
 	ST_DIGITSLASHWS
 	ST_DIGITSLASHWSCOLON
-	ST_DIGITSLASHWSCOLONAM
-	ST_DIGITSLASHWSCOLONPM
+	ST_DIGITSLASHWSCOLONAMPM
 	ST_DIGITSLASHWSCOLONCOLON
-	ST_DIGITSLASHWSCOLONCOLONAM
-	ST_DIGITSLASHWSCOLONCOLONPM
+	ST_DIGITSLASHWSCOLONCOLONAMPM
 	ST_DIGITALPHA
 	ST_ALPHA
 	ST_ALPHAWS
@@ -250,10 +247,8 @@ iterRunes:
 			switch r {
 			case ':':
 				state = ST_DIGITSLASHWSCOLONCOLON
-			case 'A':
-				state = ST_DIGITSLASHWSCOLONAM
-			case 'P':
-				state = ST_DIGITSLASHWSCOLONPM
+			case 'A', 'P':
+				state = ST_DIGITSLASHWSCOLONAMPM
 			}
 		case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 2014/07/10 06:55:38.156283
@@ -263,10 +258,8 @@ iterRunes:
 			// 4/8/2014 22:05
 			// 3/1/2012 10:11:59 AM
 			switch r {
-			case 'A':
-				state = ST_DIGITSLASHWSCOLONCOLONAM
-			case 'P':
-				state = ST_DIGITSLASHWSCOLONCOLONPM
+			case 'A', 'P':
+				state = ST_DIGITSLASHWSCOLONCOLONAMPM
 			}
 		case ST_DIGITALPHA:
 			// 12 Feb 2006, 19:17
@@ -614,23 +607,14 @@ iterRunes:
 			return time.Time{}, fmt.Errorf("Unrecognized dateformat: %v", datestr)
 		}
 
-	case ST_DIGITSLASHWSCOLON, ST_DIGITSLASHWSCOLONAM, ST_DIGITSLASHWSCOLONPM: // starts digit then slash 02/ more digits/slashes then whitespace
+	case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 		// 4/8/2014 22:05
 		// 04/08/2014 22:05
 		// 2014/4/8 22:05
 		// 2014/04/08 22:05
-		// 2014/04/08 08:05 PM
 
 		var t time.Time
 		var err error
-		var add time.Duration
-
-		if state == ST_DIGITSLASHWSCOLONAM {
-			datestr = strings.Replace(datestr, " AM", "", -1)
-		} else if state == ST_DIGITSLASHWSCOLONPM {
-			datestr = strings.Replace(datestr, " PM", "", -1)
-			add = time.Duration(12 * time.Hour)
-		}
 
 		if firstSlash == 4 {
 			switch len(datestr) {
@@ -656,28 +640,56 @@ iterRunes:
 			}
 		}
 		if err == nil {
-			return t.Add(add), nil
+			return t, nil
 		}
 		return time.Time{}, err
 
-	case ST_DIGITSLASHWSCOLONCOLON, ST_DIGITSLASHWSCOLONCOLONAM, ST_DIGITSLASHWSCOLONCOLONPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case ST_DIGITSLASHWSCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace
+		// 4/8/2014 22:05 PM
+		// 04/08/2014 22:05 PM
+		// 2014/4/8 22:05 PM
+		// 2014/04/08 22:05 PM
+
+		var t time.Time
+		var err error
+
+		if firstSlash == 4 {
+			switch len(datestr) {
+			case len("2006/01/02 15:04 PM"):
+				t, err = time.Parse("2006/01/02 03:04 PM", datestr)
+			case len("2006/01/2 15:04 PM"):
+				if t, err = time.Parse("2006/01/2 03:04 PM", datestr); err != nil {
+					t, err = time.Parse("2006/1/02 03:04 PM", datestr)
+				}
+			default:
+				t, err = time.Parse("2006/1/2 03:04 PM", datestr)
+			}
+		} else {
+			switch len(datestr) {
+			case len("01/02/2006 15:04 PM"):
+				t, err = time.Parse("01/02/2006 03:04 PM", datestr)
+			case len("01/2/2006 15:04 PM"):
+				if t, err = time.Parse("01/2/2006 03:04 PM", datestr); err != nil {
+					t, err = time.Parse("1/02/2006 03:04 PM", datestr)
+				}
+			default:
+				t, err = time.Parse("1/2/2006 3:04 PM", datestr)
+			}
+		}
+		if err == nil {
+			return t, nil
+		}
+		return time.Time{}, err
+
+	case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 2014/07/10 06:55:38.156283
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
-		// 3/01/2012 10:11:59 PM
 
 		var t time.Time
 		var err error
-		var add time.Duration
-
-		if state == ST_DIGITSLASHWSCOLONCOLONAM {
-			datestr = strings.Replace(datestr, " AM", "", -1)
-		} else if state == ST_DIGITSLASHWSCOLONCOLONPM {
-			datestr = strings.Replace(datestr, " PM", "", -1)
-			add = time.Duration(12 * time.Hour)
-		}
 
 		if firstSlash == 4 {
 			switch len(datestr) {
@@ -707,7 +719,49 @@ iterRunes:
 			}
 		}
 		if err == nil {
-			return t.Add(add), nil
+			return t, nil
+		}
+		return time.Time{}, err
+
+	case ST_DIGITSLASHWSCOLONCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+		// 2014/07/10 06:55:38.156283 PM
+		// 03/19/2012 10:11:59 PM
+		// 3/1/2012 10:11:59 PM
+		// 03/1/2012 10:11:59 PM
+		// 3/01/2012 10:11:59 PM
+
+		var t time.Time
+		var err error
+
+		if firstSlash == 4 {
+			switch len(datestr) {
+			case len("2014/07/10 06:55:38.156283 PM"):
+				t, err = time.Parse("2006/01/02 03:04:05.000000 PM", datestr)
+			case len("2006/01/02 15:04:05 PM"):
+				t, err = time.Parse("2006/01/02 03:04:05 PM", datestr)
+			case len("2006/01/2 15:04:05 PM"):
+				if t, err = time.Parse("2006/01/2 03:04:05 PM", datestr); err != nil {
+					t, err = time.Parse("2006/1/02 03:04:05 PM", datestr)
+				}
+			default:
+				t, err = time.Parse("2006/1/2 03:04:05 PM", datestr)
+			}
+		} else {
+			switch len(datestr) {
+			case len("07/10/2014 06:55:38.156283 PM"):
+				t, err = time.Parse("01/02/2006 03:04:05.000000 PM", datestr)
+			case len("01/02/2006 15:04:05 PM"):
+				t, err = time.Parse("01/02/2006 03:04:05 PM", datestr)
+			case len("01/2/2006 15:04:05 PM"):
+				if t, err = time.Parse("01/2/2006 03:04:05 PM", datestr); err != nil {
+					t, err = time.Parse("1/02/2006 03:04:05 PM", datestr)
+				}
+			default:
+				t, err = time.Parse("1/2/2006 03:04:05 PM", datestr)
+			}
+		}
+		if err == nil {
+			return t, nil
 		}
 		return time.Time{}, err
 
