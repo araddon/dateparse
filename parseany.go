@@ -623,6 +623,8 @@ iterRunes:
 			case len("2006/01/2 15:04"):
 				if t, err = time.Parse("2006/01/2 15:04", datestr); err != nil {
 					t, err = time.Parse("2006/1/02 15:04", datestr)
+				} else if t, err = time.Parse("2006/1/02 15:04", datestr); err != nil {
+					t, err = time.Parse("2006/1/02 15:04", datestr)
 				}
 			default:
 				t, err = time.Parse("2006/1/2 15:04", datestr)
@@ -633,6 +635,8 @@ iterRunes:
 				t, err = time.Parse("01/02/2006 15:04", datestr)
 			case len("01/2/2006 15:04"):
 				if t, err = time.Parse("01/2/2006 15:04", datestr); err != nil {
+					t, err = time.Parse("1/02/2006 15:04", datestr)
+				} else if t, err = time.Parse("1/02/2006 15:04", datestr); err != nil {
 					t, err = time.Parse("1/02/2006 15:04", datestr)
 				}
 			default:
