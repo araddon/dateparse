@@ -18,6 +18,10 @@ const (
 	ST_DIGITDASH
 	ST_DIGITDASHWS
 	ST_DIGITDASHWSALPHA
+	ST_DIGITDASHWSDOT
+	ST_DIGITDASHWSDOTALPHA
+	ST_DIGITDASHWSDOTPLUS
+	ST_DIGITDASHWSDOTPLUSALPHA
 	ST_DIGITDASHT
 	ST_DIGITCOMMA
 	ST_DIGITCOLON
@@ -119,10 +123,6 @@ iterRunes:
 				state = ST_DIGITDASHT
 			}
 		case ST_DIGITDASHWS: // starts digit then dash 02- then whitespace
-			// 2014-04-26 17:24:37.3186369
-			// 2017-01-27 00:07:31.945167
-			// 2012-08-03 18:31:59.257000000
-			// 2016-03-14 00:00:00.000
 			// 2013-04-01 22:43:22
 			// 2014-05-11 08:20:13,787
 			// 2014-04-26 05:24:37 PM
@@ -151,6 +151,8 @@ iterRunes:
 						return time.Time{}, err
 					}
 				}
+			case '.':
+				state = ST_DIGITDASHWSDOT
 			default:
 				if unicode.IsLetter(r) {
 					// 2014-12-16 06:20:00 UTC
@@ -158,6 +160,29 @@ iterRunes:
 					break iterRunes
 				}
 			}
+		case ST_DIGITDASHWSDOT:
+			// 2014-04-26 17:24:37.3186369
+			// 2017-01-27 00:07:31.945167
+			// 2012-08-03 18:31:59.257000000
+			// 2016-03-14 00:00:00.000
+			if unicode.IsLetter(r) {
+				// 2014-12-16 06:20:00.000 UTC
+				state = ST_DIGITDASHWSDOTALPHA
+				break iterRunes
+			} else if r == '+' || r == '-' {
+				state = ST_DIGITDASHWSDOTPLUS
+			}
+		case ST_DIGITDASHWSDOTPLUS:
+			// 2014-04-26 17:24:37.3186369
+			// 2017-01-27 00:07:31.945167
+			// 2012-08-03 18:31:59.257000000
+			// 2016-03-14 00:00:00.000
+			if unicode.IsLetter(r) {
+				// 2014-12-16 06:20:00.000 UTC
+				state = ST_DIGITDASHWSDOTPLUSALPHA
+				break iterRunes
+			}
+
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
 			// 2006-01-02T15:04:05Z07:00
 			// 2006-01-02T15:04:05
@@ -495,88 +520,197 @@ iterRunes:
 			}
 		}
 	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
-		// 2012-08-03 18:31:59.257000000
-		// 2014-04-26 17:24:37.3186369
-		// 2017-01-27 00:07:31.945167
-		// 2016-03-14 00:00:00.000
 		// 2013-04-01 22:43:22
-		if len(datestr) == len("2012-08-03 18:31:59.257000000") {
-			if t, err := time.Parse("2006-01-02 15:04:05.000000000", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2014-04-26 05:24:37.3186369") {
-			if t, err := time.Parse("2006-01-02 15:04:05.0000000", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2014-04-26 05:24:37.945167") {
-			if t, err := time.Parse("2006-01-02 15:04:05.000000", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2014-04-26 05:24:37.000") {
-			if t, err := time.Parse("2006-01-02 15:04:05.000", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2013-04-01 22:43:22") {
-			if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
+		if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
 		}
 	case ST_DIGITDASHWSALPHA: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2014-12-16 06:20:00 UTC
 		// 2015-02-18 00:12:00 +0000 UTC
 		// 2015-06-25 01:25:37.115208593 +0000 UTC
+		var t time.Time
+		var err error
+
 		switch len(datestr) {
 		case len("2006-01-02 15:04:05 UTC"):
-			if t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("2006-01-02 15:04:05 GMT", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
+			t, err = time.Parse("2006-01-02 15:04:05 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05 GMT", datestr)
 			}
 		case len("2015-02-18 00:12:00 +0000 UTC"):
-			if t, err := time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err = time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			}
-		case len("2015-09-30 18:48:56.35272715 +0000 UTC"):
-			if t, err := time.Parse("2006-01-02 15:04:05.00000000 +0000 UTC", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("2006-01-02 15:04:05.00000000 +0000 GMT", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			}
-		case len("2015-06-25 01:25:37.115208593 +0000 UTC"):
-			if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr); err == nil {
-				return t, nil
-			} else {
-				if t, err := time.Parse("2006-01-02 15:04:05.000000000 +0000 GMT", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
+			t, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr)
 			}
 		}
+		if err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+
+	case ST_DIGITDASHWSDOT:
+		// 2012-08-03 18:31:59.257000000
+		// 2014-04-26 17:24:37.3186369
+		// 2017-01-27 00:07:31.945167
+		// 2016-03-14 00:00:00.000
+		var t time.Time
+		var err error
+
+		switch len(datestr) {
+		case len("2012-08-03 18:31:59.257000000"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000000", datestr)
+		case len("2014-04-26 05:24:37.3186369"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000000", datestr)
+		case len("2014-04-26 05:24:37.945167"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000", datestr)
+		case len("2014-04-26 05:24:37.94516"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000", datestr)
+		case len("2014-04-26 05:24:37.9451"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000", datestr)
+		case len("2014-04-26 05:24:37.000"):
+			t, err = time.Parse("2006-01-02 15:04:05.000", datestr)
+		case len("2014-04-26 05:24:37.00"):
+			t, err = time.Parse("2006-01-02 15:04:05.00", datestr)
+		case len("2014-04-26 05:24:37.0"):
+			t, err = time.Parse("2006-01-02 15:04:05.0", datestr)
+		}
+		if err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+
+	case ST_DIGITDASHWSDOTALPHA:
+		// 2012-08-03 18:31:59.257000000 UTC
+		// 2014-04-26 17:24:37.3186369 UTC
+		// 2017-01-27 00:07:31.945167 UTC
+		// 2016-03-14 00:00:00.000 UTC
+		var t time.Time
+		var err error
+
+		switch len(datestr) {
+		case len("2012-08-03 18:31:59.123456789 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000000 UTC", datestr)
+		case len("2014-04-26 05:24:37.12345678 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000000 UTC", datestr)
+		case len("2014-04-26 05:24:37.1234567 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000000 UTC", datestr)
+		case len("2014-04-26 05:24:37.123456 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000 UTC", datestr)
+		case len("2014-04-26 05:24:37.12345 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000 UTC", datestr)
+		case len("2014-04-26 05:24:37.1234 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000 UTC", datestr)
+		case len("2014-04-26 05:24:37.000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.000 UTC", datestr)
+		case len("2014-04-26 05:24:37.00 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00 UTC", datestr)
+		case len("2014-04-26 05:24:37.0 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0 UTC", datestr)
+		}
+		if err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+
+	case ST_DIGITDASHWSDOTPLUS:
+		// 2012-08-03 18:31:59.257000000 +0000
+		// 2014-04-26 17:24:37.3186369 +0000
+		// 2017-01-27 00:07:31.945167 +0000
+		// 2016-03-14 00:00:00.000 +0000
+		var t time.Time
+		var err error
+
+		switch len(datestr) {
+		case len("2012-08-03 18:31:59.123456789 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700", datestr)
+		case len("2014-04-26 05:24:37.12345678 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700", datestr)
+		case len("2014-04-26 05:24:37.1234567 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700", datestr)
+		case len("2014-04-26 05:24:37.123456 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000 -0700", datestr)
+		case len("2014-04-26 05:24:37.12345 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000 -0700", datestr)
+		case len("2014-04-26 05:24:37.1234 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000 -0700", datestr)
+		case len("2014-04-26 05:24:37.000 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.000 -0700", datestr)
+		case len("2014-04-26 05:24:37.00 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.00 -0700", datestr)
+		case len("2014-04-26 05:24:37.0 +0000"):
+			t, err = time.Parse("2006-01-02 15:04:05.0 -0700", datestr)
+		}
+		if err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+
+	case ST_DIGITDASHWSDOTPLUSALPHA:
+		// 2012-08-03 18:31:59.257000000 +0000 UTC
+		// 2014-04-26 17:24:37.3186369 +0000 UTC
+		// 2017-01-27 00:07:31.945167 +0000 UTC
+		// 2016-03-14 00:00:00.000 +0000 UTC
+		var t time.Time
+		var err error
+
+		switch len(datestr) {
+		case len("2015-06-25 01:25:37.123456789 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.000000000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.12345678 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.00000000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.1234567 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.0000000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.123456 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.000000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.000000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.12345 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.00000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.1234 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.0000 +0000 GMT", datestr)
+			}
+			t, err = time.Parse("2006-01-02 15:04:05.000 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.000 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.12 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.00 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.00 +0000 GMT", datestr)
+			}
+		case len("2015-09-30 18:48:56.1 +0000 UTC"):
+			t, err = time.Parse("2006-01-02 15:04:05.0 +0000 UTC", datestr)
+			if err != nil {
+				t, err = time.Parse("2006-01-02 15:04:05.0 +0000 GMT", datestr)
+			}
+		}
+		if err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+
 	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
 		// 10/13/2014
