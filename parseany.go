@@ -540,9 +540,9 @@ iterRunes:
 				t, err = time.Parse("2006-01-02 15:04:05 GMT", datestr)
 			}
 		case len("2015-02-18 00:12:00 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05 -0700 GMT", datestr)
 			}
 		}
 		if err == nil {
@@ -661,48 +661,48 @@ iterRunes:
 
 		switch len(datestr) {
 		case len("2015-06-25 01:25:37.123456789 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.000000000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.000000000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.12345678 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.00000000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.00000000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.1234567 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.0000000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.0000000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.123456 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.000000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.000000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.000000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.000000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.12345 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.00000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.00000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.00000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.00000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.1234 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.0000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.0000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.0000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.0000 -0700 GMT", datestr)
 			}
-			t, err = time.Parse("2006-01-02 15:04:05.000 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.000 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.000 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.000 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.12 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.00 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.00 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.00 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.00 -0700 GMT", datestr)
 			}
 		case len("2015-09-30 18:48:56.1 +0000 UTC"):
-			t, err = time.Parse("2006-01-02 15:04:05.0 +0000 UTC", datestr)
+			t, err = time.Parse("2006-01-02 15:04:05.0 -0700 UTC", datestr)
 			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05.0 +0000 GMT", datestr)
+				t, err = time.Parse("2006-01-02 15:04:05.0 -0700 GMT", datestr)
 			}
 		}
 		if err == nil {
