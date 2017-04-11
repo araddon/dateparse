@@ -303,6 +303,46 @@ func TestParse(t *testing.T) {
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
 	assert.T(t, "2014-04-26 17:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseAny("2014-04-26 17:24:37.123456 UTC")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 17:24:37.123456 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.123 UTC")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 17:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.12 UTC")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 17:24:37.12 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.1 UTC")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 17:24:37.1 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.123 +0800")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 09:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.123 -0800")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-27 01:24:37.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.123456 +0800")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-26 09:24:37.123456 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-04-26 17:24:37.123456 -0800")
+	assert.Tf(t, err == nil, "%v", err)
+	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
+	assert.T(t, "2014-04-27 01:24:37.123456 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("2014-12-16 06:20:00 UTC")
 	assert.Tf(t, err == nil, "%v", err)
 	//u.Debug(ts.In(time.UTC).Unix(), ts.In(time.UTC))
