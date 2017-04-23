@@ -6,8 +6,6 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-
-	u "github.com/araddon/gou"
 )
 
 type DateState int
@@ -44,8 +42,6 @@ const (
 	ST_WEEKDAYABBREVCOMMA
 )
 
-var _ = u.EMPTY
-
 var (
 	shortDates    = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 	weekdays      = map[string]bool{"Monday": true, "Tuesday": true, "Wednesday": true, "Thursday": true, "Friday": true, "Saturday": true, "Sunday": true}
@@ -79,7 +75,6 @@ iterRunes:
 			i += (bytesConsumed - 1)
 		}
 
-		//u.Infof("char=%s i=%d   datestr=%s", r, i, datestr)
 		switch state {
 		case ST_START:
 			if unicode.IsDigit(r) {
@@ -303,7 +298,6 @@ iterRunes:
 					return time.Time{}, err
 				}
 			default:
-				//u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
 			}
 		case ST_ALPHA: // starts alpha
 			// May 8, 2009 5:57:51 PM
@@ -449,10 +443,8 @@ iterRunes:
 					return time.Time{}, err
 				}
 			default:
-				//u.LogThrottle(u.WARN, 5, "ST_ALPHAWSALPHA case not found: %v", datestr)
 			}
 		default:
-			//u.Infof("no case for: %d", state)
 			break iterRunes
 		}
 	}
@@ -721,7 +713,6 @@ iterRunes:
 				if t, err := time.Parse("2006/01/02", datestr); err == nil {
 					return t, nil
 				} else {
-					u.Errorf("hm: %v   %s", err, datestr)
 					return time.Time{}, err
 				}
 			} else {
@@ -937,8 +928,6 @@ iterRunes:
 		} else {
 			return time.Time{}, err
 		}
-	default:
-		//u.Infof("no case for: %d : %s", state, datestr)
 	}
 
 	return time.Time{}, fmt.Errorf("Could not find date format for %s", datestr)
