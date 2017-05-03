@@ -209,22 +209,9 @@ iterRunes:
 					return time.Time{}, err
 				}
 			} else {
-				// updated to include timestamps of different precisions
-				if t, err := time.Parse("2006-01-02T15:04:05.999999999Z", datestr); err == nil {
+				if t, err := time.Parse("2006-01-02T15:04:05Z", datestr); err == nil {
 					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.99999999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.9999999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.999999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.99999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.9999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.999Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05.99Z", datestr); err == nil {
+				} else if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
 					return t, nil
 				} else {
 					return time.Time{}, err

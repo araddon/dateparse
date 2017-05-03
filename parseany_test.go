@@ -270,6 +270,30 @@ func TestParse(t *testing.T) {
 	assertf(t, err == nil, "%v", err)
 	assert(t, "2009-08-12 22:15:09 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseAny("2009-08-12T22:15:09.99Z")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.99 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2009-08-12T22:15:09.9999Z")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.9999 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2009-08-12T22:15:09.99999999Z")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.99999999 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2009-08-12T22:15:09.123")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.123 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2009-08-12T22:15:09.12")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.12 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2009-08-12T22:15:09.1")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2009-08-12 22:15:09.1 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts, err = ParseAny("2009-08-12T22:15:09")
 	assertf(t, err == nil, "%v", err)
 	assert(t, "2009-08-12 22:15:09 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
