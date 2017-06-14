@@ -500,11 +500,18 @@ iterRunes:
 		}
 	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
-		if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
-			return t, nil
-		} else {
-			return time.Time{}, err
+		var t time.Time
+		var err error
+
+		switch len(datestr) {
+		case len("2006-01-02 15:04:05"):
+			t, err = time.Parse("2006-01-02 15:04:05", datestr)
+		case len("2006-01-02 15:04:05 -0700"):
+			t, err = time.Parse("2006-01-02 15:04:05 -0700", datestr)
+		case len("2006-01-02 15:04:05 -07:00"):
+			t, err = time.Parse("2006-01-02 15:04:05 -07:00", datestr)
 		}
+		return t, err
 	case ST_DIGITDASHWSALPHA: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2014-12-16 06:20:00 UTC
 		// 2015-02-18 00:12:00 +0000 UTC
