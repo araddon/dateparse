@@ -383,6 +383,14 @@ func TestParse(t *testing.T) {
 	assertf(t, err == nil, "%v", err)
 	assert(t, "2014-05-11 08:20:13.787 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseAny("2014-05-11 08:20:13 +00:00")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2014-05-11 08:20:13 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("2014-05-11 08:20:13 +0000")
+	assertf(t, err == nil, "%v", err)
+	assert(t, "2014-05-11 08:20:13 +0000 UTC" == fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	//  yyyymmdd and similar
 	ts, err = ParseAny("2014")
 	assertf(t, err == nil, "%v", err)
