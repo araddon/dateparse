@@ -21,6 +21,9 @@ const (
 	ST_DIGITDASHWSDOTPLUS
 	ST_DIGITDASHWSDOTPLUSALPHA
 	ST_DIGITDASHT
+	ST_DIGITDASHTZ
+	ST_DIGITDASHTZDIGIT
+	ST_DIGITDASHTDASH
 	ST_DIGITCOMMA
 	ST_DIGITCOLON
 	ST_DIGITSLASH
@@ -102,6 +105,7 @@ iterRunes:
 			}
 		case ST_DIGITDASH: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
+			// 2017-06-25T17:46:57.45706582-07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2012-08-03 18:31:59.257000000
 			// 2014-04-26 17:24:37.3186369
@@ -179,9 +183,9 @@ iterRunes:
 			}
 
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
-			// 2006-01-02T15:04:05Z07:00
+			// ST_DIGITDASHT
 			// 2006-01-02T15:04:05
-			// 2006-01-02T15:04:05.999999999Z07:00
+			// ST_DIGITDASHTZ
 			// 2006-01-02T15:04:05.999999999Z
 			// 2006-01-02T15:04:05.99999999Z
 			// 2006-01-02T15:04:05.9999999Z
@@ -190,32 +194,21 @@ iterRunes:
 			// 2006-01-02T15:04:05.9999Z
 			// 2006-01-02T15:04:05.999Z
 			// 2006-01-02T15:04:05.99Z
-			if len(datestr) == len("2006-01-02T15:04:05Z07:00") {
-				if t, err := time.Parse("2006-01-02T15:04:05Z07:00", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			} else if len(datestr) == len("2006-01-02T15:04:05.999999999Z07:00") {
-				if t, err := time.Parse("2006-01-02T15:04:05.999999999Z07:00", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			} else if len(datestr) == len("2006-01-02T15:04:05") {
-				if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			} else {
-				if t, err := time.Parse("2006-01-02T15:04:05Z", datestr); err == nil {
-					return t, nil
-				} else if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
+			// ST_DIGITDASHTZDIGIT
+			// 2006-01-02T15:04:05.999999999Z07:00
+			// 2006-01-02T15:04:05Z07:00
+			// With another dash aka time-zone at end
+			// ST_DIGITDASHTDASH
+			// 2017-06-25T17:46:57.45706582-07:00
+			switch {
+			case r == '-':
+				state = ST_DIGITDASHTDASH
+			case r == 'Z':
+				state = ST_DIGITDASHTZ
+			}
+		case ST_DIGITDASHTZ:
+			if unicode.IsDigit(r) {
+				state = ST_DIGITDASHTZDIGIT
 			}
 		case ST_DIGITSLASH: // starts digit then slash 02/
 			// 2014/07/10 06:55:38.156283
@@ -436,6 +429,30 @@ iterRunes:
 		}
 	}
 
+	/*
+		ST_DIGITDASHT
+		ST_DIGITDASHTZ
+		ST_DIGITDASHTZDIGIT
+		ST_DIGITDASHTDASH
+
+		// ST_DIGITDASHT
+		// 2006-01-02T15:04:05
+		// ST_DIGITDASHTZ
+		// 2006-01-02T15:04:05.999999999Z
+		// 2006-01-02T15:04:05.99999999Z
+		// 2006-01-02T15:04:05.9999999Z
+		// 2006-01-02T15:04:05.999999Z
+		// 2006-01-02T15:04:05.99999Z
+		// 2006-01-02T15:04:05.9999Z
+		// 2006-01-02T15:04:05.999Z
+		// 2006-01-02T15:04:05.99Z
+		// ST_DIGITDASHTZDIGIT
+		// 2006-01-02T15:04:05.999999999Z07:00
+		// 2006-01-02T15:04:05Z07:00
+		// With another dash aka time-zone at end
+		// ST_DIGITDASHTDASH
+		// 2017-06-25T17:46:57.45706582-07:00
+	*/
 	switch state {
 	case ST_DIGIT:
 		// unixy timestamps ish
@@ -498,6 +515,110 @@ iterRunes:
 				return time.Time{}, err
 			}
 		}
+	case ST_DIGITDASHTDASH:
+		// With another dash aka time-zone at end
+		// 2006-01-02T15:04:05.999999999-07:00
+		// 2006-01-02T15:04:05.99999999-07:00
+		// 2006-01-02T15:04:05.9999999-07:00
+		// 2006-01-02T15:04:05.999999-07:00
+		// 2006-01-02T15:04:05.99999-07:00
+		// 2006-01-02T15:04:05.9999-07:00
+		// 2006-01-02T15:04:05.999-07:00
+		// 2006-01-02T15:04:05.99-07:00
+		if len(datestr) == len("2006-01-02T15:04:05.999999999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.999999999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.99999999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.99999999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.9999999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.9999999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.999999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.999999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.99999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.99999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.9999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.9999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.999-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.999-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.99-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.99-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05.9-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05.9-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		} else if len(datestr) == len("2006-01-02T15:04:05-07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05-07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		}
+	case ST_DIGITDASHTZDIGIT:
+		// With a time-zone at end after Z
+		// 2006-01-02T15:04:05.999999999Z07:00
+		// 2006-01-02T15:04:05Z07:00
+		if len(datestr) == len("2006-01-02T15:04:05Z07:00") {
+			if t, err := time.Parse("2006-01-02T15:04:05Z07:00", datestr); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		}
+	case ST_DIGITDASHT: // starts digit then dash 02-  then T
+		// 2006-01-02T15:04:05.999999
+		// 2006-01-02T15:04:05.999999
+		if t, err := time.Parse("2006-01-02T15:04:05", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_DIGITDASHTZ: // starts digit then dash 02-  then T Then Z
+		// 2006-01-02T15:04:05.999999999Z
+		// 2006-01-02T15:04:05.99999999Z
+		// 2006-01-02T15:04:05.9999999Z
+		// 2006-01-02T15:04:05.999999Z
+		// 2006-01-02T15:04:05.99999Z
+		// 2006-01-02T15:04:05.9999Z
+		// 2006-01-02T15:04:05.999Z
+		// 2006-01-02T15:04:05.99Z
+		if t, err := time.Parse("2006-01-02T15:04:05Z", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
 	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
 		if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
@@ -535,28 +656,7 @@ iterRunes:
 		// 2014-04-26 17:24:37.3186369
 		// 2017-01-27 00:07:31.945167
 		// 2016-03-14 00:00:00.000
-		var t time.Time
-		var err error
-
-		switch len(datestr) {
-		case len("2012-08-03 18:31:59.257000000"):
-			t, err = time.Parse("2006-01-02 15:04:05.000000000", datestr)
-		case len("2014-04-26 05:24:37.3186369"):
-			t, err = time.Parse("2006-01-02 15:04:05.0000000", datestr)
-		case len("2014-04-26 05:24:37.945167"):
-			t, err = time.Parse("2006-01-02 15:04:05.000000", datestr)
-		case len("2014-04-26 05:24:37.94516"):
-			t, err = time.Parse("2006-01-02 15:04:05.00000", datestr)
-		case len("2014-04-26 05:24:37.9451"):
-			t, err = time.Parse("2006-01-02 15:04:05.0000", datestr)
-		case len("2014-04-26 05:24:37.000"):
-			t, err = time.Parse("2006-01-02 15:04:05.000", datestr)
-		case len("2014-04-26 05:24:37.00"):
-			t, err = time.Parse("2006-01-02 15:04:05.00", datestr)
-		case len("2014-04-26 05:24:37.0"):
-			t, err = time.Parse("2006-01-02 15:04:05.0", datestr)
-		}
-		if err == nil {
+		if t, err := time.Parse("2006-01-02 15:04:05", datestr); err == nil {
 			return t, nil
 		} else {
 			return time.Time{}, err
