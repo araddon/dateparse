@@ -525,66 +525,10 @@ iterRunes:
 		// 2006-01-02T15:04:05.9999-07:00
 		// 2006-01-02T15:04:05.999-07:00
 		// 2006-01-02T15:04:05.99-07:00
-		if len(datestr) == len("2006-01-02T15:04:05.999999999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.999999999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.99999999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.99999999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.9999999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.9999999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.999999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.999999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.99999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.99999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.9999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.9999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.999-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.999-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.99-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.99-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05.9-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05.9-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
-		} else if len(datestr) == len("2006-01-02T15:04:05-07:00") {
-			if t, err := time.Parse("2006-01-02T15:04:05-07:00", datestr); err == nil {
-				return t, nil
-			} else {
-				return time.Time{}, err
-			}
+		if t, err := time.Parse("2006-01-02T15:04:05-07:00", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
 		}
 	case ST_DIGITDASHTZDIGIT:
 		// With a time-zone at end after Z
