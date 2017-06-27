@@ -11,6 +11,18 @@ import (
 type DateState int
 
 const (
+	// C = Comma
+	// O = Colon
+	// E = Period/Dot
+	// A = Alpha
+	// N = Digits/Numeric
+	// S = Slash  /
+	// P = Plus +
+	// m = Minus, Dash, -
+	// T = T
+	// Z = Z
+	// M = AM/PM
+	// W = Whitespace
 	ST_START DateState = iota
 	ST_DIGIT
 	ST_DIGITDASH
@@ -37,6 +49,11 @@ const (
 	ST_ALPHAWS
 	ST_ALPHAWSCOMMA
 	ST_ALPHAWSALPHA
+	ST_ALPHAWSALPHACOLON
+	ST_ALPHAWSALPHACOLONOFFSET
+	ST_ALPHAWSALPHACOLONALPHA
+	ST_ALPHAWSALPHACOLONALPHAOFFSET
+	ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA
 	ST_ALPHACOMMA
 	ST_ALPHACOMMADASH
 	ST_ALPHACOMMADASHDASH
@@ -382,77 +399,44 @@ iterRunes:
 				return t, nil
 			}
 			return time.Time{}, err
-		case ST_ALPHAWSALPHA: // Starts Alpha, whitespace, alpha
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+		case ST_ALPHAWSALPHA: // Alpha, whitespace, alpha
 			// Mon Jan _2 15:04:05 2006
-			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
+			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
-			switch {
-			case len(datestr) == len("Mon Jan _2 15:04:05 2006"):
-				if t, err := time.Parse(time.ANSIC, datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			case len(datestr) == len("Mon Jan _2 15:04:05 MST 2006"):
-				if t, err := time.Parse(time.UnixDate, datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			case len(datestr) == len("Mon Jan 02 15:04:05 -0700 2006"):
-				if t, err := time.Parse(time.RubyDate, datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			case len(datestr) == len("Mon Aug 10 15:44:11 UTC+0100 2015"):
-				if t, err := time.Parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			case len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700"):
-				// What effing time stamp is this?
-				// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-				dateTmp := datestr[:33]
-				if t, err := time.Parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp); err == nil {
-					return t, nil
-				} else {
-					return time.Time{}, err
-				}
-			default:
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			if r == ':' {
+				state = ST_ALPHAWSALPHACOLON
+			}
+		case ST_ALPHAWSALPHACOLON: // Alpha, whitespace, alpha, :
+			// Mon Jan _2 15:04:05 2006
+			// Mon Jan 02 15:04:05 -0700 2006
+			// Mon Jan _2 15:04:05 MST 2006
+			// Mon Aug 10 15:44:11 UTC+0100 2015
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			if unicode.IsLetter(r) {
+				state = ST_ALPHAWSALPHACOLONALPHA
+			} else if r == '-' || r == '+' {
+				state = ST_ALPHAWSALPHACOLONOFFSET
+			}
+		case ST_ALPHAWSALPHACOLONALPHA: // Alpha, whitespace, alpha, :, alpha
+			// Mon Jan _2 15:04:05 MST 2006
+			// Mon Aug 10 15:44:11 UTC+0100 2015
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			if r == '+' {
+				state = ST_ALPHAWSALPHACOLONALPHAOFFSET
+			}
+		case ST_ALPHAWSALPHACOLONALPHAOFFSET: // Alpha, whitespace, alpha, : , alpha, offset, ?
+			// Mon Aug 10 15:44:11 UTC+0100 2015
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			if unicode.IsLetter(r) {
+				state = ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA
 			}
 		default:
 			break iterRunes
 		}
 	}
 
-	/*
-		ST_DIGITDASHT
-		ST_DIGITDASHTZ
-		ST_DIGITDASHTZDIGIT
-		ST_DIGITDASHTDASH
-
-		// ST_DIGITDASHT
-		// 2006-01-02T15:04:05
-		// ST_DIGITDASHTZ
-		// 2006-01-02T15:04:05.999999999Z
-		// 2006-01-02T15:04:05.99999999Z
-		// 2006-01-02T15:04:05.9999999Z
-		// 2006-01-02T15:04:05.999999Z
-		// 2006-01-02T15:04:05.99999Z
-		// 2006-01-02T15:04:05.9999Z
-		// 2006-01-02T15:04:05.999Z
-		// 2006-01-02T15:04:05.99Z
-		// ST_DIGITDASHTZDIGIT
-		// 2006-01-02T15:04:05.999999999Z07:00
-		// 2006-01-02T15:04:05Z07:00
-		// With another dash aka time-zone at end
-		// ST_DIGITDASHTDASH
-		// 2017-06-25T17:46:57.45706582-07:00
-	*/
 	switch state {
 	case ST_DIGIT:
 		// unixy timestamps ish
@@ -601,7 +585,6 @@ iterRunes:
 		} else {
 			return time.Time{}, err
 		}
-
 	case ST_DIGITDASHWSDOT:
 		// 2012-08-03 18:31:59.257000000
 		// 2014-04-26 17:24:37.3186369
@@ -612,144 +595,83 @@ iterRunes:
 		} else {
 			return time.Time{}, err
 		}
-
 	case ST_DIGITDASHWSDOTALPHA:
 		// 2012-08-03 18:31:59.257000000 UTC
 		// 2014-04-26 17:24:37.3186369 UTC
 		// 2017-01-27 00:07:31.945167 UTC
 		// 2016-03-14 00:00:00.000 UTC
-		var t time.Time
-		var err error
-
-		switch len(datestr) {
-		// case len("2012-08-03 18:31:59.123456789 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.12345678 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.1234567 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.123456 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.12345 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.1234 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000 UTC", datestr)
-		// case len("2014-04-26 05:24:37.00 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00 UTC", datestr)
-		// case len("2014-04-26 05:24:37.0 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0 UTC", datestr)
-		default:
-			t, err = time.Parse("2006-01-02 15:04:05 UTC", datestr)
-		}
+		t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr)
 		if err == nil {
 			return t, nil
 		} else {
 			return time.Time{}, err
 		}
-
 	case ST_DIGITDASHWSDOTPLUS:
 		// 2012-08-03 18:31:59.257000000 +0000
 		// 2014-04-26 17:24:37.3186369 +0000
 		// 2017-01-27 00:07:31.945167 +0000
 		// 2016-03-14 00:00:00.000 +0000
-		var t time.Time
-		var err error
-
-		switch len(datestr) {
-		// case len("2012-08-03 18:31:59.123456789 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.12345678 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.1234567 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.123456 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.12345 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.1234 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.000 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000 -0700", datestr)
-		// case len("2014-04-26 05:24:37.00 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00 -0700", datestr)
-		// case len("2014-04-26 05:24:37.0 +0000"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0 -0700", datestr)
-		default:
-			t, err = time.Parse("2006-01-02 15:04:05 -0700", datestr)
-		}
+		t, err := time.Parse("2006-01-02 15:04:05 -0700", datestr)
 		if err == nil {
 			return t, nil
 		} else {
 			return time.Time{}, err
 		}
-
 	case ST_DIGITDASHWSDOTPLUSALPHA:
 		// 2012-08-03 18:31:59.257000000 +0000 UTC
 		// 2014-04-26 17:24:37.3186369 +0000 UTC
 		// 2017-01-27 00:07:31.945167 +0000 UTC
 		// 2016-03-14 00:00:00.000 +0000 UTC
-		var t time.Time
-		var err error
-
-		switch len(datestr) {
-		// case len("2015-06-25 01:25:37.123456789 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.000000000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.12345678 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.00000000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.1234567 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.0000000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.123456 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.000000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.12345 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.00000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.1234 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.0000 -0700 GMT", datestr)
-		// 	}
-		// 	t, err = time.Parse("2006-01-02 15:04:05.000 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.000 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.12 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.00 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.00 -0700 GMT", datestr)
-		// 	}
-		// case len("2015-09-30 18:48:56.1 +0000 UTC"):
-		// 	t, err = time.Parse("2006-01-02 15:04:05.0 -0700 UTC", datestr)
-		// 	if err != nil {
-		// 		t, err = time.Parse("2006-01-02 15:04:05.0 -0700 GMT", datestr)
-		// 	}
-		default:
-			t, err = time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
-			if err != nil {
-				t, err = time.Parse("2006-01-02 15:04:05 -0700 GMT", datestr)
-			}
+		t, err := time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
+		if err == nil {
+			return t, nil
 		}
+		t, err = time.Parse("2006-01-02 15:04:05 -0700 GMT", datestr)
 		if err == nil {
 			return t, nil
 		} else {
 			return time.Time{}, err
 		}
-
+	case ST_ALPHAWSALPHACOLON:
+		// Mon Jan _2 15:04:05 2006
+		if t, err := time.Parse(time.ANSIC, datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_ALPHAWSALPHACOLONOFFSET:
+		// Mon Jan 02 15:04:05 -0700 2006
+		if t, err := time.Parse(time.RubyDate, datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_ALPHAWSALPHACOLONALPHA:
+		// Mon Jan _2 15:04:05 MST 2006
+		if t, err := time.Parse(time.UnixDate, datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_ALPHAWSALPHACOLONALPHAOFFSET:
+		// Mon Aug 10 15:44:11 UTC+0100 2015
+		if t, err := time.Parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA:
+		// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+		if len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700") {
+			// What effing time stamp is this?
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			dateTmp := datestr[:33]
+			if t, err := time.Parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp); err == nil {
+				return t, nil
+			} else {
+				return time.Time{}, err
+			}
+		}
 	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
 		// 10/13/2014
