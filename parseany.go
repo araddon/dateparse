@@ -36,6 +36,7 @@ const (
 	ST_DIGITDASHTZ
 	ST_DIGITDASHTZDIGIT
 	ST_DIGITDASHTDASH
+	ST_DIGITDASHTPLUS
 	ST_DIGITCOMMA
 	ST_DIGITCOLON
 	ST_DIGITSLASH
@@ -217,9 +218,12 @@ iterRunes:
 			// With another dash aka time-zone at end
 			// ST_DIGITDASHTDASH
 			// 2017-06-25T17:46:57.45706582-07:00
+			// 2017-06-25T17:46:57+04:00
 			switch {
 			case r == '-':
 				state = ST_DIGITDASHTDASH
+			case r == '+':
+				state = ST_DIGITDASHTPLUS
 			case r == 'Z':
 				state = ST_DIGITDASHTZ
 			}
@@ -509,6 +513,17 @@ iterRunes:
 		// 2006-01-02T15:04:05.9999-07:00
 		// 2006-01-02T15:04:05.999-07:00
 		// 2006-01-02T15:04:05.99-07:00
+		if t, err := time.Parse("2006-01-02T15:04:05-07:00", datestr); err == nil {
+			return t, nil
+		} else {
+			return time.Time{}, err
+		}
+	case ST_DIGITDASHTPLUS:
+		// With a plus aka time-zone at end
+		// 2006-01-02T15:04:05.999999999+07:00
+		// 2006-01-02T15:04:05.999999+07:00
+		// 2006-01-02T15:04:05.999+07:00
+		// 2006-01-02T15:04:05+07:00
 		if t, err := time.Parse("2006-01-02T15:04:05-07:00", datestr); err == nil {
 			return t, nil
 		} else {
