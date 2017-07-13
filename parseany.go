@@ -47,7 +47,7 @@ const (
 	ST_DIGITALPHA
 	ST_ALPHA
 	ST_ALPHAWS
-	ST_ALPHAWSCOMMA
+	ST_ALPHAWSDIGITCOMMA
 	ST_ALPHAWSALPHA
 	ST_ALPHAWSALPHACOLON
 	ST_ALPHAWSALPHACOLONOFFSET
@@ -57,15 +57,16 @@ const (
 	ST_ALPHACOMMA
 	ST_ALPHACOMMADASH
 	ST_ALPHACOMMADASHDASH
-	ST_MONTHCOMMA
 	ST_WEEKDAYCOMMA
+	ST_WEEKDAYCOMMADELTA
 	ST_WEEKDAYABBREVCOMMA
+	ST_WEEKDAYABBREVCOMMADELTA
 )
 
 var (
-	shortDates    = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
-	weekdays      = map[string]bool{"Monday": true, "Tuesday": true, "Wednesday": true, "Thursday": true, "Friday": true, "Saturday": true, "Sunday": true}
-	weekdayAbbrev = map[string]bool{"Mon": true, "Tue": true, "Wed": true, "Thu": true, "Fri": true, "Sat": true, "Sun": true}
+	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
+	//weekdays      = map[string]bool{"Monday": true, "Tuesday": true, "Wednesday": true, "Thursday": true, "Friday": true, "Saturday": true, "Sunday": true}
+	//weekdayAbbrev = map[string]bool{"Mon": true, "Tue": true, "Wed": true, "Thu": true, "Fri": true, "Sat": true, "Sun": true}
 )
 
 // Parse a date, and panic if it can't be parsed
@@ -291,70 +292,82 @@ iterRunes:
 			default:
 			}
 		case ST_ALPHA: // starts alpha
-			// May 8, 2009 5:57:51 PM
-			// Mon Jan _2 15:04:05 2006
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Jan 02 15:04:05 -0700 2006
-			// Monday, 02-Jan-06 15:04:05 MST
-			// Monday, 02 Jan 2006 15:04:05 -0700
-			// Mon, 02 Jan 2006 15:04:05 MST
-			// Mon, 02 Jan 2006 15:04:05 -0700
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if unicode.IsLetter(r) {
-				continue
-			}
+			// ST_ALPHAWS
+			//  Mon Jan _2 15:04:05 2006
+			//  Mon Jan _2 15:04:05 MST 2006
+			//  Mon Jan 02 15:04:05 -0700 2006
+			//  Mon Aug 10 15:44:11 UTC+0100 2015
+			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			//  ST_ALPHAWSDIGITCOMMA
+			//    May 8, 2009 5:57:51 PM
+			//
+			// ST_WEEKDAYCOMMA
+			//   Monday, 02-Jan-06 15:04:05 MST
+			//   ST_WEEKDAYCOMMADELTA
+			//     Monday, 02 Jan 2006 15:04:05 -0700
+			//     Monday, 02 Jan 2006 15:04:05 +0100
+			// ST_WEEKDAYABBREVCOMMA
+			//   Mon, 02-Jan-06 15:04:05 MST
+			//   Mon, 02 Jan 2006 15:04:05 MST
+			//   ST_WEEKDAYABBREVCOMMADELTA
+			//     Mon, 02 Jan 2006 15:04:05 -0700
+			//     Thu, 13 Jul 2017 08:58:40 +0100
 			switch {
+			case unicode.IsLetter(r):
+				continue
 			case r == ' ':
 				state = ST_ALPHAWS
 			case r == ',':
-
-				switch {
-				case weekdays[datestr[:i]] == true:
-					state = ST_WEEKDAYCOMMA
-				case weekdayAbbrev[datestr[:i]] == true:
+				if i == 3 {
 					state = ST_WEEKDAYABBREVCOMMA
-				default:
-					state = ST_MONTHCOMMA
+				} else {
+					state = ST_WEEKDAYCOMMA
 				}
 			}
 		case ST_WEEKDAYCOMMA: // Starts alpha then comma
-			// Monday, 02-Jan-06 15:04:05 MST
-			// Monday, 02 Jan 2006 15:04:05 -0700
+			// Mon, 02-Jan-06 15:04:05 MST
+			// Mon, 02 Jan 2006 15:04:05 MST
+			// ST_WEEKDAYCOMMADELTA
+			//   Monday, 02 Jan 2006 15:04:05 -0700
+			//   Monday, 02 Jan 2006 15:04:05 +0100
 			switch {
 			case r == '-':
 				if i < 15 {
 					return time.Parse("Monday, 02-Jan-06 15:04:05 MST", datestr)
 				} else {
-					return time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr)
+					state = ST_WEEKDAYCOMMADELTA
 				}
+			case r == '+':
+				state = ST_WEEKDAYABBREVCOMMADELTA
 			}
 		case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
 			// Mon, 02-Jan-06 15:04:05 MST
-			// Mon, 02 Jan 2006 15:04:05 -0700
+			// Mon, 02 Jan 2006 15:04:05 MST
+			// ST_WEEKDAYABBREVCOMMADELTA
+			//   Mon, 02 Jan 2006 15:04:05 -0700
+			//   Thu, 13 Jul 2017 08:58:40 +0100
 			switch {
 			case r == '-':
 				if i < 15 {
 					return time.Parse("Mon, 02-Jan-06 15:04:05 MST", datestr)
 				} else {
-					return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
+					state = ST_WEEKDAYABBREVCOMMADELTA
 				}
+			case r == '+':
+				state = ST_WEEKDAYABBREVCOMMADELTA
 			}
 
 		case ST_ALPHAWS: // Starts alpha then whitespace
-			// May 8, 2009 5:57:51 PM
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			switch {
-			// case r == ' ':
-			// 	state = ST_ALPHAWSWS
-			case r == ',':
-				state = ST_ALPHAWSCOMMA
 			case unicode.IsLetter(r):
 				state = ST_ALPHAWSALPHA
+			case unicode.IsDigit(r):
+				state = ST_ALPHAWSDIGITCOMMA
 			}
 		case ST_ALPHACOMMA: // Starts alpha then comma
 			// Mon, 02 Jan 2006 15:04:05 MST
@@ -370,7 +383,7 @@ iterRunes:
 				state = ST_ALPHACOMMADASHDASH
 			}
 
-		case ST_ALPHAWSCOMMA: // Starts Alpha, whitespace, digit, comma
+		case ST_ALPHAWSDIGITCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
 			return time.Parse("Jan 2, 2006 3:04:05 PM", datestr)
 
@@ -765,10 +778,18 @@ iterRunes:
 		}
 		return time.Time{}, err
 
+	case ST_WEEKDAYCOMMADELTA:
+		// Monday, 02 Jan 2006 15:04:05 -0700
+		// Monday, 02 Jan 2006 15:04:05 +0100
+		return time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr)
 	case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
+		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
 		return time.Parse("Mon, 02 Jan 2006 15:04:05 MST", datestr)
-
+	case ST_WEEKDAYABBREVCOMMADELTA:
+		// Mon, 02 Jan 2006 15:04:05 -0700
+		// Thu, 13 Jul 2017 08:58:40 +0100
+		return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
 	case ST_ALPHACOMMA: // Starts alpha then comma but no DASH
 		// Mon, 02 Jan 2006 15:04:05 MST
 		// Jan 2, 2006 3:04:05 PM
