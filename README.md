@@ -6,6 +6,8 @@ a Scan/Lex based approach to minimize shotgun based parse attempts.
 See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
 
 
+[![Codecov](https://img.shields.io/codecov/c/github/araddon/dateparse.svg)]()
+
 See example https://github.com/araddon/dateparse/blob/master/example/main.go
 ```go
 package main
