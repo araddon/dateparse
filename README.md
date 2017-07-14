@@ -2,7 +2,7 @@ Go Date Parser
 ---------------------------
 
 Parse Any date format without knowing format in advance.  Uses
-a Scan/Lex based approach to minimize shotgun based parse attempts.
+a byte scan state-machine based approach to minimize shotgun based parse attempts.
 See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
 
 
