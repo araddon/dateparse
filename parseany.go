@@ -56,6 +56,7 @@ const (
 	ST_WEEKDAYCOMMADELTA
 	ST_WEEKDAYABBREVCOMMA
 	ST_WEEKDAYABBREVCOMMADELTA
+	ST_WEEKDAYABBREVCOMMADELTAZONE
 )
 
 var (
@@ -296,6 +297,8 @@ iterRunes:
 			//   ST_WEEKDAYABBREVCOMMADELTA
 			//     Mon, 02 Jan 2006 15:04:05 -0700
 			//     Thu, 13 Jul 2017 08:58:40 +0100
+			//     ST_WEEKDAYABBREVCOMMADELTAZONE
+			//       Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
 			case unicode.IsLetter(r):
 				continue
@@ -330,6 +333,8 @@ iterRunes:
 			// ST_WEEKDAYABBREVCOMMADELTA
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   ST_WEEKDAYABBREVCOMMADELTAZONE
+			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
 			case r == '-':
 				if i < 15 {
@@ -339,6 +344,16 @@ iterRunes:
 				}
 			case r == '+':
 				state = ST_WEEKDAYABBREVCOMMADELTA
+			}
+
+		case ST_WEEKDAYABBREVCOMMADELTA:
+			// ST_WEEKDAYABBREVCOMMADELTA
+			//   Mon, 02 Jan 2006 15:04:05 -0700
+			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   ST_WEEKDAYABBREVCOMMADELTAZONE
+			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
+			if r == '(' {
+				state = ST_WEEKDAYABBREVCOMMADELTAZONE
 			}
 
 		case ST_ALPHAWS: // Starts alpha then whitespace
@@ -680,6 +695,9 @@ iterRunes:
 		// Thu, 13 Jul 2017 08:58:40 +0100
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
 		return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
+	case ST_WEEKDAYABBREVCOMMADELTAZONE:
+		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
+		return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700 (CEST)", datestr)
 	}
 
 	return time.Time{}, fmt.Errorf("Could not find date format for %s", datestr)
