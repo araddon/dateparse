@@ -398,10 +398,13 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2014-05-11 08:20:13,787")
 	assert.Equal(t, "2014-05-11 08:20:13.787 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	_, err = ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist
+	_, err = ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
 	assert.NotEqual(t, nil, err)
 
 	ts = MustParse("2014-05-11 08:20:13 +00:00")
+	assert.Equal(t, "2014-05-11 08:20:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2014-05-11 08:20:13 +0000")
 	assert.Equal(t, "2014-05-11 08:20:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2016-06-21T19:55:00+01:00")
@@ -410,8 +413,14 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2016-06-21T19:55:00.799+01:00")
 	assert.Equal(t, "2016-06-21 18:55:00.799 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts = MustParse("2014-05-11 08:20:13 +0000")
-	assert.Equal(t, "2014-05-11 08:20:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2016-06-21T19:55:00+0100")
+	assert.Equal(t, "2016-06-21 18:55:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2016-06-21T19:55:00-0700")
+	assert.Equal(t, "2016-06-22 02:55:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2016-06-21T19:55:00.799+0100")
+	assert.Equal(t, "2016-06-21 18:55:00.799 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//  yyyymmdd and similar
 	ts = MustParse("2014")

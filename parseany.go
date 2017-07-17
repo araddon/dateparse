@@ -35,6 +35,7 @@ const (
 	ST_DIGITDASHTZ
 	ST_DIGITDASHTZDIGIT
 	ST_DIGITDASHTDELTA
+	ST_DIGITDASHTDELTACOLON
 	ST_DIGITSLASH
 	ST_DIGITSLASHWS
 	ST_DIGITSLASHWSCOLON
@@ -116,6 +117,7 @@ iterRunes:
 			// 2006-01-02T15:04:05Z07:00
 			// 2017-06-25T17:46:57.45706582-07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
+			// 2006-01-02T15:04:05+0000
 			// 2012-08-03 18:31:59.257000000
 			// 2014-04-26 17:24:37.3186369
 			// 2017-01-27 00:07:31.945167
@@ -203,9 +205,11 @@ iterRunes:
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2006-01-02T15:04:05Z07:00
 			// With another dash aka time-zone at end
-			// ST_DIGITDASHTDASH
-			// 2017-06-25T17:46:57.45706582-07:00
-			// 2017-06-25T17:46:57+04:00
+			// ST_DIGITDASHTDELTA
+			//   ST_DIGITDASHTDELTACOLON
+			//     2017-06-25T17:46:57.45706582-07:00
+			//     2017-06-25T17:46:57+04:00
+			// 2006-01-02T15:04:05+0000
 			switch r {
 			case '-', '+':
 				state = ST_DIGITDASHTDELTA
@@ -215,6 +219,10 @@ iterRunes:
 		case ST_DIGITDASHTZ:
 			if unicode.IsDigit(r) {
 				state = ST_DIGITDASHTZDIGIT
+			}
+		case ST_DIGITDASHTDELTA:
+			if r == ':' {
+				state = ST_DIGITDASHTDELTACOLON
 			}
 		case ST_DIGITSLASH: // starts digit then slash 02/
 			// 2014/07/10 06:55:38.156283
@@ -451,6 +459,10 @@ iterRunes:
 			return time.Parse("2006-01", datestr)
 		}
 	case ST_DIGITDASHTDELTA:
+		// 2006-01-02T15:04:05+0000
+		return time.Parse("2006-01-02T15:04:05-0700", datestr)
+
+	case ST_DIGITDASHTDELTACOLON:
 		// With another +/- time-zone at end
 		// 2006-01-02T15:04:05.999999999+07:00
 		// 2006-01-02T15:04:05.999999999-07:00
