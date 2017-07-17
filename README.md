@@ -88,11 +88,7 @@ func main() {
 
 	table.AddHeaders("Input", "Parsed, and Output as %v")
 	for _, dateExample := range examples {
-		t, err := dateparse.ParseAny(dateExample)
-		if err != nil {
-			panic(err.Error())
-		}
-		table.AddRow(dateExample, fmt.Sprintf("%v", t))
+		table.AddRow(dateExample, fmt.Sprintf("%v", dateparse.MustParse(dateExample)))
 	}
 	fmt.Println(table.Render())
 }
