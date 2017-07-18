@@ -1,16 +1,12 @@
 Go Date Parser 
 ---------------------------
 
-Parse any date string without knowing format in advance.  Uses
-a scanner to read bytes and use a state machine to find format.  
-Much faster than shotgun based parse methods.
-See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
+Parse any date string without knowing format in advance.  Uses a scanner to read bytes and use a state machine to find format.  Much faster than shotgun based parse methods.  See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
 
 
 [![Codecov](https://img.shields.io/codecov/c/github/araddon/dateparse.svg)]()
 
-**Timezones** The location your server is configured effects the results!  
-See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
+**Timezones** The location your server is configured effects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
 
 See example https://github.com/araddon/dateparse/blob/master/example/main.go
 ```go
