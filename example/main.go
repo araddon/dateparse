@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"time"
 
 	"github.com/apcera/termtables"
 	"github.com/araddon/dateparse"
@@ -74,12 +76,32 @@ var examples = []string{
 	"1384216367189",
 }
 
+var (
+	timezone = ""
+)
+
 func main() {
+	flag.StringVar(&timezone, "timezone", "UTC", "Timezone aka `America/Los_Angeles` formatted time-zone")
+	flag.Parse()
+
+	if timezone != "" {
+		// NOTE:  This is very, very important to understand
+		// time-parsing in go
+		loc, err := time.LoadLocation(timezone)
+		if err != nil {
+			panic(err.Error())
+		}
+		time.Local = loc
+	}
+
 	table := termtables.CreateTable()
 
 	table.AddHeaders("Input", "Parsed, and Output as %v")
 	for _, dateExample := range examples {
-		t := dateparse.MustParse(dateExample)
+		t, err := dateparse.ParseAny(dateExample)
+		if err != nil {
+			panic(err.Error())
+		}
 		table.AddRow(dateExample, fmt.Sprintf("%v", t))
 	}
 	fmt.Println(table.Render())
