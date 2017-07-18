@@ -86,13 +86,6 @@ var examples = []string{
 
 func main() {
 
-	// NOTE:  This is very, very important to understand timezone parsing
-	// The time.Local global tells the parse function to use given
-	// location/zone for use in the time.Parse() function
-	// used by this library.
-	loc, _ := time.LoadLocation("America/Denver")
-	time.Local = loc
-
 	table := termtables.CreateTable()
 
 	table.AddHeaders("Input", "Parsed, and Output as %v")
@@ -104,6 +97,21 @@ func main() {
 		table.AddRow(dateExample, fmt.Sprintf("%v",t))
 	}
 	fmt.Println(table.Render())
+}
+
+func init() {
+	// NOTE:  This is very, very important to understand timezone parsing
+	// The time.Local global tells the parse function to use given
+	// location/zone for use in the time.Parse() function
+	// used by this library.  It uses UTC by default.
+	if uzeTimeZone {
+		loc, _ := time.LoadLocation("America/Denver")
+		time.Local = loc
+	} else {
+		// This is the default behavior
+		//loc, _ := time.LoadLocation("UTC")
+		//time.Local = loc
+	}
 }
 ```
 
