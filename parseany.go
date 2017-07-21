@@ -26,11 +26,18 @@ const (
 	ST_DIGIT
 	ST_DIGITDASH
 	ST_DIGITDASHWS
-	ST_DIGITDASHWSALPHA
+	ST_DIGITDASHWSWS
+	ST_DIGITDASHWSWSAMPMMAYBE
+	ST_DIGITDASHWSWSOFFSET
+	ST_DIGITDASHWSWSOFFSETALPHA
+	ST_DIGITDASHWSWSOFFSETCOLONALPHA
+	ST_DIGITDASHWSWSOFFSETCOLON
+	ST_DIGITDASHWSOFFSET
+	ST_DIGITDASHWSWSALPHA
 	ST_DIGITDASHWSDOT
 	ST_DIGITDASHWSDOTALPHA
-	ST_DIGITDASHWSDOTPLUS
-	ST_DIGITDASHWSDOTPLUSALPHA
+	ST_DIGITDASHWSDOTOFFSET
+	ST_DIGITDASHWSDOTOFFSETALPHA
 	ST_DIGITDASHT
 	ST_DIGITDASHTZ
 	ST_DIGITDASHTZDIGIT
@@ -52,7 +59,6 @@ const (
 	ST_ALPHAWSALPHACOLONALPHA
 	ST_ALPHAWSALPHACOLONALPHAOFFSET
 	ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA
-	ST_ALPHACOMMA
 	ST_WEEKDAYCOMMA
 	ST_WEEKDAYCOMMADELTA
 	ST_WEEKDAYABBREVCOMMA
@@ -123,6 +129,7 @@ iterRunes:
 			// 2017-01-27 00:07:31.945167
 			// 2016-03-14 00:00:00.000
 			// 2014-05-11 08:20:13,787
+			// 2017-07-19 03:21:51+00:00
 			// 2006-01-02
 			// 2013-04-01 22:43:22
 			// 2014-04-26 05:24:37 PM
@@ -132,18 +139,31 @@ iterRunes:
 			case r == 'T':
 				state = ST_DIGITDASHT
 			}
-		case ST_DIGITDASHWS: // starts digit then dash 02- then whitespace
+		case ST_DIGITDASHWS:
 			// 2013-04-01 22:43:22
 			// 2014-05-11 08:20:13,787
-			// 2014-04-26 05:24:37 PM
-			// 2014-12-16 06:20:00 UTC
-			// 2015-02-18 00:12:00 +0000 UTC
-			// 2015-06-25 01:25:37.115208593 +0000 UTC
+			// ST_DIGITDASHWSWS
+			//   2014-04-26 05:24:37 PM
+			//   2014-12-16 06:20:00 UTC
+			//   2015-02-18 00:12:00 +0000 UTC
+			//   2006-01-02 15:04:05 -0700
+			//   2006-01-02 15:04:05 -07:00
+			// ST_DIGITDASHWSOFFSET
+			//   2017-07-19 03:21:51+00:00
+			// ST_DIGITDASHWSDOT
+			//   2014-04-26 17:24:37.3186369
+			//   2017-01-27 00:07:31.945167
+			//   2012-08-03 18:31:59.257000000
+			//   2016-03-14 00:00:00.000
+			//   ST_DIGITDASHWSDOTOFFSET
+			//     2017-01-27 00:07:31.945167 +0000
+			//     2016-03-14 00:00:00.000 +0000
+			//     ST_DIGITDASHWSDOTOFFSETALPHA
+			//       2017-01-27 00:07:31.945167 +0000 UTC
+			//       2016-03-14 00:00:00.000 +0000 UTC
+			//   ST_DIGITDASHWSDOTALPHA
+			//     2014-12-16 06:20:00.000 UTC
 			switch r {
-			case 'A', 'P':
-				if len(datestr) == len("2014-04-26 03:24:37 PM") {
-					return time.Parse("2006-01-02 03:04:05 PM", datestr)
-				}
 			case ',':
 				if len(datestr) == len("2014-05-11 08:20:13,787") {
 					// go doesn't seem to parse this one natively?   or did i miss it?
@@ -156,38 +176,107 @@ iterRunes:
 					}
 					return t, err
 				}
+			case '-', '+':
+				state = ST_DIGITDASHWSOFFSET
 			case '.':
 				state = ST_DIGITDASHWSDOT
+			case ' ':
+				state = ST_DIGITDASHWSWS
+			}
+
+		case ST_DIGITDASHWSWS:
+			// ST_DIGITDASHWSWSALPHA
+			//   2014-12-16 06:20:00 UTC
+			//   ST_DIGITDASHWSWSAMPMMAYBE
+			//     2014-04-26 05:24:37 PM
+			// ST_DIGITDASHWSWSOFFSET
+			//   2006-01-02 15:04:05 -0700
+			//   ST_DIGITDASHWSWSOFFSETCOLON
+			//     2006-01-02 15:04:05 -07:00
+			//     ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//       2015-02-18 00:12:00 +00:00 UTC
+			//   ST_DIGITDASHWSWSOFFSETALPHA
+			//     2015-02-18 00:12:00 +0000 UTC
+			switch r {
+			case 'A', 'P':
+				state = ST_DIGITDASHWSWSAMPMMAYBE
+			case '+', '-':
+				state = ST_DIGITDASHWSWSOFFSET
 			default:
 				if unicode.IsLetter(r) {
 					// 2014-12-16 06:20:00 UTC
-					state = ST_DIGITDASHWSALPHA
+					state = ST_DIGITDASHWSWSALPHA
 					break iterRunes
 				}
 			}
+
+		case ST_DIGITDASHWSWSAMPMMAYBE:
+			if r == 'M' {
+				return time.Parse("2006-01-02 03:04:05 PM", datestr)
+			}
+			state = ST_DIGITDASHWSWSALPHA
+
+		case ST_DIGITDASHWSWSOFFSET:
+			// ST_DIGITDASHWSWSOFFSET
+			//   2006-01-02 15:04:05 -0700
+			//   ST_DIGITDASHWSWSOFFSETCOLON
+			//     2006-01-02 15:04:05 -07:00
+			//     ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//       2015-02-18 00:12:00 +00:00 UTC
+			//   ST_DIGITDASHWSWSOFFSETALPHA
+			//     2015-02-18 00:12:00 +0000 UTC
+			if r == ':' {
+				state = ST_DIGITDASHWSWSOFFSETCOLON
+			} else if unicode.IsLetter(r) {
+				// 2015-02-18 00:12:00 +0000 UTC
+				state = ST_DIGITDASHWSWSOFFSETALPHA
+				break iterRunes
+			}
+
+		case ST_DIGITDASHWSWSOFFSETCOLON:
+			// ST_DIGITDASHWSWSOFFSETCOLON
+			//   2006-01-02 15:04:05 -07:00
+			//   ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//     2015-02-18 00:12:00 +00:00 UTC
+			if unicode.IsLetter(r) {
+				// 2015-02-18 00:12:00 +00:00 UTC
+				state = ST_DIGITDASHWSWSOFFSETCOLONALPHA
+				break iterRunes
+			}
+
 		case ST_DIGITDASHWSDOT:
 			// 2014-04-26 17:24:37.3186369
 			// 2017-01-27 00:07:31.945167
 			// 2012-08-03 18:31:59.257000000
 			// 2016-03-14 00:00:00.000
+			// ST_DIGITDASHWSDOTOFFSET
+			//   2017-01-27 00:07:31.945167 +0000
+			//   2016-03-14 00:00:00.000 +0000
+			//   ST_DIGITDASHWSDOTOFFSETALPHA
+			//     2017-01-27 00:07:31.945167 +0000 UTC
+			//     2016-03-14 00:00:00.000 +0000 UTC
+			// ST_DIGITDASHWSDOTALPHA
+			//   2014-12-16 06:20:00.000 UTC
 			if unicode.IsLetter(r) {
 				// 2014-12-16 06:20:00.000 UTC
 				state = ST_DIGITDASHWSDOTALPHA
 				break iterRunes
 			} else if r == '+' || r == '-' {
-				state = ST_DIGITDASHWSDOTPLUS
+				state = ST_DIGITDASHWSDOTOFFSET
 			}
-		case ST_DIGITDASHWSDOTPLUS:
-			// 2014-04-26 17:24:37.3186369
-			// 2017-01-27 00:07:31.945167
-			// 2012-08-03 18:31:59.257000000
-			// 2016-03-14 00:00:00.000
+		case ST_DIGITDASHWSDOTOFFSET:
+			// 2017-01-27 00:07:31.945167 +0000
+			// 2016-03-14 00:00:00.000 +0000
+			// ST_DIGITDASHWSDOTOFFSETALPHA
+			//   2017-01-27 00:07:31.945167 +0000 UTC
+			//   2016-03-14 00:00:00.000 +0000 UTC
 			if unicode.IsLetter(r) {
 				// 2014-12-16 06:20:00.000 UTC
-				state = ST_DIGITDASHWSDOTPLUSALPHA
+				// 2017-01-27 00:07:31.945167 +0000 UTC
+				// 2016-03-14 00:00:00.000 +0000 UTC
+				state = ST_DIGITDASHWSDOTOFFSETALPHA
 				break iterRunes
 			}
-
 		case ST_DIGITDASHT: // starts digit then dash 02-  then T
 			// ST_DIGITDASHT
 			// 2006-01-02T15:04:05
@@ -505,34 +594,49 @@ iterRunes:
 		}
 	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
+		return time.Parse("2006-01-02 15:04:05", datestr)
+
+	case ST_DIGITDASHWSWSOFFSET:
 		// 2006-01-02 15:04:05 -0700
+		return time.Parse("2006-01-02 15:04:05 -0700", datestr)
+
+	case ST_DIGITDASHWSWSOFFSETCOLON:
 		// 2006-01-02 15:04:05 -07:00
-		switch len(datestr) {
-		case len("2006-01-02 15:04:05"):
-			return time.Parse("2006-01-02 15:04:05", datestr)
-		case len("2006-01-02 15:04:05 -0700"):
-			return time.Parse("2006-01-02 15:04:05 -0700", datestr)
-		case len("2006-01-02 15:04:05 -07:00"):
-			return time.Parse("2006-01-02 15:04:05 -07:00", datestr)
-		}
-	case ST_DIGITDASHWSALPHA: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
-		// 2014-12-16 06:20:00 UTC
+		return time.Parse("2006-01-02 15:04:05 -07:00", datestr)
+
+	case ST_DIGITDASHWSWSOFFSETALPHA:
 		// 2015-02-18 00:12:00 +0000 UTC
-		// 2015-06-25 01:25:37.115208593 +0000 UTC
-		switch len(datestr) {
-		case len("2006-01-02 15:04:05 UTC"):
-			t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr)
-			if err == nil {
-				return t, nil
-			}
-			return time.Parse("2006-01-02 15:04:05 GMT", datestr)
-		case len("2015-02-18 00:12:00 +0000 UTC"):
-			t, err := time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
-			if err == nil {
-				return t, nil
-			}
-			return time.Parse("2006-01-02 15:04:05 -0700 GMT", datestr)
+		t, err := time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
+		if err == nil {
+			return t, nil
 		}
+		return time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr)
+
+	case ST_DIGITDASHWSWSOFFSETCOLONALPHA:
+		// 2015-02-18 00:12:00 +00:00 UTC
+		return time.Parse("2006-01-02 15:04:05 -07:00 UTC", datestr)
+
+	case ST_DIGITDASHWSOFFSET:
+		// 2017-07-19 03:21:51+00:00
+		return time.Parse("2006-01-02 15:04:05-07:00", datestr)
+
+	case ST_DIGITDASHWSWSALPHA:
+		// 2014-12-16 06:20:00 UTC
+		t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr)
+		if err == nil {
+			return t, nil
+		}
+		t, err = time.Parse("2006-01-02 15:04:05 GMT", datestr)
+		if err == nil {
+			return t, nil
+		}
+		if len(datestr) > len("2006-01-02 03:04:05") {
+			t, err = time.Parse("2006-01-02 03:04:05", datestr[:len("2006-01-02 03:04:05")])
+			if err == nil {
+				return t, nil
+			}
+		}
+
 	case ST_DIGITDASHWSDOT:
 		// 2012-08-03 18:31:59.257000000
 		// 2014-04-26 17:24:37.3186369
@@ -547,23 +651,19 @@ iterRunes:
 		// 2016-03-14 00:00:00.000 UTC
 		return time.Parse("2006-01-02 15:04:05 UTC", datestr)
 
-	case ST_DIGITDASHWSDOTPLUS:
+	case ST_DIGITDASHWSDOTOFFSET:
 		// 2012-08-03 18:31:59.257000000 +0000
 		// 2014-04-26 17:24:37.3186369 +0000
 		// 2017-01-27 00:07:31.945167 +0000
 		// 2016-03-14 00:00:00.000 +0000
 		return time.Parse("2006-01-02 15:04:05 -0700", datestr)
 
-	case ST_DIGITDASHWSDOTPLUSALPHA:
+	case ST_DIGITDASHWSDOTOFFSETALPHA:
 		// 2012-08-03 18:31:59.257000000 +0000 UTC
 		// 2014-04-26 17:24:37.3186369 +0000 UTC
 		// 2017-01-27 00:07:31.945167 +0000 UTC
 		// 2016-03-14 00:00:00.000 +0000 UTC
 		return time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
-		// if err == nil {
-		// 	return t, nil
-		// }
-		// return time.Parse("2006-01-02 15:04:05 -0700 GMT", datestr)
 
 	case ST_ALPHAWSALPHACOLON:
 		// Mon Jan _2 15:04:05 2006

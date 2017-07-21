@@ -169,13 +169,6 @@ func TestParse(t *testing.T) {
 	ts = MustParse("12 Feb 2006, 19:17:22")
 	assert.Equal(t, "2006-02-12 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts = MustParse("2015-02-18 00:12:00 +0000 GMT")
-	assert.Equal(t, "2015-02-18 00:12:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
-	// Golang Native Format
-	ts = MustParse("2015-02-18 00:12:00 +0000 UTC")
-	assert.Equal(t, "2015-02-18 00:12:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
 	//---------------------------------------------
 	//   mm/dd/yyyy ?
 
@@ -377,6 +370,19 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2014-04-26 17:24:37.123456 -0800")
 	assert.Equal(t, "2014-04-27 01:24:37.123456 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("2017-07-19 03:21:51+00:00")
+	assert.Equal(t, "2017-07-19 03:21:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2017-07-19 03:21:51 +00:00 UTC")
+	assert.Equal(t, "2017-07-19 03:21:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2015-02-18 00:12:00 +0000 GMT")
+	assert.Equal(t, "2015-02-18 00:12:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Golang Native Format
+	ts = MustParse("2015-02-18 00:12:00 +0000 UTC")
+	assert.Equal(t, "2015-02-18 00:12:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("2014-12-16 06:20:00 UTC")
 	assert.Equal(t, "2014-12-16 06:20:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -388,6 +394,10 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("2014-04-26 05:24:37 PM")
 	assert.Equal(t, "2014-04-26 17:24:37 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// This one is pretty special, it is TIMEZONE based but starts with P to emulate collions with PM
+	ts = MustParse("2014-04-26 05:24:37 PST")
+	assert.Equal(t, "2014-04-26 05:24:37 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2014-04-26")
 	assert.Equal(t, "2014-04-26 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
