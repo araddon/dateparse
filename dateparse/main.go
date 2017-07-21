@@ -15,7 +15,7 @@ var (
 )
 
 func main() {
-	flag.StringVar(&timezone, "timezone", "UTC", "Timezone aka `America/Los_Angeles` formatted time-zone")
+	flag.StringVar(&timezone, "timezone", "", "Timezone aka `America/Los_Angeles` formatted time-zone")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -26,11 +26,11 @@ func main() {
 
 	table := termtables.CreateTable()
 
-	table.AddHeaders("Input", "Timezone", "Parsed, and Output as %v")
+	table.AddHeaders("Input", "Zone Source", "Timezone", "Parsed, and Output as %v")
 
 	zonename, _ := time.Now().In(time.Local).Zone()
 
-	table.AddRow(datestr, fmt.Sprintf("%v", zonename), fmt.Sprintf("%v", dateparse.MustParse(datestr)))
+	table.AddRow(datestr, "Local Default", fmt.Sprintf("%v", zonename), fmt.Sprintf("%v", dateparse.MustParse(datestr)))
 
 	if timezone != "" {
 		// NOTE:  This is very, very important to understand
@@ -40,11 +40,11 @@ func main() {
 			panic(err.Error())
 		}
 		time.Local = loc
-		table.AddRow(datestr, fmt.Sprintf("%v", timezone), fmt.Sprintf("%v", dateparse.MustParse(datestr)))
+		table.AddRow(datestr, "timezone arg", fmt.Sprintf("%v", timezone), fmt.Sprintf("%v", dateparse.MustParse(datestr)))
 	}
 
 	time.Local = time.UTC
-	table.AddRow(datestr, "UTC", fmt.Sprintf("%v", dateparse.MustParse(datestr)))
+	table.AddRow(datestr, "UTC", "UTC", fmt.Sprintf("%v", dateparse.MustParse(datestr)))
 
 	fmt.Println(table.Render())
 }
