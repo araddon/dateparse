@@ -70,18 +70,40 @@ var (
 	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 )
 
-// Parse a date, and panic if it can't be parsed
+// MustParse Parse a date, and panic if it can't be parsed
 func MustParse(datestr string) time.Time {
-	t, err := ParseAny(datestr)
+	t, err := parseTime(datestr, nil)
 	if err != nil {
 		panic(err.Error())
 	}
 	return t
 }
 
-// Given an unknown date format, detect the type, parse, return time
+// ParseAny Given an unknown date format, detect the layout, parse.
 func ParseAny(datestr string) (time.Time, error) {
+	return parseTime(datestr, nil)
+}
 
+// ParseIn Given an unknown date format, detect the layout,
+// using given location, parse.
+func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
+	return parseTime(datestr, loc)
+}
+
+// ParseLocal Given an unknown date format, detect the layout,
+// using time.Local, parse.
+func ParseLocal(datestr string) (time.Time, error) {
+	return parseTime(datestr, time.Local)
+}
+
+func parse(layout, datestr string, loc *time.Location) (time.Time, error) {
+	if loc == nil {
+		return time.Parse(layout, datestr)
+	}
+	return time.ParseInLocation(layout, datestr, loc)
+}
+
+func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 	state := ST_START
 
 	firstSlash := 0
@@ -167,7 +189,7 @@ iterRunes:
 			case ',':
 				if len(datestr) == len("2014-05-11 08:20:13,787") {
 					// go doesn't seem to parse this one natively?   or did i miss it?
-					t, err := time.Parse("2006-01-02 03:04:05", datestr[:i])
+					t, err := parse("2006-01-02 03:04:05", datestr[:i], loc)
 					if err == nil {
 						ms, err := strconv.Atoi(datestr[i+1:])
 						if err == nil {
@@ -212,7 +234,7 @@ iterRunes:
 
 		case ST_DIGITDASHWSWSAMPMMAYBE:
 			if r == 'M' {
-				return time.Parse("2006-01-02 03:04:05 PM", datestr)
+				return parse("2006-01-02 03:04:05 PM", datestr, loc)
 			}
 			state = ST_DIGITDASHWSWSALPHA
 
@@ -369,9 +391,9 @@ iterRunes:
 			// 12 Feb 2006, 19:17:22
 			switch {
 			case len(datestr) == len("02 Jan 2006, 15:04"):
-				return time.Parse("02 Jan 2006, 15:04", datestr)
+				return parse("02 Jan 2006, 15:04", datestr, loc)
 			case len(datestr) == len("02 Jan 2006, 15:04:05"):
-				return time.Parse("02 Jan 2006, 15:04:05", datestr)
+				return parse("02 Jan 2006, 15:04:05", datestr, loc)
 			}
 		case ST_ALPHA: // starts alpha
 			// ST_ALPHAWS
@@ -417,7 +439,7 @@ iterRunes:
 			switch {
 			case r == '-':
 				if i < 15 {
-					return time.Parse("Monday, 02-Jan-06 15:04:05 MST", datestr)
+					return parse("Monday, 02-Jan-06 15:04:05 MST", datestr, loc)
 				} else {
 					state = ST_WEEKDAYCOMMADELTA
 				}
@@ -435,7 +457,7 @@ iterRunes:
 			switch {
 			case r == '-':
 				if i < 15 {
-					return time.Parse("Mon, 02-Jan-06 15:04:05 MST", datestr)
+					return parse("Mon, 02-Jan-06 15:04:05 MST", datestr, loc)
 				} else {
 					state = ST_WEEKDAYABBREVCOMMADELTA
 				}
@@ -468,7 +490,7 @@ iterRunes:
 
 		case ST_ALPHAWSDIGITCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
-			return time.Parse("Jan 2, 2006 3:04:05 PM", datestr)
+			return parse("Jan 2, 2006 3:04:05 PM", datestr, loc)
 
 		case ST_ALPHAWSALPHA: // Alpha, whitespace, alpha
 			// Mon Jan _2 15:04:05 2006
@@ -531,9 +553,9 @@ iterRunes:
 				return time.Unix(0, miliSecs*1000*1000), nil
 			}
 		} else if len(datestr) == len("20140601") {
-			return time.Parse("20060102", datestr)
+			return parse("20060102", datestr, loc)
 		} else if len(datestr) == len("2014") {
-			return time.Parse("2006", datestr)
+			return parse("2006", datestr, loc)
 		} else {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				return time.Unix(secs, 0), nil
@@ -543,13 +565,13 @@ iterRunes:
 		// 2006-01-02
 		// 2006-01
 		if len(datestr) == len("2014-04-26") {
-			return time.Parse("2006-01-02", datestr)
+			return parse("2006-01-02", datestr, loc)
 		} else if len(datestr) == len("2014-04") {
-			return time.Parse("2006-01", datestr)
+			return parse("2006-01", datestr, loc)
 		}
 	case ST_DIGITDASHTDELTA:
 		// 2006-01-02T15:04:05+0000
-		return time.Parse("2006-01-02T15:04:05-0700", datestr)
+		return parse("2006-01-02T15:04:05-0700", datestr, loc)
 
 	case ST_DIGITDASHTDELTACOLON:
 		// With another +/- time-zone at end
@@ -561,12 +583,12 @@ iterRunes:
 		// 2006-01-02T15:04:05.999-07:00
 		// 2006-01-02T15:04:05+07:00
 		// 2006-01-02T15:04:05-07:00
-		return time.Parse("2006-01-02T15:04:05-07:00", datestr)
+		return parse("2006-01-02T15:04:05-07:00", datestr, loc)
 
 	case ST_DIGITDASHT: // starts digit then dash 02-  then T
 		// 2006-01-02T15:04:05.999999
 		// 2006-01-02T15:04:05.999999
-		return time.Parse("2006-01-02T15:04:05", datestr)
+		return parse("2006-01-02T15:04:05", datestr, loc)
 
 	case ST_DIGITDASHTZDIGIT:
 		// With a time-zone at end after Z
@@ -588,50 +610,50 @@ iterRunes:
 		// 2009-08-12T22:15Z  -- No seconds/milliseconds
 		switch len(datestr) {
 		case len("2009-08-12T22:15Z"):
-			return time.Parse("2006-01-02T15:04Z", datestr)
+			return parse("2006-01-02T15:04Z", datestr, loc)
 		default:
-			return time.Parse("2006-01-02T15:04:05Z", datestr)
+			return parse("2006-01-02T15:04:05Z", datestr, loc)
 		}
 	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
-		return time.Parse("2006-01-02 15:04:05", datestr)
+		return parse("2006-01-02 15:04:05", datestr, loc)
 
 	case ST_DIGITDASHWSWSOFFSET:
 		// 2006-01-02 15:04:05 -0700
-		return time.Parse("2006-01-02 15:04:05 -0700", datestr)
+		return parse("2006-01-02 15:04:05 -0700", datestr, loc)
 
 	case ST_DIGITDASHWSWSOFFSETCOLON:
 		// 2006-01-02 15:04:05 -07:00
-		return time.Parse("2006-01-02 15:04:05 -07:00", datestr)
+		return parse("2006-01-02 15:04:05 -07:00", datestr, loc)
 
 	case ST_DIGITDASHWSWSOFFSETALPHA:
 		// 2015-02-18 00:12:00 +0000 UTC
-		t, err := time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
+		t, err := parse("2006-01-02 15:04:05 -0700 UTC", datestr, loc)
 		if err == nil {
 			return t, nil
 		}
-		return time.Parse("2006-01-02 15:04:05 +0000 GMT", datestr)
+		return parse("2006-01-02 15:04:05 +0000 GMT", datestr, loc)
 
 	case ST_DIGITDASHWSWSOFFSETCOLONALPHA:
 		// 2015-02-18 00:12:00 +00:00 UTC
-		return time.Parse("2006-01-02 15:04:05 -07:00 UTC", datestr)
+		return parse("2006-01-02 15:04:05 -07:00 UTC", datestr, loc)
 
 	case ST_DIGITDASHWSOFFSET:
 		// 2017-07-19 03:21:51+00:00
-		return time.Parse("2006-01-02 15:04:05-07:00", datestr)
+		return parse("2006-01-02 15:04:05-07:00", datestr, loc)
 
 	case ST_DIGITDASHWSWSALPHA:
 		// 2014-12-16 06:20:00 UTC
-		t, err := time.Parse("2006-01-02 15:04:05 UTC", datestr)
+		t, err := parse("2006-01-02 15:04:05 UTC", datestr, loc)
 		if err == nil {
 			return t, nil
 		}
-		t, err = time.Parse("2006-01-02 15:04:05 GMT", datestr)
+		t, err = parse("2006-01-02 15:04:05 GMT", datestr, loc)
 		if err == nil {
 			return t, nil
 		}
 		if len(datestr) > len("2006-01-02 03:04:05") {
-			t, err = time.Parse("2006-01-02 03:04:05", datestr[:len("2006-01-02 03:04:05")])
+			t, err = parse("2006-01-02 03:04:05", datestr[:len("2006-01-02 03:04:05")], loc)
 			if err == nil {
 				return t, nil
 			}
@@ -642,44 +664,44 @@ iterRunes:
 		// 2014-04-26 17:24:37.3186369
 		// 2017-01-27 00:07:31.945167
 		// 2016-03-14 00:00:00.000
-		return time.Parse("2006-01-02 15:04:05", datestr)
+		return parse("2006-01-02 15:04:05", datestr, loc)
 
 	case ST_DIGITDASHWSDOTALPHA:
 		// 2012-08-03 18:31:59.257000000 UTC
 		// 2014-04-26 17:24:37.3186369 UTC
 		// 2017-01-27 00:07:31.945167 UTC
 		// 2016-03-14 00:00:00.000 UTC
-		return time.Parse("2006-01-02 15:04:05 UTC", datestr)
+		return parse("2006-01-02 15:04:05 UTC", datestr, loc)
 
 	case ST_DIGITDASHWSDOTOFFSET:
 		// 2012-08-03 18:31:59.257000000 +0000
 		// 2014-04-26 17:24:37.3186369 +0000
 		// 2017-01-27 00:07:31.945167 +0000
 		// 2016-03-14 00:00:00.000 +0000
-		return time.Parse("2006-01-02 15:04:05 -0700", datestr)
+		return parse("2006-01-02 15:04:05 -0700", datestr, loc)
 
 	case ST_DIGITDASHWSDOTOFFSETALPHA:
 		// 2012-08-03 18:31:59.257000000 +0000 UTC
 		// 2014-04-26 17:24:37.3186369 +0000 UTC
 		// 2017-01-27 00:07:31.945167 +0000 UTC
 		// 2016-03-14 00:00:00.000 +0000 UTC
-		return time.Parse("2006-01-02 15:04:05 -0700 UTC", datestr)
+		return parse("2006-01-02 15:04:05 -0700 UTC", datestr, loc)
 
 	case ST_ALPHAWSALPHACOLON:
 		// Mon Jan _2 15:04:05 2006
-		return time.Parse(time.ANSIC, datestr)
+		return parse(time.ANSIC, datestr, loc)
 
 	case ST_ALPHAWSALPHACOLONOFFSET:
 		// Mon Jan 02 15:04:05 -0700 2006
-		return time.Parse(time.RubyDate, datestr)
+		return parse(time.RubyDate, datestr, loc)
 
 	case ST_ALPHAWSALPHACOLONALPHA:
 		// Mon Jan _2 15:04:05 MST 2006
-		return time.Parse(time.UnixDate, datestr)
+		return parse(time.UnixDate, datestr, loc)
 
 	case ST_ALPHAWSALPHACOLONALPHAOFFSET:
 		// Mon Aug 10 15:44:11 UTC+0100 2015
-		return time.Parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr)
+		return parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr, loc)
 
 	case ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA:
 		// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
@@ -687,7 +709,7 @@ iterRunes:
 			// What effing time stamp is this?
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			dateTmp := datestr[:33]
-			return time.Parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp)
+			return parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp, loc)
 		}
 	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
@@ -696,13 +718,13 @@ iterRunes:
 		// 2014/10/13
 		if firstSlash == 4 {
 			if len(datestr) == len("2006/01/02") {
-				return time.Parse("2006/01/02", datestr)
+				return parse("2006/01/02", datestr, loc)
 			} else {
-				return time.Parse("2006/1/2", datestr)
+				return parse("2006/1/2", datestr, loc)
 			}
 		} else {
 			for _, parseFormat := range shortDates {
-				if t, err := time.Parse(parseFormat, datestr); err == nil {
+				if t, err := parse(parseFormat, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
@@ -716,13 +738,13 @@ iterRunes:
 
 		if firstSlash == 4 {
 			for _, layout := range []string{"2006/01/02 15:04", "2006/1/2 15:04", "2006/01/2 15:04", "2006/1/02 15:04"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
 		} else {
 			for _, layout := range []string{"01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
@@ -738,14 +760,14 @@ iterRunes:
 		if firstSlash == 4 {
 			for _, layout := range []string{"2006/01/02 03:04 PM", "2006/01/2 03:04 PM", "2006/1/02 03:04 PM", "2006/1/2 03:04 PM",
 				"2006/01/02 3:04 PM", "2006/01/2 3:04 PM", "2006/1/02 3:04 PM", "2006/1/2 3:04 PM"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
 		} else {
 			for _, layout := range []string{"01/02/2006 03:04 PM", "01/2/2006 03:04 PM", "1/02/2006 03:04 PM", "1/2/2006 03:04 PM",
 				"01/02/2006 3:04 PM", "01/2/2006 3:04 PM", "1/02/2006 3:04 PM", "1/2/2006 3:04 PM"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 
@@ -760,13 +782,13 @@ iterRunes:
 		// 3/01/2012 10:11:59
 		if firstSlash == 4 {
 			for _, layout := range []string{"2006/01/02 15:04:05", "2006/1/02 15:04:05", "2006/01/2 15:04:05", "2006/1/2 15:04:05"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
 		} else {
 			for _, layout := range []string{"01/02/2006 15:04:05", "1/02/2006 15:04:05", "01/2/2006 15:04:05", "1/2/2006 15:04:05"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
@@ -782,13 +804,13 @@ iterRunes:
 		if firstSlash == 4 {
 			for _, layout := range []string{"2006/01/02 03:04:05 PM", "2006/1/02 03:04:05 PM", "2006/01/2 03:04:05 PM", "2006/1/2 03:04:05 PM",
 				"2006/01/02 3:04:05 PM", "2006/1/02 3:04:05 PM", "2006/01/2 3:04:05 PM", "2006/1/2 3:04:05 PM"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
 		} else {
 			for _, layout := range []string{"01/02/2006 03:04:05 PM", "1/02/2006 03:04:05 PM", "01/2/2006 03:04:05 PM", "1/2/2006 03:04:05 PM"} {
-				if t, err := time.Parse(layout, datestr); err == nil {
+				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
 			}
@@ -797,19 +819,19 @@ iterRunes:
 	case ST_WEEKDAYCOMMADELTA:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
-		return time.Parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr)
+		return parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr, loc)
 	case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
-		return time.Parse("Mon, 02 Jan 2006 15:04:05 MST", datestr)
+		return parse("Mon, 02 Jan 2006 15:04:05 MST", datestr, loc)
 	case ST_WEEKDAYABBREVCOMMADELTA:
 		// Mon, 02 Jan 2006 15:04:05 -0700
 		// Thu, 13 Jul 2017 08:58:40 +0100
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
-		return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr)
+		return parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr, loc)
 	case ST_WEEKDAYABBREVCOMMADELTAZONE:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-		return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700 (CEST)", datestr)
+		return parse("Mon, 02 Jan 2006 15:04:05 -0700 (CEST)", datestr, loc)
 	}
 
 	return time.Time{}, fmt.Errorf("Could not find date format for %s", datestr)
