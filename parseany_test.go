@@ -62,14 +62,61 @@ func testMust() (err error) {
 	MustParse("NOT GONNA HAPPEN")
 	return nil
 }
-func TestParse(t *testing.T) {
+
+// Lets test to see how this performs using different Timezones/Locations
+// Also of note, try changing your server/machine timezones and repeat
+func TestParseLocations(t *testing.T) {
+
+	time.Local = time.UTC
+	defer func() {
+		// Now Reset To UTC
+		time.Local = time.UTC
+	}()
 
 	mstZone, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
-	n := time.Now()
-	if fmt.Sprintf("%v", n) == fmt.Sprintf("%v", n.In(mstZone)) {
-		t.Logf("you are testing and in MST %v", mstZone)
-	}
+
+	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+	ts := MustParse("Mon Jan  2 15:04:05 MST 2006")
+
+	// !!!!! The time-zone of local machine effects the results!
+	// https://play.golang.org/p/IDHRalIyXh
+	// https://github.com/golang/go/issues/18012
+	_, offset := ts.Zone()
+	assert.Equal(t, 0, offset, "Should have found zone/offset = 0 %v", offset)
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Now lets set to mst
+	time.Local = mstZone
+	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
+
+	// IMPORTANT!!!!!!!!
+	// this time is different from one above parsed with time.Local set to UTC
+	_, offset = ts.Zone()
+	assert.Equal(t, -25200, offset, "Should have found zone/offset = -25200 %v", offset)
+	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Now Reset To UTC
+	time.Local = time.UTC
+
+	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
+	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
+	_, offset = ts.Zone()
+	assert.Equal(t, 0, offset, "Should have found zone/offset = 0 %v", offset)
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Now lets set to mst
+	time.Local = mstZone
+	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
+	_, offset = ts.Zone()
+	assert.NotEqual(t, 0, offset, "Should have found zone/offset %v", offset)
+	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+}
+
+func TestParse(t *testing.T) {
+
+	// Lets ensure we are operating on UTC
+	time.Local = time.UTC
 
 	zeroTime := time.Time{}.Unix()
 	ts, err := ParseAny("INVALID")
@@ -90,38 +137,15 @@ func TestParse(t *testing.T) {
 	ts = MustParse("Mon Jan  2 15:04:05 2006")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
-	// The time-zone of local machine appears to effect the results?
-	// Why is the zone/offset for MST not always the same depending on local time zone?
-	// Why is offset = 0 at all?
-	// https://play.golang.org/p/lSOT9AeNxz
-	// https://github.com/golang/go/issues/18012
-	_, offset := ts.Zone()
-	// WHY doesn't this work?  seems to be underlying issue in go not finding
-	// the MST?
-	//assert.Equal(t, offset != 0, "Should have found zone/offset !=0 ", offset)
-	if offset == 0 {
-		assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	} else {
-		// for some reason i don't understand the offset is != 0
-		// IF you have your local time-zone set to US MST?
-		assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	}
-
 	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
 	ts = MustParse("Mon Jan 02 15:04:05 -0700 2006")
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)), "%v")
 
-	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
-	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
-	_, offset = ts.Zone()
-	if offset == 0 {
-		assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	} else {
-		assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	}
+	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
 	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -143,12 +167,7 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2015-07-03 17:04:07 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Mon, 02 Jan 2006 15:04:05 MST")
-	_, offset = ts.Zone()
-	if offset == 0 {
-		assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	} else {
-		assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	}
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Mon, 02-Jan-06 15:04:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
