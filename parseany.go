@@ -10,61 +10,49 @@ import (
 type DateState int
 
 const (
-	// C = Comma
-	// O = Colon
-	// E = Period/Dot
-	// A = Alpha
-	// N = Digits/Numeric
-	// S = Slash  /
-	// P = Plus +
-	// m = Minus, Dash, -
-	// T = T
-	// Z = Z
-	// M = AM/PM
-	// W = Whitespace
-	ST_START DateState = iota
-	ST_DIGIT
-	ST_DIGITDASH
-	ST_DIGITDASHALPHA
-	ST_DIGITDASHWS
-	ST_DIGITDASHWSWS
-	ST_DIGITDASHWSWSAMPMMAYBE
-	ST_DIGITDASHWSWSOFFSET
-	ST_DIGITDASHWSWSOFFSETALPHA
-	ST_DIGITDASHWSWSOFFSETCOLONALPHA
-	ST_DIGITDASHWSWSOFFSETCOLON
-	ST_DIGITDASHWSOFFSET
-	ST_DIGITDASHWSWSALPHA
-	ST_DIGITDASHWSDOT
-	ST_DIGITDASHWSDOTALPHA
-	ST_DIGITDASHWSDOTOFFSET
-	ST_DIGITDASHWSDOTOFFSETALPHA
-	ST_DIGITDASHT
-	ST_DIGITDASHTZ
-	ST_DIGITDASHTZDIGIT
-	ST_DIGITDASHTDELTA
-	ST_DIGITDASHTDELTACOLON
-	ST_DIGITSLASH
-	ST_DIGITSLASHWS
-	ST_DIGITSLASHWSCOLON
-	ST_DIGITSLASHWSCOLONAMPM
-	ST_DIGITSLASHWSCOLONCOLON
-	ST_DIGITSLASHWSCOLONCOLONAMPM
-	ST_DIGITALPHA
-	ST_ALPHA
-	ST_ALPHAWS
-	ST_ALPHAWSDIGITCOMMA
-	ST_ALPHAWSALPHA
-	ST_ALPHAWSALPHACOLON
-	ST_ALPHAWSALPHACOLONOFFSET
-	ST_ALPHAWSALPHACOLONALPHA
-	ST_ALPHAWSALPHACOLONALPHAOFFSET
-	ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA
-	ST_WEEKDAYCOMMA
-	ST_WEEKDAYCOMMADELTA
-	ST_WEEKDAYABBREVCOMMA
-	ST_WEEKDAYABBREVCOMMADELTA
-	ST_WEEKDAYABBREVCOMMADELTAZONE
+	st_START DateState = iota
+	st_DIGIT
+	st_DIGITDASH
+	st_DIGITDASHALPHA
+	st_DIGITDASHWS
+	st_DIGITDASHWSWS
+	st_DIGITDASHWSWSAMPMMAYBE
+	st_DIGITDASHWSWSOFFSET
+	st_DIGITDASHWSWSOFFSETALPHA
+	st_DIGITDASHWSWSOFFSETCOLONALPHA
+	st_DIGITDASHWSWSOFFSETCOLON
+	st_DIGITDASHWSOFFSET
+	st_DIGITDASHWSWSALPHA
+	st_DIGITDASHWSDOT
+	st_DIGITDASHWSDOTALPHA
+	st_DIGITDASHWSDOTOFFSET
+	st_DIGITDASHWSDOTOFFSETALPHA
+	st_DIGITDASHT
+	st_DIGITDASHTZ
+	st_DIGITDASHTZDIGIT
+	st_DIGITDASHTDELTA
+	st_DIGITDASHTDELTACOLON
+	st_DIGITSLASH
+	st_DIGITSLASHWS
+	st_DIGITSLASHWSCOLON
+	st_DIGITSLASHWSCOLONAMPM
+	st_DIGITSLASHWSCOLONCOLON
+	st_DIGITSLASHWSCOLONCOLONAMPM
+	st_DIGITALPHA
+	st_ALPHA
+	st_ALPHAWS
+	st_ALPHAWSDIGITCOMMA
+	st_ALPHAWSALPHA
+	st_ALPHAWSALPHACOLON
+	st_ALPHAWSALPHACOLONOFFSET
+	st_ALPHAWSALPHACOLONALPHA
+	st_ALPHAWSALPHACOLONALPHAOFFSET
+	st_ALPHAWSALPHACOLONALPHAOFFSETALPHA
+	st_WEEKDAYCOMMA
+	st_WEEKDAYCOMMADELTA
+	st_WEEKDAYABBREVCOMMA
+	st_WEEKDAYABBREVCOMMADELTA
+	st_WEEKDAYABBREVCOMMADELTAZONE
 )
 
 var (
@@ -115,7 +103,7 @@ func parse(layout, datestr string, loc *time.Location) (time.Time, error) {
 }
 
 func parseTime(datestr string, loc *time.Location) (time.Time, error) {
-	state := ST_START
+	state := st_START
 
 	firstSlash := 0
 
@@ -132,27 +120,27 @@ iterRunes:
 		// }
 
 		switch state {
-		case ST_START:
+		case st_START:
 			if unicode.IsDigit(r) {
-				state = ST_DIGIT
+				state = st_DIGIT
 			} else if unicode.IsLetter(r) {
-				state = ST_ALPHA
+				state = st_ALPHA
 			}
-		case ST_DIGIT: // starts digits
+		case st_DIGIT: // starts digits
 			if unicode.IsDigit(r) {
 				continue
 			} else if unicode.IsLetter(r) {
-				state = ST_DIGITALPHA
+				state = st_DIGITALPHA
 				continue
 			}
 			switch r {
 			case '-', '\u2212':
-				state = ST_DIGITDASH
+				state = st_DIGITDASH
 			case '/':
-				state = ST_DIGITSLASH
+				state = st_DIGITSLASH
 				firstSlash = i
 			}
-		case ST_DIGITDASH: // starts digit then dash 02-
+		case st_DIGITDASH: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
 			// 2017-06-25T17:46:57.45706582-07:00
 			// 2006-01-02T15:04:05.999999999Z07:00
@@ -169,38 +157,38 @@ iterRunes:
 			// 2013-Feb-03
 			switch {
 			case r == ' ':
-				state = ST_DIGITDASHWS
+				state = st_DIGITDASHWS
 			case r == 'T':
-				state = ST_DIGITDASHT
+				state = st_DIGITDASHT
 			default:
 				if unicode.IsLetter(r) {
-					state = ST_DIGITDASHALPHA
+					state = st_DIGITDASHALPHA
 					break iterRunes
 				}
 			}
-		case ST_DIGITDASHWS:
+		case st_DIGITDASHWS:
 			// 2013-04-01 22:43:22
 			// 2014-05-11 08:20:13,787
-			// ST_DIGITDASHWSWS
+			// st_DIGITDASHWSWS
 			//   2014-04-26 05:24:37 PM
 			//   2014-12-16 06:20:00 UTC
 			//   2015-02-18 00:12:00 +0000 UTC
 			//   2006-01-02 15:04:05 -0700
 			//   2006-01-02 15:04:05 -07:00
-			// ST_DIGITDASHWSOFFSET
+			// st_DIGITDASHWSOFFSET
 			//   2017-07-19 03:21:51+00:00
-			// ST_DIGITDASHWSDOT
+			// st_DIGITDASHWSDOT
 			//   2014-04-26 17:24:37.3186369
 			//   2017-01-27 00:07:31.945167
 			//   2012-08-03 18:31:59.257000000
 			//   2016-03-14 00:00:00.000
-			//   ST_DIGITDASHWSDOTOFFSET
+			//   st_DIGITDASHWSDOTOFFSET
 			//     2017-01-27 00:07:31.945167 +0000
 			//     2016-03-14 00:00:00.000 +0000
-			//     ST_DIGITDASHWSDOTOFFSETALPHA
+			//     st_DIGITDASHWSDOTOFFSETALPHA
 			//       2017-01-27 00:07:31.945167 +0000 UTC
 			//       2016-03-14 00:00:00.000 +0000 UTC
-			//   ST_DIGITDASHWSDOTALPHA
+			//   st_DIGITDASHWSDOTALPHA
 			//     2014-12-16 06:20:00.000 UTC
 			switch r {
 			case ',':
@@ -216,110 +204,110 @@ iterRunes:
 					return t, err
 				}
 			case '-', '+':
-				state = ST_DIGITDASHWSOFFSET
+				state = st_DIGITDASHWSOFFSET
 			case '.':
-				state = ST_DIGITDASHWSDOT
+				state = st_DIGITDASHWSDOT
 			case ' ':
-				state = ST_DIGITDASHWSWS
+				state = st_DIGITDASHWSWS
 			}
 
-		case ST_DIGITDASHWSWS:
-			// ST_DIGITDASHWSWSALPHA
+		case st_DIGITDASHWSWS:
+			// st_DIGITDASHWSWSALPHA
 			//   2014-12-16 06:20:00 UTC
-			//   ST_DIGITDASHWSWSAMPMMAYBE
+			//   st_DIGITDASHWSWSAMPMMAYBE
 			//     2014-04-26 05:24:37 PM
-			// ST_DIGITDASHWSWSOFFSET
+			// st_DIGITDASHWSWSOFFSET
 			//   2006-01-02 15:04:05 -0700
-			//   ST_DIGITDASHWSWSOFFSETCOLON
+			//   st_DIGITDASHWSWSOFFSETCOLON
 			//     2006-01-02 15:04:05 -07:00
-			//     ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//     st_DIGITDASHWSWSOFFSETCOLONALPHA
 			//       2015-02-18 00:12:00 +00:00 UTC
-			//   ST_DIGITDASHWSWSOFFSETALPHA
+			//   st_DIGITDASHWSWSOFFSETALPHA
 			//     2015-02-18 00:12:00 +0000 UTC
 			switch r {
 			case 'A', 'P':
-				state = ST_DIGITDASHWSWSAMPMMAYBE
+				state = st_DIGITDASHWSWSAMPMMAYBE
 			case '+', '-':
-				state = ST_DIGITDASHWSWSOFFSET
+				state = st_DIGITDASHWSWSOFFSET
 			default:
 				if unicode.IsLetter(r) {
 					// 2014-12-16 06:20:00 UTC
-					state = ST_DIGITDASHWSWSALPHA
+					state = st_DIGITDASHWSWSALPHA
 					break iterRunes
 				}
 			}
 
-		case ST_DIGITDASHWSWSAMPMMAYBE:
+		case st_DIGITDASHWSWSAMPMMAYBE:
 			if r == 'M' {
 				return parse("2006-01-02 03:04:05 PM", datestr, loc)
 			}
-			state = ST_DIGITDASHWSWSALPHA
+			state = st_DIGITDASHWSWSALPHA
 
-		case ST_DIGITDASHWSWSOFFSET:
-			// ST_DIGITDASHWSWSOFFSET
+		case st_DIGITDASHWSWSOFFSET:
+			// st_DIGITDASHWSWSOFFSET
 			//   2006-01-02 15:04:05 -0700
-			//   ST_DIGITDASHWSWSOFFSETCOLON
+			//   st_DIGITDASHWSWSOFFSETCOLON
 			//     2006-01-02 15:04:05 -07:00
-			//     ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//     st_DIGITDASHWSWSOFFSETCOLONALPHA
 			//       2015-02-18 00:12:00 +00:00 UTC
-			//   ST_DIGITDASHWSWSOFFSETALPHA
+			//   st_DIGITDASHWSWSOFFSETALPHA
 			//     2015-02-18 00:12:00 +0000 UTC
 			if r == ':' {
-				state = ST_DIGITDASHWSWSOFFSETCOLON
+				state = st_DIGITDASHWSWSOFFSETCOLON
 			} else if unicode.IsLetter(r) {
 				// 2015-02-18 00:12:00 +0000 UTC
-				state = ST_DIGITDASHWSWSOFFSETALPHA
+				state = st_DIGITDASHWSWSOFFSETALPHA
 				break iterRunes
 			}
 
-		case ST_DIGITDASHWSWSOFFSETCOLON:
-			// ST_DIGITDASHWSWSOFFSETCOLON
+		case st_DIGITDASHWSWSOFFSETCOLON:
+			// st_DIGITDASHWSWSOFFSETCOLON
 			//   2006-01-02 15:04:05 -07:00
-			//   ST_DIGITDASHWSWSOFFSETCOLONALPHA
+			//   st_DIGITDASHWSWSOFFSETCOLONALPHA
 			//     2015-02-18 00:12:00 +00:00 UTC
 			if unicode.IsLetter(r) {
 				// 2015-02-18 00:12:00 +00:00 UTC
-				state = ST_DIGITDASHWSWSOFFSETCOLONALPHA
+				state = st_DIGITDASHWSWSOFFSETCOLONALPHA
 				break iterRunes
 			}
 
-		case ST_DIGITDASHWSDOT:
+		case st_DIGITDASHWSDOT:
 			// 2014-04-26 17:24:37.3186369
 			// 2017-01-27 00:07:31.945167
 			// 2012-08-03 18:31:59.257000000
 			// 2016-03-14 00:00:00.000
-			// ST_DIGITDASHWSDOTOFFSET
+			// st_DIGITDASHWSDOTOFFSET
 			//   2017-01-27 00:07:31.945167 +0000
 			//   2016-03-14 00:00:00.000 +0000
-			//   ST_DIGITDASHWSDOTOFFSETALPHA
+			//   st_DIGITDASHWSDOTOFFSETALPHA
 			//     2017-01-27 00:07:31.945167 +0000 UTC
 			//     2016-03-14 00:00:00.000 +0000 UTC
-			// ST_DIGITDASHWSDOTALPHA
+			// st_DIGITDASHWSDOTALPHA
 			//   2014-12-16 06:20:00.000 UTC
 			if unicode.IsLetter(r) {
 				// 2014-12-16 06:20:00.000 UTC
-				state = ST_DIGITDASHWSDOTALPHA
+				state = st_DIGITDASHWSDOTALPHA
 				break iterRunes
 			} else if r == '+' || r == '-' {
-				state = ST_DIGITDASHWSDOTOFFSET
+				state = st_DIGITDASHWSDOTOFFSET
 			}
-		case ST_DIGITDASHWSDOTOFFSET:
+		case st_DIGITDASHWSDOTOFFSET:
 			// 2017-01-27 00:07:31.945167 +0000
 			// 2016-03-14 00:00:00.000 +0000
-			// ST_DIGITDASHWSDOTOFFSETALPHA
+			// st_DIGITDASHWSDOTOFFSETALPHA
 			//   2017-01-27 00:07:31.945167 +0000 UTC
 			//   2016-03-14 00:00:00.000 +0000 UTC
 			if unicode.IsLetter(r) {
 				// 2014-12-16 06:20:00.000 UTC
 				// 2017-01-27 00:07:31.945167 +0000 UTC
 				// 2016-03-14 00:00:00.000 +0000 UTC
-				state = ST_DIGITDASHWSDOTOFFSETALPHA
+				state = st_DIGITDASHWSDOTOFFSETALPHA
 				break iterRunes
 			}
-		case ST_DIGITDASHT: // starts digit then dash 02-  then T
-			// ST_DIGITDASHT
+		case st_DIGITDASHT: // starts digit then dash 02-  then T
+			// st_DIGITDASHT
 			// 2006-01-02T15:04:05
-			// ST_DIGITDASHTZ
+			// st_DIGITDASHTZ
 			// 2006-01-02T15:04:05.999999999Z
 			// 2006-01-02T15:04:05.99999999Z
 			// 2006-01-02T15:04:05.9999999Z
@@ -329,30 +317,30 @@ iterRunes:
 			// 2006-01-02T15:04:05.999Z
 			// 2006-01-02T15:04:05.99Z
 			// 2009-08-12T22:15Z
-			// ST_DIGITDASHTZDIGIT
+			// st_DIGITDASHTZDIGIT
 			// 2006-01-02T15:04:05.999999999Z07:00
 			// 2006-01-02T15:04:05Z07:00
 			// With another dash aka time-zone at end
-			// ST_DIGITDASHTDELTA
-			//   ST_DIGITDASHTDELTACOLON
+			// st_DIGITDASHTDELTA
+			//   st_DIGITDASHTDELTACOLON
 			//     2017-06-25T17:46:57.45706582-07:00
 			//     2017-06-25T17:46:57+04:00
 			// 2006-01-02T15:04:05+0000
 			switch r {
 			case '-', '+':
-				state = ST_DIGITDASHTDELTA
+				state = st_DIGITDASHTDELTA
 			case 'Z':
-				state = ST_DIGITDASHTZ
+				state = st_DIGITDASHTZ
 			}
-		case ST_DIGITDASHTZ:
+		case st_DIGITDASHTZ:
 			if unicode.IsDigit(r) {
-				state = ST_DIGITDASHTZDIGIT
+				state = st_DIGITDASHTZDIGIT
 			}
-		case ST_DIGITDASHTDELTA:
+		case st_DIGITDASHTDELTA:
 			if r == ':' {
-				state = ST_DIGITDASHTDELTACOLON
+				state = st_DIGITDASHTDELTACOLON
 			}
-		case ST_DIGITSLASH: // starts digit then slash 02/
+		case st_DIGITSLASH: // starts digit then slash 02/
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -367,9 +355,9 @@ iterRunes:
 			}
 			switch r {
 			case ' ':
-				state = ST_DIGITSLASHWS
+				state = st_DIGITSLASHWS
 			}
-		case ST_DIGITSLASHWS: // starts digit then slash 02/ more digits/slashes then whitespace
+		case st_DIGITSLASHWS: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -377,9 +365,9 @@ iterRunes:
 			// 4/8/2014 22:05
 			switch r {
 			case ':':
-				state = ST_DIGITSLASHWSCOLON
+				state = st_DIGITSLASHWSCOLON
 			}
-		case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
+		case st_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -388,11 +376,11 @@ iterRunes:
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case ':':
-				state = ST_DIGITSLASHWSCOLONCOLON
+				state = st_DIGITSLASHWSCOLONCOLON
 			case 'A', 'P':
-				state = ST_DIGITSLASHWSCOLONAMPM
+				state = st_DIGITSLASHWSCOLONAMPM
 			}
-		case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
+		case st_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -401,9 +389,9 @@ iterRunes:
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case 'A', 'P':
-				state = ST_DIGITSLASHWSCOLONCOLONAMPM
+				state = st_DIGITSLASHWSCOLONCOLONAMPM
 			}
-		case ST_DIGITALPHA:
+		case st_DIGITALPHA:
 			// 12 Feb 2006, 19:17
 			// 12 Feb 2006, 19:17:22
 			switch {
@@ -412,45 +400,45 @@ iterRunes:
 			case len(datestr) == len("02 Jan 2006, 15:04:05"):
 				return parse("02 Jan 2006, 15:04:05", datestr, loc)
 			}
-		case ST_ALPHA: // starts alpha
-			// ST_ALPHAWS
+		case st_ALPHA: // starts alpha
+			// st_ALPHAWS
 			//  Mon Jan _2 15:04:05 2006
 			//  Mon Jan _2 15:04:05 MST 2006
 			//  Mon Jan 02 15:04:05 -0700 2006
 			//  Mon Aug 10 15:44:11 UTC+0100 2015
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			//  ST_ALPHAWSDIGITCOMMA
+			//  st_ALPHAWSDIGITCOMMA
 			//    May 8, 2009 5:57:51 PM
 			//
-			// ST_WEEKDAYCOMMA
+			// st_WEEKDAYCOMMA
 			//   Monday, 02-Jan-06 15:04:05 MST
-			//   ST_WEEKDAYCOMMADELTA
+			//   st_WEEKDAYCOMMADELTA
 			//     Monday, 02 Jan 2006 15:04:05 -0700
 			//     Monday, 02 Jan 2006 15:04:05 +0100
-			// ST_WEEKDAYABBREVCOMMA
+			// st_WEEKDAYABBREVCOMMA
 			//   Mon, 02-Jan-06 15:04:05 MST
 			//   Mon, 02 Jan 2006 15:04:05 MST
-			//   ST_WEEKDAYABBREVCOMMADELTA
+			//   st_WEEKDAYABBREVCOMMADELTA
 			//     Mon, 02 Jan 2006 15:04:05 -0700
 			//     Thu, 13 Jul 2017 08:58:40 +0100
-			//     ST_WEEKDAYABBREVCOMMADELTAZONE
+			//     st_WEEKDAYABBREVCOMMADELTAZONE
 			//       Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
 			case unicode.IsLetter(r):
 				continue
 			case r == ' ':
-				state = ST_ALPHAWS
+				state = st_ALPHAWS
 			case r == ',':
 				if i == 3 {
-					state = ST_WEEKDAYABBREVCOMMA
+					state = st_WEEKDAYABBREVCOMMA
 				} else {
-					state = ST_WEEKDAYCOMMA
+					state = st_WEEKDAYCOMMA
 				}
 			}
-		case ST_WEEKDAYCOMMA: // Starts alpha then comma
+		case st_WEEKDAYCOMMA: // Starts alpha then comma
 			// Mon, 02-Jan-06 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 MST
-			// ST_WEEKDAYCOMMADELTA
+			// st_WEEKDAYCOMMADELTA
 			//   Monday, 02 Jan 2006 15:04:05 -0700
 			//   Monday, 02 Jan 2006 15:04:05 +0100
 			switch {
@@ -458,41 +446,41 @@ iterRunes:
 				if i < 15 {
 					return parse("Monday, 02-Jan-06 15:04:05 MST", datestr, loc)
 				} else {
-					state = ST_WEEKDAYCOMMADELTA
+					state = st_WEEKDAYCOMMADELTA
 				}
 			case r == '+':
-				state = ST_WEEKDAYCOMMADELTA
+				state = st_WEEKDAYCOMMADELTA
 			}
-		case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
+		case st_WEEKDAYABBREVCOMMA: // Starts alpha then comma
 			// Mon, 02-Jan-06 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 MST
-			// ST_WEEKDAYABBREVCOMMADELTA
+			// st_WEEKDAYABBREVCOMMADELTA
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
-			//   ST_WEEKDAYABBREVCOMMADELTAZONE
+			//   st_WEEKDAYABBREVCOMMADELTAZONE
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
 			case r == '-':
 				if i < 15 {
 					return parse("Mon, 02-Jan-06 15:04:05 MST", datestr, loc)
 				} else {
-					state = ST_WEEKDAYABBREVCOMMADELTA
+					state = st_WEEKDAYABBREVCOMMADELTA
 				}
 			case r == '+':
-				state = ST_WEEKDAYABBREVCOMMADELTA
+				state = st_WEEKDAYABBREVCOMMADELTA
 			}
 
-		case ST_WEEKDAYABBREVCOMMADELTA:
-			// ST_WEEKDAYABBREVCOMMADELTA
+		case st_WEEKDAYABBREVCOMMADELTA:
+			// st_WEEKDAYABBREVCOMMADELTA
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
-			//   ST_WEEKDAYABBREVCOMMADELTAZONE
+			//   st_WEEKDAYABBREVCOMMADELTAZONE
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			if r == '(' {
-				state = ST_WEEKDAYABBREVCOMMADELTAZONE
+				state = st_WEEKDAYABBREVCOMMADELTAZONE
 			}
 
-		case ST_ALPHAWS: // Starts alpha then whitespace
+		case st_ALPHAWS: // Starts alpha then whitespace
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Jan 02 15:04:05 -0700 2006
@@ -500,47 +488,47 @@ iterRunes:
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			switch {
 			case unicode.IsLetter(r):
-				state = ST_ALPHAWSALPHA
+				state = st_ALPHAWSALPHA
 			case unicode.IsDigit(r):
-				state = ST_ALPHAWSDIGITCOMMA
+				state = st_ALPHAWSDIGITCOMMA
 			}
 
-		case ST_ALPHAWSDIGITCOMMA: // Starts Alpha, whitespace, digit, comma
+		case st_ALPHAWSDIGITCOMMA: // Starts Alpha, whitespace, digit, comma
 			// May 8, 2009 5:57:51 PM
 			return parse("Jan 2, 2006 3:04:05 PM", datestr, loc)
 
-		case ST_ALPHAWSALPHA: // Alpha, whitespace, alpha
+		case st_ALPHAWSALPHA: // Alpha, whitespace, alpha
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if r == ':' {
-				state = ST_ALPHAWSALPHACOLON
+				state = st_ALPHAWSALPHACOLON
 			}
-		case ST_ALPHAWSALPHACOLON: // Alpha, whitespace, alpha, :
+		case st_ALPHAWSALPHACOLON: // Alpha, whitespace, alpha, :
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if unicode.IsLetter(r) {
-				state = ST_ALPHAWSALPHACOLONALPHA
+				state = st_ALPHAWSALPHACOLONALPHA
 			} else if r == '-' || r == '+' {
-				state = ST_ALPHAWSALPHACOLONOFFSET
+				state = st_ALPHAWSALPHACOLONOFFSET
 			}
-		case ST_ALPHAWSALPHACOLONALPHA: // Alpha, whitespace, alpha, :, alpha
+		case st_ALPHAWSALPHACOLONALPHA: // Alpha, whitespace, alpha, :, alpha
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if r == '+' {
-				state = ST_ALPHAWSALPHACOLONALPHAOFFSET
+				state = st_ALPHAWSALPHACOLONALPHAOFFSET
 			}
-		case ST_ALPHAWSALPHACOLONALPHAOFFSET: // Alpha, whitespace, alpha, : , alpha, offset, ?
+		case st_ALPHAWSALPHACOLONALPHAOFFSET: // Alpha, whitespace, alpha, : , alpha, offset, ?
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if unicode.IsLetter(r) {
-				state = ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA
+				state = st_ALPHAWSALPHACOLONALPHAOFFSETALPHA
 			}
 		default:
 			break iterRunes
@@ -548,7 +536,7 @@ iterRunes:
 	}
 
 	switch state {
-	case ST_DIGIT:
+	case st_DIGIT:
 		// unixy timestamps ish
 		//  1499979655583057426  nanoseconds
 		//  1499979795437000     micro-seconds
@@ -578,7 +566,7 @@ iterRunes:
 				return time.Unix(secs, 0), nil
 			}
 		}
-	case ST_DIGITDASH: // starts digit then dash 02-
+	case st_DIGITDASH: // starts digit then dash 02-
 		// 2006-01-02
 		// 2006-01
 		if len(datestr) == len("2014-04-26") {
@@ -586,15 +574,15 @@ iterRunes:
 		} else if len(datestr) == len("2014-04") {
 			return parse("2006-01", datestr, loc)
 		}
-	case ST_DIGITDASHALPHA:
+	case st_DIGITDASHALPHA:
 		// 2013-Feb-03
 		return parse("2006-Jan-02", datestr, loc)
 
-	case ST_DIGITDASHTDELTA:
+	case st_DIGITDASHTDELTA:
 		// 2006-01-02T15:04:05+0000
 		return parse("2006-01-02T15:04:05-0700", datestr, loc)
 
-	case ST_DIGITDASHTDELTACOLON:
+	case st_DIGITDASHTDELTACOLON:
 		// With another +/- time-zone at end
 		// 2006-01-02T15:04:05.999999999+07:00
 		// 2006-01-02T15:04:05.999999999-07:00
@@ -606,12 +594,12 @@ iterRunes:
 		// 2006-01-02T15:04:05-07:00
 		return parse("2006-01-02T15:04:05-07:00", datestr, loc)
 
-	case ST_DIGITDASHT: // starts digit then dash 02-  then T
+	case st_DIGITDASHT: // starts digit then dash 02-  then T
 		// 2006-01-02T15:04:05.999999
 		// 2006-01-02T15:04:05.999999
 		return parse("2006-01-02T15:04:05", datestr, loc)
 
-	case ST_DIGITDASHTZDIGIT:
+	case st_DIGITDASHTZDIGIT:
 		// With a time-zone at end after Z
 		// 2006-01-02T15:04:05.999999999Z07:00
 		// 2006-01-02T15:04:05Z07:00
@@ -619,7 +607,7 @@ iterRunes:
 		// RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
 		return time.Time{}, fmt.Errorf("RFC339 Dates may not contain both Z & Offset for %q see https://github.com/golang/go/issues/5294", datestr)
 
-	case ST_DIGITDASHTZ: // starts digit then dash 02-  then T Then Z
+	case st_DIGITDASHTZ: // starts digit then dash 02-  then T Then Z
 		// 2006-01-02T15:04:05.999999999Z
 		// 2006-01-02T15:04:05.99999999Z
 		// 2006-01-02T15:04:05.9999999Z
@@ -635,19 +623,19 @@ iterRunes:
 		default:
 			return parse("2006-01-02T15:04:05Z", datestr, loc)
 		}
-	case ST_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
+	case st_DIGITDASHWS: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
 		return parse("2006-01-02 15:04:05", datestr, loc)
 
-	case ST_DIGITDASHWSWSOFFSET:
+	case st_DIGITDASHWSWSOFFSET:
 		// 2006-01-02 15:04:05 -0700
 		return parse("2006-01-02 15:04:05 -0700", datestr, loc)
 
-	case ST_DIGITDASHWSWSOFFSETCOLON:
+	case st_DIGITDASHWSWSOFFSETCOLON:
 		// 2006-01-02 15:04:05 -07:00
 		return parse("2006-01-02 15:04:05 -07:00", datestr, loc)
 
-	case ST_DIGITDASHWSWSOFFSETALPHA:
+	case st_DIGITDASHWSWSOFFSETALPHA:
 		// 2015-02-18 00:12:00 +0000 UTC
 		t, err := parse("2006-01-02 15:04:05 -0700 UTC", datestr, loc)
 		if err == nil {
@@ -655,15 +643,15 @@ iterRunes:
 		}
 		return parse("2006-01-02 15:04:05 +0000 GMT", datestr, loc)
 
-	case ST_DIGITDASHWSWSOFFSETCOLONALPHA:
+	case st_DIGITDASHWSWSOFFSETCOLONALPHA:
 		// 2015-02-18 00:12:00 +00:00 UTC
 		return parse("2006-01-02 15:04:05 -07:00 UTC", datestr, loc)
 
-	case ST_DIGITDASHWSOFFSET:
+	case st_DIGITDASHWSOFFSET:
 		// 2017-07-19 03:21:51+00:00
 		return parse("2006-01-02 15:04:05-07:00", datestr, loc)
 
-	case ST_DIGITDASHWSWSALPHA:
+	case st_DIGITDASHWSWSALPHA:
 		// 2014-12-16 06:20:00 UTC
 		t, err := parse("2006-01-02 15:04:05 UTC", datestr, loc)
 		if err == nil {
@@ -680,51 +668,51 @@ iterRunes:
 			}
 		}
 
-	case ST_DIGITDASHWSDOT:
+	case st_DIGITDASHWSDOT:
 		// 2012-08-03 18:31:59.257000000
 		// 2014-04-26 17:24:37.3186369
 		// 2017-01-27 00:07:31.945167
 		// 2016-03-14 00:00:00.000
 		return parse("2006-01-02 15:04:05", datestr, loc)
 
-	case ST_DIGITDASHWSDOTALPHA:
+	case st_DIGITDASHWSDOTALPHA:
 		// 2012-08-03 18:31:59.257000000 UTC
 		// 2014-04-26 17:24:37.3186369 UTC
 		// 2017-01-27 00:07:31.945167 UTC
 		// 2016-03-14 00:00:00.000 UTC
 		return parse("2006-01-02 15:04:05 UTC", datestr, loc)
 
-	case ST_DIGITDASHWSDOTOFFSET:
+	case st_DIGITDASHWSDOTOFFSET:
 		// 2012-08-03 18:31:59.257000000 +0000
 		// 2014-04-26 17:24:37.3186369 +0000
 		// 2017-01-27 00:07:31.945167 +0000
 		// 2016-03-14 00:00:00.000 +0000
 		return parse("2006-01-02 15:04:05 -0700", datestr, loc)
 
-	case ST_DIGITDASHWSDOTOFFSETALPHA:
+	case st_DIGITDASHWSDOTOFFSETALPHA:
 		// 2012-08-03 18:31:59.257000000 +0000 UTC
 		// 2014-04-26 17:24:37.3186369 +0000 UTC
 		// 2017-01-27 00:07:31.945167 +0000 UTC
 		// 2016-03-14 00:00:00.000 +0000 UTC
 		return parse("2006-01-02 15:04:05 -0700 UTC", datestr, loc)
 
-	case ST_ALPHAWSALPHACOLON:
+	case st_ALPHAWSALPHACOLON:
 		// Mon Jan _2 15:04:05 2006
 		return parse(time.ANSIC, datestr, loc)
 
-	case ST_ALPHAWSALPHACOLONOFFSET:
+	case st_ALPHAWSALPHACOLONOFFSET:
 		// Mon Jan 02 15:04:05 -0700 2006
 		return parse(time.RubyDate, datestr, loc)
 
-	case ST_ALPHAWSALPHACOLONALPHA:
+	case st_ALPHAWSALPHACOLONALPHA:
 		// Mon Jan _2 15:04:05 MST 2006
 		return parse(time.UnixDate, datestr, loc)
 
-	case ST_ALPHAWSALPHACOLONALPHAOFFSET:
+	case st_ALPHAWSALPHACOLONALPHAOFFSET:
 		// Mon Aug 10 15:44:11 UTC+0100 2015
 		return parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr, loc)
 
-	case ST_ALPHAWSALPHACOLONALPHAOFFSETALPHA:
+	case st_ALPHAWSALPHACOLONALPHAOFFSETALPHA:
 		// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 		if len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700") {
 			// What effing time stamp is this?
@@ -732,7 +720,7 @@ iterRunes:
 			dateTmp := datestr[:33]
 			return parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp, loc)
 		}
-	case ST_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
+	case st_DIGITSLASH: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
@@ -751,7 +739,7 @@ iterRunes:
 			}
 		}
 
-	case ST_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
+	case st_DIGITSLASHWSCOLON: // starts digit then slash 02/ more digits/slashes then whitespace
 		// 4/8/2014 22:05
 		// 04/08/2014 22:05
 		// 2014/4/8 22:05
@@ -771,7 +759,7 @@ iterRunes:
 			}
 		}
 
-	case ST_DIGITSLASHWSCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace
+	case st_DIGITSLASHWSCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace
 		// 4/8/2014 22:05 PM
 		// 04/08/2014 22:05 PM
 		// 04/08/2014 1:05 PM
@@ -795,7 +783,7 @@ iterRunes:
 			}
 		}
 
-	case ST_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case st_DIGITSLASHWSCOLONCOLON: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 2014/07/10 06:55:38.156283
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
@@ -815,7 +803,7 @@ iterRunes:
 			}
 		}
 
-	case ST_DIGITSLASHWSCOLONCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case st_DIGITSLASHWSCOLONCOLONAMPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
 		// 2014/07/10 06:55:38.156283 PM
 		// 03/19/2012 10:11:59 PM
 		// 3/1/2012 10:11:59 PM
@@ -837,20 +825,20 @@ iterRunes:
 			}
 		}
 
-	case ST_WEEKDAYCOMMADELTA:
+	case st_WEEKDAYCOMMADELTA:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
 		return parse("Monday, 02 Jan 2006 15:04:05 -0700", datestr, loc)
-	case ST_WEEKDAYABBREVCOMMA: // Starts alpha then comma
+	case st_WEEKDAYABBREVCOMMA: // Starts alpha then comma
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
 		return parse("Mon, 02 Jan 2006 15:04:05 MST", datestr, loc)
-	case ST_WEEKDAYABBREVCOMMADELTA:
+	case st_WEEKDAYABBREVCOMMADELTA:
 		// Mon, 02 Jan 2006 15:04:05 -0700
 		// Thu, 13 Jul 2017 08:58:40 +0100
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
 		return parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr, loc)
-	case ST_WEEKDAYABBREVCOMMADELTAZONE:
+	case st_WEEKDAYABBREVCOMMADELTAZONE:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 		return parse("Mon, 02 Jan 2006 15:04:05 -0700 (CEST)", datestr, loc)
 	}
