@@ -11,24 +11,25 @@ Parse any date string without knowing format in advance.  Uses a scanner to read
 
 ```go
 
-// Normal parse.  If no recognized Timezone/Offset info
-// exists in the datestring, it uses UTC.
+// Normal parse.  Equivalent Timezone rules as time.Parse()
 t, err := dateparse.ParseAny("3/1/2014")
 
-// Parse with Location.  If no recognized Timezone/Offset info
-// exists in the datestring, it uses given location. 
-// IF there IS timezone/offset info it uses the given location
-// info for any zone interpretation.  That is, MST means one thing
-// when using America/Denver and something else in other locations.
+// Parse with Location, equivalent to time.ParseInLocation() timezone/offset
+// rules.  Using location arg, if timezone/offset info exists in the 
+// datestring, it uses the given location rules for any zone interpretation.
+// That is, MST means one thing when using America/Denver and something else
+// in other locations.
 denverLoc, _ := time.LoadLocation("America/Denver")
 t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 
-// Set Location to time.Local.  Same as ParseIn Location but
-// Lazily uses a global variable for Location Info.
+// Set Location to time.Local.  Same as ParseIn Location but lazily uses
+// the global time.Local variable for Location argument.
 denverLoc, _ := time.LoadLocation("America/Denver")
 // use time.Local global variable to store location
 time.Local = denverLoc
 t, err := dateparse.ParseLocal("3/1/2014")
+// Equivalent to
+t, err := dateparse.ParseIn("3/1/2014", time.Local)
 
 ```
 

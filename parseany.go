@@ -59,7 +59,7 @@ var (
 	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 )
 
-// MustParse Parse a date, and panic if it can't be parsed
+// Parse a date, and panic if it can't be parsed
 func MustParse(datestr string) time.Time {
 	t, err := parseTime(datestr, nil)
 	if err != nil {
@@ -68,18 +68,16 @@ func MustParse(datestr string) time.Time {
 	return t
 }
 
-// ParseAny Given an unknown date format, detect the layout, parse.
+// Given an unknown date format, detect the layout, parse.
 func ParseAny(datestr string) (time.Time, error) {
 	return parseTime(datestr, nil)
 }
 
-// ParseIn Given an unknown date format, detect the layout,
-// using given location, parse.
-//
-// If no recognized Timezone/Offset info exists in the datestring, it uses
-// given location. IF there IS timezone/offset info it uses the given location
-// info for any zone interpretation.  That is, MST means one thing when using
-// America/Denver and something else in other locations.
+// Parse with Location, equivalent to time.ParseInLocation() timezone/offset
+// rules.  Using location arg, if timezone/offset info exists in the
+// datestring, it uses the given location rules for any zone interpretation.
+// That is, MST means one thing when using America/Denver and something else
+// in other locations.
 func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 	return parseTime(datestr, loc)
 }
@@ -87,10 +85,18 @@ func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 // ParseLocal Given an unknown date format, detect the layout,
 // using time.Local, parse.
 //
-// If no recognized Timezone/Offset info exists in the datestring, it uses
-// given location. IF there IS timezone/offset info it uses the given location
-// info for any zone interpretation.  That is, MST means one thing when using
-// America/Denver and something else in other locations.
+// Set Location to time.Local.  Same as ParseIn Location but lazily uses
+// the global time.Local variable for Location argument.
+//
+//     denverLoc, _ := time.LoadLocation("America/Denver")
+//     time.Local = denverLoc
+//
+//     t, err := dateparse.ParseLocal("3/1/2014")
+//
+// Equivalent to:
+//
+//     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
+//
 func ParseLocal(datestr string) (time.Time, error) {
 	return parseTime(datestr, time.Local)
 }
