@@ -41,9 +41,12 @@ func main() {
 		loc = l
 	}
 
+	zonename, _ := time.Now().In(time.Local).Zone()
+	fmt.Printf("\nYour Current time.Local zone is %v\n\n", zonename)
+
 	table := termtables.CreateTable()
 
-	table.AddHeaders("method", "Input", "Zone Source", "Timezone", "Parsed, and Output as %v")
+	table.AddHeaders("method", "Input", "Zone Source", "Parsed", "Parsed: t.In(time.UTC)")
 
 	parsers := map[string]parser{
 		"ParseAny":   parseAny,
@@ -51,34 +54,38 @@ func main() {
 		"ParseLocal": parseLocal,
 	}
 
-	zonename, _ := time.Now().In(time.Local).Zone()
 	for name, parser := range parsers {
 		time.Local = nil
-		table.AddRow(name, datestr, "Local Default", zonename, parser(datestr, nil))
+		table.AddRow(name, datestr, "time.Local = nil", parser(datestr, nil), parser(datestr, nil).In(time.UTC))
 		if timezone != "" {
-			table.AddRow(name, datestr, "timezone arg", zonename, parser(datestr, loc))
+			time.Local = loc
+			table.AddRow(name, datestr, "time.Local = timezone arg", parser(datestr, loc), parser(datestr, loc).In(time.UTC))
 		}
 		time.Local = time.UTC
-		table.AddRow(name, datestr, "UTC", "UTC", parser(datestr, time.UTC))
+		table.AddRow(name, datestr, "time.Local = time.UTC", parser(datestr, time.UTC), parser(datestr, time.UTC).In(time.UTC))
 	}
 
 	fmt.Println(table.Render())
 }
 
-type parser func(datestr string, loc *time.Location) string
+func stuff() (string, string) {
+	return "more", "stuff"
+}
 
-func parseLocal(datestr string, loc *time.Location) string {
+type parser func(datestr string, loc *time.Location) time.Time
+
+func parseLocal(datestr string, loc *time.Location) time.Time {
 	time.Local = loc
 	t, _ := dateparse.ParseLocal(datestr)
-	return t.String()
+	return t
 }
 
-func parseIn(datestr string, loc *time.Location) string {
+func parseIn(datestr string, loc *time.Location) time.Time {
 	t, _ := dateparse.ParseIn(datestr, loc)
-	return t.String()
+	return t
 }
 
-func parseAny(datestr string, loc *time.Location) string {
+func parseAny(datestr string, loc *time.Location) time.Time {
 	t, _ := dateparse.ParseAny(datestr)
-	return t.String()
+	return t
 }
