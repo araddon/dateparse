@@ -46,7 +46,7 @@ func main() {
 
 	table := termtables.CreateTable()
 
-	table.AddHeaders("method", "Input", "Zone Source", "Parsed", "Parsed: t.In(time.UTC)")
+	table.AddHeaders("method", "Zone Source", "Parsed", "Parsed: t.In(time.UTC)")
 
 	parsers := map[string]parser{
 		"ParseAny":   parseAny,
@@ -56,13 +56,13 @@ func main() {
 
 	for name, parser := range parsers {
 		time.Local = nil
-		table.AddRow(name, datestr, "time.Local = nil", parser(datestr, nil), parser(datestr, nil).In(time.UTC))
+		table.AddRow(name, "time.Local = nil", parser(datestr, nil), parser(datestr, nil).In(time.UTC))
 		if timezone != "" {
 			time.Local = loc
-			table.AddRow(name, datestr, "time.Local = timezone arg", parser(datestr, loc), parser(datestr, loc).In(time.UTC))
+			table.AddRow(name, "time.Local = timezone arg", parser(datestr, loc), parser(datestr, loc).In(time.UTC))
 		}
 		time.Local = time.UTC
-		table.AddRow(name, datestr, "time.Local = time.UTC", parser(datestr, time.UTC), parser(datestr, time.UTC).In(time.UTC))
+		table.AddRow(name, "time.Local = time.UTC", parser(datestr, time.UTC), parser(datestr, time.UTC).In(time.UTC))
 	}
 
 	fmt.Println(table.Render())
