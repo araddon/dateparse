@@ -32,6 +32,12 @@ t, err := dateparse.ParseLocal("3/1/2014")
 
 ```
 
+cli tool for testing dateformats
+----------------------------------
+
+[Date Parse CLI](https://github.com/araddon/dateparse/blob/master/dateparse)
+
+
 Extended example https://github.com/araddon/dateparse/blob/master/example/main.go
 ```go
 package main
