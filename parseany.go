@@ -25,6 +25,7 @@ const (
 	ST_START DateState = iota
 	ST_DIGIT
 	ST_DIGITDASH
+	ST_DIGITDASHALPHA
 	ST_DIGITDASHWS
 	ST_DIGITDASHWSWS
 	ST_DIGITDASHWSWSAMPMMAYBE
@@ -86,12 +87,22 @@ func ParseAny(datestr string) (time.Time, error) {
 
 // ParseIn Given an unknown date format, detect the layout,
 // using given location, parse.
+//
+// If no recognized Timezone/Offset info exists in the datestring, it uses
+// given location. IF there IS timezone/offset info it uses the given location
+// info for any zone interpretation.  That is, MST means one thing when using
+// America/Denver and something else in other locations.
 func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 	return parseTime(datestr, loc)
 }
 
 // ParseLocal Given an unknown date format, detect the layout,
 // using time.Local, parse.
+//
+// If no recognized Timezone/Offset info exists in the datestring, it uses
+// given location. IF there IS timezone/offset info it uses the given location
+// info for any zone interpretation.  That is, MST means one thing when using
+// America/Denver and something else in other locations.
 func ParseLocal(datestr string) (time.Time, error) {
 	return parseTime(datestr, time.Local)
 }
@@ -155,11 +166,17 @@ iterRunes:
 			// 2006-01-02
 			// 2013-04-01 22:43:22
 			// 2014-04-26 05:24:37 PM
+			// 2013-Feb-03
 			switch {
 			case r == ' ':
 				state = ST_DIGITDASHWS
 			case r == 'T':
 				state = ST_DIGITDASHT
+			default:
+				if unicode.IsLetter(r) {
+					state = ST_DIGITDASHALPHA
+					break iterRunes
+				}
 			}
 		case ST_DIGITDASHWS:
 			// 2013-04-01 22:43:22
@@ -569,6 +586,10 @@ iterRunes:
 		} else if len(datestr) == len("2014-04") {
 			return parse("2006-01", datestr, loc)
 		}
+	case ST_DIGITDASHALPHA:
+		// 2013-Feb-03
+		return parse("2006-Jan-02", datestr, loc)
+
 	case ST_DIGITDASHTDELTA:
 		// 2006-01-02T15:04:05+0000
 		return parse("2006-01-02T15:04:05-0700", datestr, loc)
