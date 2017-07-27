@@ -59,16 +59,8 @@ var (
 	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 )
 
-// Parse a date, and panic if it can't be parsed
-func MustParse(datestr string) time.Time {
-	t, err := parseTime(datestr, nil)
-	if err != nil {
-		panic(err.Error())
-	}
-	return t
-}
-
 // Given an unknown date format, detect the layout, parse.
+// Normal parse.  Equivalent Timezone rules as time.Parse()
 func ParseAny(datestr string) (time.Time, error) {
 	return parseTime(datestr, nil)
 }
@@ -99,6 +91,16 @@ func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 //
 func ParseLocal(datestr string) (time.Time, error) {
 	return parseTime(datestr, time.Local)
+}
+
+// Parse a date, and panic if it can't be parsed.  Used for testing.
+// Not recomended for most use-cases.
+func MustParse(datestr string) time.Time {
+	t, err := parseTime(datestr, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	return t
 }
 
 func parse(layout, datestr string, loc *time.Location) (time.Time, error) {
