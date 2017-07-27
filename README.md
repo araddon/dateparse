@@ -8,7 +8,20 @@ Parse any date string without knowing format in advance.  Uses a scanner to read
 
 **Timezones** The location your server is configured effects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
 
-See example https://github.com/araddon/dateparse/blob/master/example/main.go
+
+```go
+
+// Normal parse
+t, err := dateparse.ParseAny("3/1/2014")
+
+// Parse with Location
+denverLoc, _ := time.LoadLocation("America/Denver")
+
+t, err := dateparse.ParseIn("3/1/2014", denverLoc)
+
+```
+
+Extended example https://github.com/araddon/dateparse/blob/master/example/main.go
 ```go
 package main
 
