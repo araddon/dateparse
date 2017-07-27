@@ -7,10 +7,10 @@ import (
 	"unicode"
 )
 
-type DateState int
+type dateState int
 
 const (
-	st_START DateState = iota
+	st_START dateState = iota
 	st_DIGIT
 	st_DIGITDASH
 	st_DIGITDASHALPHA
