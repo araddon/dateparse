@@ -87,12 +87,22 @@ func ParseAny(datestr string) (time.Time, error) {
 
 // ParseIn Given an unknown date format, detect the layout,
 // using given location, parse.
+//
+// If no recognized Timezone/Offset info exists in the datestring, it uses
+// given location. IF there IS timezone/offset info it uses the given location
+// info for any zone interpretation.  That is, MST means one thing when using
+// America/Denver and something else in other locations.
 func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 	return parseTime(datestr, loc)
 }
 
 // ParseLocal Given an unknown date format, detect the layout,
 // using time.Local, parse.
+//
+// If no recognized Timezone/Offset info exists in the datestring, it uses
+// given location. IF there IS timezone/offset info it uses the given location
+// info for any zone interpretation.  That is, MST means one thing when using
+// America/Denver and something else in other locations.
 func ParseLocal(datestr string) (time.Time, error) {
 	return parseTime(datestr, time.Local)
 }
