@@ -50,7 +50,7 @@ var (
 		"2014-04-26",
 	}
 
-	DateFormatError = fmt.Errorf("Invalid Date Format")
+	ErrDateFormat = fmt.Errorf("Invalid Date Format")
 
 	timeFormats = []string{
 		// ISO 8601ish formats
@@ -87,5 +87,5 @@ func parseShotgunStyle(raw string) (time.Time, error) {
 			return t, nil
 		}
 	}
-	return time.Time{}, DateFormatError
+	return time.Time{}, ErrDateFormat
 }

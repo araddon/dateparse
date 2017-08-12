@@ -735,11 +735,10 @@ iterRunes:
 				return parse("2006/01/02", datestr, loc)
 			}
 			return parse("2006/1/2", datestr, loc)
-		} else {
-			for _, parseFormat := range shortDates {
-				if t, err := parse(parseFormat, datestr, loc); err == nil {
-					return t, nil
-				}
+		}
+		for _, parseFormat := range shortDates {
+			if t, err := parse(parseFormat, datestr, loc); err == nil {
+				return t, nil
 			}
 		}
 
