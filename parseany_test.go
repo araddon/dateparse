@@ -128,7 +128,7 @@ func TestParseInLocation(t *testing.T) {
 	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
 	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
 
-	zone, offset = ts.Zone()
+	_, offset = ts.Zone()
 	assert.Equal(t, 0, offset, "Should have found offset = 0 %v", offset)
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
