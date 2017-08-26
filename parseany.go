@@ -551,26 +551,36 @@ iterRunes:
 		//  1332151919           seconds
 		//  20140601             yyyymmdd
 		//  2014                 yyyy
+		t := time.Time{}
 		if len(datestr) > len("1499979795437000") {
 			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				return time.Unix(0, nanoSecs), nil
+				t = time.Unix(0, nanoSecs)
 			}
 		} else if len(datestr) > len("1499979795437") {
 			if microSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				return time.Unix(0, microSecs*1000), nil
+				t = time.Unix(0, microSecs*1000)
 			}
 		} else if len(datestr) > len("1332151919") {
 			if miliSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				return time.Unix(0, miliSecs*1000*1000), nil
+				t = time.Unix(0, miliSecs*1000*1000)
 			}
 		} else if len(datestr) == len("20140601") {
 			return parse("20060102", datestr, loc)
 		} else if len(datestr) == len("2014") {
 			return parse("2006", datestr, loc)
 		}
-		if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-			return time.Unix(secs, 0), nil
+		if t.IsZero() {
+			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+				t = time.Unix(secs, 0)
+			}
 		}
+		if !t.IsZero() {
+			if loc == nil {
+				return t, nil
+			}
+			return t.In(loc), nil
+		}
+
 	case stateDigitDash: // starts digit then dash 02-
 		// 2006-01-02
 		// 2006-01

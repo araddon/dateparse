@@ -511,6 +511,9 @@ func TestParse(t *testing.T) {
 	ts = MustParse("1384216367111")
 	assert.Equal(t, "2013-11-12 00:32:47.111 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, _ = ParseIn("1384216367111", time.UTC)
+	assert.Equal(t, "2013-11-12 00:32:47.111 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("1384216367111222")
 	assert.Equal(t, "2013-11-12 00:32:47.111222 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
