@@ -8,61 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-/*
-	ANSIC       = "Mon Jan _2 15:04:05 2006"         x
-	UnixDate    = "Mon Jan _2 15:04:05 MST 2006"     x
-	RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"    x
-	RFC822      = "02 Jan 06 15:04 MST"               x
-	RFC822Z     = "02 Jan 06 15:04 -0700" // RFC822 with numeric zone
-	RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-	RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-	RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
-	RFC3339     = "2006-01-02T15:04:05Z07:00"
-	RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
-	Kitchen     = "3:04PM"
-	// Handy time stamps.
-	Stamp      = "Jan _2 15:04:05"
-	StampMilli = "Jan _2 15:04:05.000"
-	StampMicro = "Jan _2 15:04:05.000000"
-	StampNano  = "Jan _2 15:04:05.000000000"
-
-	// unix etc
-	1398045032   time.Now().Unix()
-	1398045078199135196   time.Now().UnixNano()
-
-	// Others
-	"May 8, 2009 5:57:51 PM"
-
-
-	Apr 7, 2014 4:58:55 PM
-	2014/07/10 06:55:38.156283
-	03/19/2012 10:11:59
-	04/2/2014 03:00:37
-	3/1/2014
-	10/13/2014
-	01/02/2006
-
-	20140601
-
-	2016-03-14 00:00:00.000
-	2006-01-02
-	2014-05-11 08:20:13,787   // i couldn't find parser for this in go?
-
-	// only day or year level resolution
-	2006-01
-	2006
-
-*/
-func testDidPanic(datestr string) (paniced bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			paniced = true
-		}
-	}()
-	MustParse(datestr)
-	return false
-}
-
 // Lets test to see how this performs using different Timezones/Locations
 // Also of note, try changing your server/machine timezones and repeat
 //
@@ -523,4 +468,14 @@ func TestParse(t *testing.T) {
 
 	_, err = ParseAny("138421636711122233311111") // too many digits
 	assert.NotEqual(t, nil, err)
+}
+
+func testDidPanic(datestr string) (paniced bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			paniced = true
+		}
+	}()
+	MustParse(datestr)
+	return false
 }

@@ -1,3 +1,6 @@
+// Package dateparse parses date-strings without knowing the format
+// in advance, using a fast lex based approach to eliminate shotgun
+// attempts.  It leans towards US style dates when there is a conflict.
 package dateparse
 
 import (
