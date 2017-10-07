@@ -574,7 +574,12 @@ iterRunes:
 		}
 		if t.IsZero() {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				t = time.Unix(secs, 0)
+				if secs < 0 {
+					// Now, for unix-seconds we aren't going to guess a lot
+					// nothing before unix-epoch
+				} else {
+					t = time.Unix(secs, 0)
+				}
 			}
 		}
 		if !t.IsZero() {

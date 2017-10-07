@@ -468,6 +468,9 @@ func TestParse(t *testing.T) {
 
 	_, err = ParseAny("138421636711122233311111") // too many digits
 	assert.NotEqual(t, nil, err)
+
+	_, err = ParseAny("-1314")
+	assert.NotEqual(t, nil, err)
 }
 
 func testDidPanic(datestr string) (paniced bool) {
