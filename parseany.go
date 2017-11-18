@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 type dateState int
@@ -41,6 +42,8 @@ const (
 	stateDigitSlashWSColonAMPM
 	stateDigitSlashWSColonColon
 	stateDigitSlashWSColonColonAMPM
+	stateDigitChineseYear
+	stateDigitChineseYearWs
 	stateDigitAlpha
 	stateAlpha
 	stateAlphaWS
@@ -124,11 +127,11 @@ func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 	// we figure it out and then attempt a parse
 iterRunes:
 	for i := 0; i < len(datestr); i++ {
-		r := rune(datestr[i])
-		// r, bytesConsumed := utf8.DecodeRuneInString(datestr[ri:])
-		// if bytesConsumed > 1 {
-		// 	ri += (bytesConsumed - 1)
-		// }
+		//r := rune(datestr[i])
+		r, bytesConsumed := utf8.DecodeRuneInString(datestr[i:])
+		if bytesConsumed > 1 {
+			i += (bytesConsumed - 1)
+		}
 
 		switch state {
 		case stateStart:
@@ -141,6 +144,11 @@ iterRunes:
 			if unicode.IsDigit(r) {
 				continue
 			} else if unicode.IsLetter(r) {
+				if r == '年' {
+					// Chinese Year
+					state = stateDigitChineseYear
+					continue
+				}
 				state = stateDigitAlpha
 				continue
 			}
@@ -404,6 +412,15 @@ iterRunes:
 			switch r {
 			case 'A', 'P':
 				state = stateDigitSlashWSColonColonAMPM
+			}
+		case stateDigitChineseYear:
+			// stateDigitChineseYear
+			//   2014年04月08日
+			//               weekday  %Y年%m月%e日 %A %I:%M %p
+			// 2013年07月18日 星期四 10:27 上午
+			if r == ' ' {
+				state = stateDigitChineseYearWs
+				break
 			}
 		case stateDigitAlpha:
 			// 12 Feb 2006, 19:17
@@ -849,7 +866,12 @@ iterRunes:
 				}
 			}
 		}
-
+	case stateDigitChineseYear:
+		// stateDigitChineseYear
+		//   2014年04月08日
+		return parse("2006年01月02日", datestr, loc)
+	case stateDigitChineseYearWs:
+		return parse("2006年01月02日 15:04:05", datestr, loc)
 	case stateWeekdayCommaOffset:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100

@@ -14,7 +14,7 @@ import (
 // !!!!! The time-zone of local machine effects the results!
 // https://play.golang.org/p/IDHRalIyXh
 // https://github.com/golang/go/issues/18012
-func TestParseInLocation(t *testing.T) {
+func TestInLocation(t *testing.T) {
 
 	denverLoc, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
@@ -179,6 +179,15 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("2013-Feb-03")
 	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//---------------------------------------------
+	// Chinese 2014年04月18日
+
+	ts = MustParse("2014年04月08日")
+	assert.Equal(t, "2014-04-08 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2014年04月08日 19:17:22")
+	assert.Equal(t, "2014-04-08 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//---------------------------------------------
 	//   mm/dd/yyyy ?
