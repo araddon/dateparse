@@ -668,7 +668,13 @@ iterRunes:
 		}
 	case stateDigitDashWs: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
-		return parse("2006-01-02 15:04:05", datestr, loc)
+		// 2013-04-01 22:43
+		switch len(datestr) {
+		case len("2013-04-01 22:43"):
+			return parse("2006-01-02 15:04", datestr, loc)
+		default:
+			return parse("2006-01-02 15:04:05", datestr, loc)
+		}
 
 	case stateDigitDashWsWsOffset:
 		// 2006-01-02 15:04:05 -0700
