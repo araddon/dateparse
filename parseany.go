@@ -487,6 +487,7 @@ iterRunes:
 			// stateWeekdayAbbrevCommaOffset
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   Thu, 4 Jan 2018 17:53:36 +0000
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
@@ -503,6 +504,7 @@ iterRunes:
 			// stateWeekdayAbbrevCommaOffset
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   Thu, 4 Jan 2018 17:53:36 +0000
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			if r == '(' {
@@ -890,6 +892,12 @@ iterRunes:
 		// Mon, 02 Jan 2006 15:04:05 -0700
 		// Thu, 13 Jul 2017 08:58:40 +0100
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
+		//
+		// Thu, 4 Jan 2018 17:53:36 +0000
+		if len(datestr) > 10 && datestr[6] == ' ' {
+			// this really appears to be an invalid RFC1123 with non zero filled day
+			return parse("Mon, 2 Jan 2006 15:04:05 -0700", datestr, loc)
+		}
 		return parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr, loc)
 	case stateWeekdayAbbrevCommaOffsetZone:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
