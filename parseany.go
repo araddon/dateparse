@@ -8,7 +8,14 @@ import (
 	"strconv"
 	"time"
 	"unicode"
+
+	u "github.com/araddon/gou"
 )
+
+func init() {
+	u.SetupLogging("debug")
+	u.SetColorOutput()
+}
 
 type dateState int
 
@@ -35,6 +42,8 @@ const (
 	stateDigitDashTZDigit
 	stateDigitDashTOffset
 	stateDigitDashTOffsetColon
+	stateDigitDot
+	stateDigitDotDot
 	stateDigitSlash
 	stateDigitSlashWS
 	stateDigitSlashWSColon
@@ -116,7 +125,8 @@ func parse(layout, datestr string, loc *time.Location) (time.Time, error) {
 func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 	state := stateStart
 
-	firstSlash := 0
+	part1Len := 0
+	part2Len := 0
 
 	// General strategy is to read rune by rune through the date looking for
 	// certain hints of what type of date we are dealing with.
@@ -149,7 +159,10 @@ iterRunes:
 				state = stateDigitDash
 			case '/':
 				state = stateDigitSlash
-				firstSlash = i
+				part1Len = i
+			case '.':
+				state = stateDigitDot
+				part1Len = i
 			}
 		case stateDigitDash: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
@@ -411,6 +424,14 @@ iterRunes:
 			case len(datestr) == len("02 Jan 2006, 15:04:05"):
 				return parse("02 Jan 2006, 15:04:05", datestr, loc)
 			}
+		case stateDigitDot:
+			// 3.31.2014
+			if r == '.' {
+				state = stateDigitDotDot
+				part2Len = i
+			}
+		case stateDigitDotDot:
+			// iterate all the way through
 		case stateAlpha: // starts alpha
 			// stateAlphaWS
 			//  Mon Jan _2 15:04:05 2006
@@ -719,6 +740,26 @@ iterRunes:
 		// 2016-03-14 00:00:00.000 +0000 UTC
 		return parse("2006-01-02 15:04:05 -0700 UTC", datestr, loc)
 
+	case stateDigitDotDot:
+
+		//u.Infof("%s lty?%v", datestr, len(datestr)-part2Len)
+		switch {
+		case len(datestr) == len("01.02.2006"):
+			return parse("01.02.2006", datestr, loc)
+		case len(datestr)-part2Len == 3:
+			for _, layout := range []string{"01.02.06", "1.02.06", "01.2.06", "1.2.06"} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		default:
+			for _, layout := range []string{"1.02.2006", "01.2.2006", "1.2.2006"} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		}
+
 	case stateAlphaWSAlphaColon:
 		// Mon Jan _2 15:04:05 2006
 		return parse(time.ANSIC, datestr, loc)
@@ -748,7 +789,7 @@ iterRunes:
 		// 10/13/2014
 		// 01/02/2006
 		// 2014/10/13
-		if firstSlash == 4 {
+		if part1Len == 4 {
 			if len(datestr) == len("2006/01/02") {
 				return parse("2006/01/02", datestr, loc)
 			}
@@ -766,7 +807,7 @@ iterRunes:
 		// 2014/4/8 22:05
 		// 2014/04/08 22:05
 
-		if firstSlash == 4 {
+		if part1Len == 4 {
 			for _, layout := range []string{"2006/01/02 15:04", "2006/1/2 15:04", "2006/01/2 15:04", "2006/1/02 15:04"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
@@ -787,7 +828,7 @@ iterRunes:
 		// 2014/4/8 22:05 PM
 		// 2014/04/08 22:05 PM
 
-		if firstSlash == 4 {
+		if part1Len == 4 {
 			for _, layout := range []string{"2006/01/02 03:04 PM", "2006/01/2 03:04 PM", "2006/1/02 03:04 PM", "2006/1/2 03:04 PM",
 				"2006/01/02 3:04 PM", "2006/01/2 3:04 PM", "2006/1/02 3:04 PM", "2006/1/2 3:04 PM"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
@@ -810,7 +851,7 @@ iterRunes:
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
-		if firstSlash == 4 {
+		if part1Len == 4 {
 			for _, layout := range []string{"2006/01/02 15:04:05", "2006/1/02 15:04:05", "2006/01/2 15:04:05", "2006/1/2 15:04:05"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
@@ -831,7 +872,7 @@ iterRunes:
 		// 03/1/2012 10:11:59 PM
 		// 3/01/2012 10:11:59 PM
 
-		if firstSlash == 4 {
+		if part1Len == 4 {
 			for _, layout := range []string{"2006/01/02 03:04:05 PM", "2006/1/02 03:04:05 PM", "2006/01/2 03:04:05 PM", "2006/1/2 03:04:05 PM",
 				"2006/01/02 3:04:05 PM", "2006/1/02 3:04:05 PM", "2006/01/2 3:04:05 PM", "2006/1/2 3:04:05 PM"} {
 				if t, err := parse(layout, datestr, loc); err == nil {

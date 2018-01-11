@@ -443,6 +443,21 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2016-06-21T19:55:00.799+0100")
 	assert.Equal(t, "2016-06-21 18:55:00.799 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	//---------------------------------------------
+	//   mm.dd.yyyy
+	//   mm.dd.yy
+
+	ts = MustParse("3.31.2014")
+	assert.Equal(t, "2014-03-31 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("03.31.2014")
+	assert.Equal(t, "2014-03-31 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("08.21.71")
+	assert.Equal(t, "1971-08-21 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//---------------------------------------------
+
 	//  yyyymmdd and similar
 	ts = MustParse("2014")
 	assert.Equal(t, "2014-01-01 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
