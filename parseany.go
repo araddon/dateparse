@@ -8,14 +8,8 @@ import (
 	"strconv"
 	"time"
 	"unicode"
-
-	u "github.com/araddon/gou"
+	"unicode/utf8"
 )
-
-func init() {
-	u.SetupLogging("debug")
-	u.SetColorOutput()
-}
 
 type dateState int
 
@@ -50,6 +44,8 @@ const (
 	stateDigitSlashWSColonAMPM
 	stateDigitSlashWSColonColon
 	stateDigitSlashWSColonColonAMPM
+	stateDigitChineseYear
+	stateDigitChineseYearWs
 	stateDigitAlpha
 	stateAlpha
 	stateAlphaWS
@@ -134,11 +130,11 @@ func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 	// we figure it out and then attempt a parse
 iterRunes:
 	for i := 0; i < len(datestr); i++ {
-		r := rune(datestr[i])
-		// r, bytesConsumed := utf8.DecodeRuneInString(datestr[ri:])
-		// if bytesConsumed > 1 {
-		// 	ri += (bytesConsumed - 1)
-		// }
+		//r := rune(datestr[i])
+		r, bytesConsumed := utf8.DecodeRuneInString(datestr[i:])
+		if bytesConsumed > 1 {
+			i += (bytesConsumed - 1)
+		}
 
 		switch state {
 		case stateStart:
@@ -151,6 +147,11 @@ iterRunes:
 			if unicode.IsDigit(r) {
 				continue
 			} else if unicode.IsLetter(r) {
+				if r == '年' {
+					// Chinese Year
+					state = stateDigitChineseYear
+					continue
+				}
 				state = stateDigitAlpha
 				continue
 			}
@@ -387,6 +388,7 @@ iterRunes:
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
+			// 4/8/14 22:05
 			switch r {
 			case ':':
 				state = stateDigitSlashWSColon
@@ -397,6 +399,7 @@ iterRunes:
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
+			// 4/8/14 22:05
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case ':':
@@ -410,10 +413,20 @@ iterRunes:
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
+			// 4/8/14 22:05
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case 'A', 'P':
 				state = stateDigitSlashWSColonColonAMPM
+			}
+		case stateDigitChineseYear:
+			// stateDigitChineseYear
+			//   2014年04月08日
+			//               weekday  %Y年%m月%e日 %A %I:%M %p
+			// 2013年07月18日 星期四 10:27 上午
+			if r == ' ' {
+				state = stateDigitChineseYearWs
+				break
 			}
 		case stateDigitAlpha:
 			// 12 Feb 2006, 19:17
@@ -488,6 +501,7 @@ iterRunes:
 			// stateWeekdayAbbrevCommaOffset
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   Thu, 4 Jan 2018 17:53:36 +0000
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
@@ -504,6 +518,7 @@ iterRunes:
 			// stateWeekdayAbbrevCommaOffset
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
+			//   Thu, 4 Jan 2018 17:53:36 +0000
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			if r == '(' {
@@ -669,7 +684,13 @@ iterRunes:
 		}
 	case stateDigitDashWs: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
-		return parse("2006-01-02 15:04:05", datestr, loc)
+		// 2013-04-01 22:43
+		switch len(datestr) {
+		case len("2013-04-01 22:43"):
+			return parse("2006-01-02 15:04", datestr, loc)
+		default:
+			return parse("2006-01-02 15:04:05", datestr, loc)
+		}
 
 	case stateDigitDashWsWsOffset:
 		// 2006-01-02 15:04:05 -0700
@@ -814,7 +835,7 @@ iterRunes:
 				}
 			}
 		} else {
-			for _, layout := range []string{"01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04"} {
+			for _, layout := range []string{"01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04", "1/2/06 15:04", "01/02/06 15:04"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
@@ -851,6 +872,7 @@ iterRunes:
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
+		// 4/8/14 22:05
 		if part1Len == 4 {
 			for _, layout := range []string{"2006/01/02 15:04:05", "2006/1/02 15:04:05", "2006/01/2 15:04:05", "2006/1/2 15:04:05"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
@@ -886,7 +908,12 @@ iterRunes:
 				}
 			}
 		}
-
+	case stateDigitChineseYear:
+		// stateDigitChineseYear
+		//   2014年04月08日
+		return parse("2006年01月02日", datestr, loc)
+	case stateDigitChineseYearWs:
+		return parse("2006年01月02日 15:04:05", datestr, loc)
 	case stateWeekdayCommaOffset:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
@@ -899,6 +926,12 @@ iterRunes:
 		// Mon, 02 Jan 2006 15:04:05 -0700
 		// Thu, 13 Jul 2017 08:58:40 +0100
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
+		//
+		// Thu, 4 Jan 2018 17:53:36 +0000
+		if len(datestr) > 10 && datestr[6] == ' ' {
+			// this really appears to be an invalid RFC1123 with non zero filled day
+			return parse("Mon, 2 Jan 2006 15:04:05 -0700", datestr, loc)
+		}
 		return parse("Mon, 02 Jan 2006 15:04:05 -0700", datestr, loc)
 	case stateWeekdayAbbrevCommaOffsetZone:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)

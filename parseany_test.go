@@ -14,7 +14,7 @@ import (
 // !!!!! The time-zone of local machine effects the results!
 // https://play.golang.org/p/IDHRalIyXh
 // https://github.com/golang/go/issues/18012
-func TestParseInLocation(t *testing.T) {
+func TestInLocation(t *testing.T) {
 
 	denverLoc, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
@@ -170,6 +170,9 @@ func TestParse(t *testing.T) {
 	ts = MustParse("Mon, 02 Jan 2006 15:04:05 -0700")
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("Thu, 4 Jan 2018 17:53:36 +0000")
+	assert.Equal(t, "2018-01-04 17:53:36 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	// not sure if this is anything close to a standard, never seen it before
 	ts = MustParse("12 Feb 2006, 19:17")
 	assert.Equal(t, "2006-02-12 19:17:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -179,6 +182,15 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("2013-Feb-03")
 	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	//---------------------------------------------
+	// Chinese 2014年04月18日
+
+	ts = MustParse("2014年04月08日")
+	assert.Equal(t, "2014-04-08 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2014年04月08日 19:17:22")
+	assert.Equal(t, "2014-04-08 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//---------------------------------------------
 	//   mm/dd/yyyy ?
@@ -199,9 +211,17 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("4/8/2014 22:05")
 	assert.Equal(t, "2014-04-08 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
+	ts = MustParse("4/18/2014 22:05")
+	assert.Equal(t, "2014-04-18 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 	ts = MustParse("04/08/2014 22:05")
 	assert.Equal(t, "2014-04-08 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("4/8/14 22:05")
+	assert.Equal(t, "2014-04-08 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("4/18/14 22:05")
+	assert.Equal(t, "2014-04-18 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("10/18/14 22:05")
+	assert.Equal(t, "2014-10-18 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("04/2/2014 4:00:51")
 	assert.Equal(t, "2014-04-02 04:00:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -347,6 +367,9 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("2012-08-03 18:31:59.257000000")
 	assert.Equal(t, "2012-08-03 18:31:59.257 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2013-04-01 22:43")
+	assert.Equal(t, "2013-04-01 22:43:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2013-04-01 22:43:22")
 	assert.Equal(t, "2013-04-01 22:43:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))

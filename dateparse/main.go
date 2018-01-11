@@ -56,13 +56,13 @@ func main() {
 
 	for name, parser := range parsers {
 		time.Local = nil
-		table.AddRow(name, "time.Local = nil", parser(datestr, nil), parser(datestr, nil).In(time.UTC))
+		table.AddRow(name, "time.Local = nil", parser(datestr, nil, false), parser(datestr, nil, true))
 		if timezone != "" {
 			time.Local = loc
-			table.AddRow(name, "time.Local = timezone arg", parser(datestr, loc), parser(datestr, loc).In(time.UTC))
+			table.AddRow(name, "time.Local = timezone arg", parser(datestr, loc, false), parser(datestr, loc, true))
 		}
 		time.Local = time.UTC
-		table.AddRow(name, "time.Local = time.UTC", parser(datestr, time.UTC), parser(datestr, time.UTC).In(time.UTC))
+		table.AddRow(name, "time.Local = time.UTC", parser(datestr, time.UTC, false), parser(datestr, time.UTC, true))
 	}
 
 	fmt.Println(table.Render())
@@ -72,20 +72,38 @@ func stuff() (string, string) {
 	return "more", "stuff"
 }
 
-type parser func(datestr string, loc *time.Location) time.Time
+type parser func(datestr string, loc *time.Location, utc bool) string
 
-func parseLocal(datestr string, loc *time.Location) time.Time {
+func parseLocal(datestr string, loc *time.Location, utc bool) string {
 	time.Local = loc
-	t, _ := dateparse.ParseLocal(datestr)
-	return t
+	t, err := dateparse.ParseLocal(datestr)
+	if err != nil {
+		return err.Error()
+	}
+	if utc {
+		return t.In(time.UTC).String()
+	}
+	return t.String()
 }
 
-func parseIn(datestr string, loc *time.Location) time.Time {
-	t, _ := dateparse.ParseIn(datestr, loc)
-	return t
+func parseIn(datestr string, loc *time.Location, utc bool) string {
+	t, err := dateparse.ParseIn(datestr, loc)
+	if err != nil {
+		return err.Error()
+	}
+	if utc {
+		return t.In(time.UTC).String()
+	}
+	return t.String()
 }
 
-func parseAny(datestr string, loc *time.Location) time.Time {
-	t, _ := dateparse.ParseAny(datestr)
-	return t
+func parseAny(datestr string, loc *time.Location, utc bool) string {
+	t, err := dateparse.ParseAny(datestr)
+	if err != nil {
+		return err.Error()
+	}
+	if utc {
+		return t.In(time.UTC).String()
+	}
+	return t.String()
 }
