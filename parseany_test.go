@@ -183,6 +183,12 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2013-Feb-03")
 	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("03 February 2013")
+	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("3 February 2013")
+	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	//---------------------------------------------
 	// Chinese 2014年04月18日
 

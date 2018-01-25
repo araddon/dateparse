@@ -46,7 +46,8 @@ const (
 	stateDigitSlashWSColonColonAMPM
 	stateDigitChineseYear
 	stateDigitChineseYearWs
-	stateDigitAlpha
+	stateDigitWs
+	stateDigitWsAlphaComma
 	stateAlpha
 	stateAlphaWS
 	stateAlphaWSDigitComma
@@ -150,10 +151,7 @@ iterRunes:
 				if r == '年' {
 					// Chinese Year
 					state = stateDigitChineseYear
-					continue
 				}
-				state = stateDigitAlpha
-				continue
 			}
 			switch r {
 			case '-', '\u2212':
@@ -164,7 +162,11 @@ iterRunes:
 			case '.':
 				state = stateDigitDot
 				part1Len = i
+			case ' ':
+				state = stateDigitWs
+				part1Len = i
 			}
+
 		case stateDigitDash: // starts digit then dash 02-
 			// 2006-01-02T15:04:05Z07:00
 			// 2017-06-25T17:46:57.45706582-07:00
@@ -419,6 +421,16 @@ iterRunes:
 			case 'A', 'P':
 				state = stateDigitSlashWSColonColonAMPM
 			}
+
+		case stateDigitWs:
+			// 18 January 2018
+			// 8 January 2018
+			// 12 Feb 2006, 19:17
+			// 12 Feb 2006, 19:17:22
+			if r == ',' {
+				state = stateDigitWsAlphaComma
+			}
+
 		case stateDigitChineseYear:
 			// stateDigitChineseYear
 			//   2014年04月08日
@@ -427,15 +439,6 @@ iterRunes:
 			if r == ' ' {
 				state = stateDigitChineseYearWs
 				break
-			}
-		case stateDigitAlpha:
-			// 12 Feb 2006, 19:17
-			// 12 Feb 2006, 19:17:22
-			switch {
-			case len(datestr) == len("02 Jan 2006, 15:04"):
-				return parse("02 Jan 2006, 15:04", datestr, loc)
-			case len(datestr) == len("02 Jan 2006, 15:04:05"):
-				return parse("02 Jan 2006, 15:04:05", datestr, loc)
 			}
 		case stateDigitDot:
 			// 3.31.2014
@@ -781,6 +784,22 @@ iterRunes:
 			}
 		}
 
+	case stateDigitWs:
+		// 18 January 2018
+		// 8 January 2018
+		if part1Len == 1 {
+			return parse("2 January 2006", datestr, loc)
+		}
+		return parse("02 January 2006", datestr, loc)
+	case stateDigitWsAlphaComma:
+		// 12 Feb 2006, 19:17
+		// 12 Feb 2006, 19:17:22
+		switch {
+		case len(datestr) == len("02 Jan 2006, 15:04"):
+			return parse("02 Jan 2006, 15:04", datestr, loc)
+		case len(datestr) == len("02 Jan 2006, 15:04:05"):
+			return parse("02 Jan 2006, 15:04:05", datestr, loc)
+		}
 	case stateAlphaWSAlphaColon:
 		// Mon Jan _2 15:04:05 2006
 		return parse(time.ANSIC, datestr, loc)
