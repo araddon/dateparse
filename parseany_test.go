@@ -121,6 +121,10 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("May 8, 2009 5:57:51 PM")
 	assert.Equal(t, "2009-05-08 17:57:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("May 8, 2009 5:57:1 PM")
+	assert.Equal(t, "2009-05-08 17:57:01 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("May 8, 2009 5:7:51 PM")
+	assert.Equal(t, "2009-05-08 17:07:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
 	ts = MustParse("Mon Jan  2 15:04:05 2006")
@@ -143,6 +147,10 @@ func TestParse(t *testing.T) {
 	//   Monday, 02 Jan 2006 15:04:05 +0100
 	ts = MustParse("Monday, 02 Jan 2006 15:04:05 +0100")
 	assert.Equal(t, "2006-01-02 14:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Monday, 02 Jan 2006 15:04:5 +0100")
+	assert.Equal(t, "2006-01-02 14:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Monday, 02 Jan 2006 15:4:05 +0100")
+	assert.Equal(t, "2006-01-02 14:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 	ts = MustParse("Monday, 02 Jan 2006 15:04:05 -0100")
 	assert.Equal(t, "2006-01-02 16:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -158,6 +166,12 @@ func TestParse(t *testing.T) {
 	ts = MustParse("Mon, 02 Jan 2006 15:04:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("Mon, 2 Jan 2006 15:4:05 MST")
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("Mon, 2 Jan 2006 15:4:5 MST")
+	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("Mon, 02-Jan-06 15:04:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -168,6 +182,10 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2017-07-13 07:58:40 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Mon, 02 Jan 2006 15:04:05 -0700")
+	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Mon, 02 Jan 2006 15:4:05 -0700")
+	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Mon, 02 Jan 2006 15:4:5 -0700")
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Thu, 4 Jan 2018 17:53:36 +0000")
@@ -274,6 +292,9 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2014/4/8 22:05")
 	assert.Equal(t, "2014-04-08 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("2014/4/8 2:05")
+	assert.Equal(t, "2014-04-08 02:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("2014/04/08 22:05")
 	assert.Equal(t, "2014-04-08 22:05:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -321,6 +342,9 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2009-08-12T22:15:09-07:00")
 	assert.Equal(t, "2009-08-13 05:15:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("2009-08-12T22:15:9-07:00")
+	assert.Equal(t, "2009-08-13 05:15:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("2009-08-12T22:15:09.123-07:00")
 	assert.Equal(t, "2009-08-13 05:15:09.123 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)), "%v", ts.In(time.UTC))
 
@@ -337,6 +361,9 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2009-08-12 22:15:09.9999 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2009-08-12T22:15:09.99999999Z")
+	assert.Equal(t, "2009-08-12 22:15:09.99999999 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2009-08-12T22:15:9.99999999Z")
 	assert.Equal(t, "2009-08-12 22:15:09.99999999 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// https://github.com/golang/go/issues/5294
@@ -363,6 +390,15 @@ func TestParse(t *testing.T) {
 
 	//                  2015-06-25 01:25:37.115208593 +0000 UTC
 	ts = MustParse("2012-08-03 18:31:59.257000000 +0000 UTC")
+	assert.Equal(t, "2012-08-03 18:31:59.257 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2012-08-03 8:1:59.257000000 +0000 UTC")
+	assert.Equal(t, "2012-08-03 08:01:59.257 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2012-8-03 18:31:59.257000000 +0000 UTC")
+	assert.Equal(t, "2012-08-03 18:31:59.257 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("2012-8-3 18:31:59.257000000 +0000 UTC")
 	assert.Equal(t, "2012-08-03 18:31:59.257 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2015-09-30 18:48:56.35272715 +0000 UTC")
