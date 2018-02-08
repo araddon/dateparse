@@ -47,7 +47,10 @@ const (
 	stateDigitChineseYear
 	stateDigitChineseYearWs
 	stateDigitWs
-	stateDigitWsAlphaComma
+	stateDigitWsMoShort
+	stateDigitWsMoShortColon
+	stateDigitWsMoShortColonColon
+	stateDigitWsMoShortComma
 	stateAlpha
 	stateAlphaWS
 	stateAlphaWSDigitComma
@@ -425,10 +428,43 @@ iterRunes:
 		case stateDigitWs:
 			// 18 January 2018
 			// 8 January 2018
-			// 12 Feb 2006, 19:17
-			// 12 Feb 2006, 19:17:22
-			if r == ',' {
-				state = stateDigitWsAlphaComma
+			//stateDigitWsMoShort
+			//   02 Jan 2018 23:59
+			//   02 Jan 2018 23:59:34
+			// stateDigitWsMoShortComma
+			//   12 Feb 2006, 19:17
+			//   12 Feb 2006, 19:17:22
+			if r == ' ' {
+				if i <= part1Len+len(" Feb") {
+					state = stateDigitWsMoShort
+				} else {
+					break iterRunes
+				}
+			}
+		case stateDigitWsMoShort:
+			// 18 January 2018
+			// 8 January 2018
+			// stateDigitWsMoShort
+			//  stateDigitWsMoShortColon
+			//    02 Jan 2018 23:59
+			//   stateDigitWsMoShortComma
+			//    12 Feb 2006, 19:17
+			//    12 Feb 2006, 19:17:22
+			switch r {
+			case ':':
+				state = stateDigitWsMoShortColon
+			case ',':
+				state = stateDigitWsMoShortComma
+			}
+		case stateDigitWsMoShortColon:
+			//  02 Jan 2018 23:59
+			//  stateDigitWsMoShortColonColon
+			//    02 Jan 2018 23:59:45
+
+			switch r {
+			case ':':
+				state = stateDigitWsMoShortColonColon
+				break iterRunes
 			}
 
 		case stateDigitChineseYear:
@@ -965,7 +1001,6 @@ iterRunes:
 			}
 		}
 
-
 	case stateDigitDashWsWsOffsetColonAlpha:
 		// 2015-02-18 00:12:00 +00:00 UTC
 		for _, layout := range []string{
@@ -1056,7 +1091,6 @@ iterRunes:
 				return t, nil
 			}
 		}
-
 
 		if len(datestr) > len("2006-01-02 03:04:05") {
 			t, err := parse("2006-01-02 03:04:05", datestr[:len("2006-01-02 03:04:05")], loc)
@@ -1178,8 +1212,6 @@ iterRunes:
 		}
 
 	case stateDigitDotDot:
-
-		//u.Infof("%s lty?%v", datestr, len(datestr)-part2Len)
 		switch {
 		case len(datestr) == len("01.02.2006"):
 			return parse("01.02.2006", datestr, loc)
@@ -1204,7 +1236,55 @@ iterRunes:
 			return parse("2 January 2006", datestr, loc)
 		}
 		return parse("02 January 2006", datestr, loc)
-	case stateDigitWsAlphaComma:
+		// 02 Jan 2018 23:59
+	case stateDigitWsMoShortColon:
+		// 2 Jan 2018 23:59
+		// 02 Jan 2018 23:59
+		if part1Len == 1 {
+			for _, layout := range []string{
+				"2 Jan 2006 15:04",
+				"2 Jan 2006 15:4",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		}
+
+		for _, layout := range []string{
+			"02 Jan 2006 15:04",
+			"02 Jan 2006 15:4",
+		} {
+			if t, err := parse(layout, datestr, loc); err == nil {
+				return t, nil
+			}
+		}
+	case stateDigitWsMoShortColonColon:
+		// 02 Jan 2018 23:59:45
+		if part1Len == 1 {
+			for _, layout := range []string{
+				"2 Jan 2006 15:04:05",
+				"2 Jan 2006 15:04:5",
+				"2 Jan 2006 15:4:5",
+				"2 Jan 2006 15:4:05",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		}
+		for _, layout := range []string{
+			"2 Jan 2006 15:04:05",
+			"2 Jan 2006 15:04:5",
+			"2 Jan 2006 15:4:5",
+			"2 Jan 2006 15:4:05",
+		} {
+			if t, err := parse(layout, datestr, loc); err == nil {
+				return t, nil
+			}
+		}
+
+	case stateDigitWsMoShortComma:
 		// 12 Feb 2006, 19:17
 		// 12 Feb 2006, 19:17:22
 		for _, layout := range []string{
@@ -1280,7 +1360,7 @@ iterRunes:
 				}
 			}
 		} else {
-			for _, layout := range []string{"01/02/2006 15:4", "01/2/2006 15:4", "1/02/2006 15:4", "1/2/2006 15:4", "1/2/06 15:4", "01/02/06 15:4","01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04", "1/2/06 15:04", "01/02/06 15:04"} {
+			for _, layout := range []string{"01/02/2006 15:4", "01/2/2006 15:4", "1/02/2006 15:4", "1/2/2006 15:4", "1/2/06 15:4", "01/02/06 15:4", "01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04", "1/2/06 15:04", "01/02/06 15:04"} {
 				if t, err := parse(layout, datestr, loc); err == nil {
 					return t, nil
 				}
@@ -1402,7 +1482,7 @@ iterRunes:
 			"Mon, _2 Jan 2006 15:04:5 MST",
 			"Mon, _2 Jan 2006 15:4:5 MST",
 			"Mon, _2 Jan 2006 15:4:05 MST",
-			} {
+		} {
 			if t, err := parse(layout, datestr, loc); err == nil {
 				return t, nil
 			}
