@@ -61,8 +61,10 @@ const (
 	stateAlphaWSAlphaColonAlphaOffset
 	stateAlphaWSAlphaColonAlphaOffsetAlpha
 	stateWeekdayComma
+	stateWeekdayCommaDash
 	stateWeekdayCommaOffset
 	stateWeekdayAbbrevComma
+	stateWeekdayAbbrevCommaDash
 	stateWeekdayAbbrevCommaOffset
 	stateWeekdayAbbrevCommaOffsetZone
 )
@@ -127,6 +129,7 @@ func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 
 	part1Len := 0
 	part2Len := 0
+	dayLen := 0
 
 	// General strategy is to read rune by rune through the date looking for
 	// certain hints of what type of date we are dealing with.
@@ -495,13 +498,16 @@ iterRunes:
 			//    May 8, 2009 5:57:51 PM
 			//
 			// stateWeekdayComma
-			//   Monday, 02-Jan-06 15:04:05 MST
+			//   Monday, 02 Jan 2006 15:04:05 MST
+			//   stateWeekdayCommaDash
+			//     Monday, 02-Jan-06 15:04:05 MST
 			//   stateWeekdayCommaOffset
 			//     Monday, 02 Jan 2006 15:04:05 -0700
 			//     Monday, 02 Jan 2006 15:04:05 +0100
 			// stateWeekdayAbbrevComma
-			//   Mon, 02-Jan-06 15:04:05 MST
 			//   Mon, 02 Jan 2006 15:04:05 MST
+			//   stateWeekdayAbbrevCommaDash
+			//     Mon, 02-Jan-06 15:04:05 MST
 			//   stateWeekdayAbbrevCommaOffset
 			//     Mon, 02 Jan 2006 15:04:05 -0700
 			//     Thu, 13 Jul 2017 08:58:40 +0100
@@ -513,47 +519,35 @@ iterRunes:
 			case r == ' ':
 				state = stateAlphaWS
 			case r == ',':
+				part1Len = i
 				if i == 3 {
 					state = stateWeekdayAbbrevComma
 				} else {
 					state = stateWeekdayComma
 				}
+				i++
 			}
 		case stateWeekdayComma: // Starts alpha then comma
-			// Mon, 02-Jan-06 15:04:05 MST
-			// Mon, 02 Jan 2006 15:04:05 MST
+			// Monday, 02 Jan 2006 15:04:05 MST
+			// stateWeekdayCommaDash
+			//   Monday, 02-Jan-06 15:04:05 MST
 			// stateWeekdayCommaOffset
 			//   Monday, 02 Jan 2006 15:04:05 -0700
 			//   Monday, 02 Jan 2006 15:04:05 +0100
 			switch {
 			case r == '-':
 				if i < 15 {
-					for _, layout := range []string{
-						"Monday, 02-Jan-06 15:04:05 MST",
-						"Monday, 02-Jan-06 15:4:05 MST",
-						"Monday, 02-Jan-06 15:04:5 MST",
-						"Monday, 02-Jan-06 15:4:5 MST",
-						"Monday, 2-Jan-06 15:04:05 MST",
-						"Monday, 2-Jan-06 15:4:05 MST",
-						"Monday, 2-Jan-06 15:4:5 MST",
-						"Monday, 2-Jan-06 15:04:5 MST",
-						"Monday, 2-Jan-6 15:04:05 MST",
-						"Monday, 2-Jan-6 15:4:05 MST",
-						"Monday, 2-Jan-6 15:4:5 MST",
-						"Monday, 2-Jan-6 15:04:5 MST",
-					} {
-						if t, err := parse(layout, datestr, loc); err == nil {
-							return t, nil
-						}
-					}
+					state = stateWeekdayCommaDash
+					break iterRunes
 				}
 				state = stateWeekdayCommaOffset
 			case r == '+':
 				state = stateWeekdayCommaOffset
 			}
 		case stateWeekdayAbbrevComma: // Starts alpha then comma
-			// Mon, 02-Jan-06 15:04:05 MST
 			// Mon, 02 Jan 2006 15:04:05 MST
+			// stateWeekdayAbbrevCommaDash
+			//   Mon, 02-Jan-06 15:04:05 MST
 			// stateWeekdayAbbrevCommaOffset
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
@@ -561,26 +555,12 @@ iterRunes:
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
+			case r == ' ' && dayLen == 0:
+				dayLen = i - part1Len - 2
 			case r == '-':
 				if i < 15 {
-					for _, layout := range []string{
-						"Mon, 02-Jan-06 15:04:05 MST",
-						"Mon, 02-Jan-06 15:4:05 MST",
-						"Mon, 02-Jan-06 15:04:5 MST",
-						"Mon, 02-Jan-06 15:4:5 MST",
-						"Mon, 2-Jan-06 15:04:05 MST",
-						"Mon, 2-Jan-06 15:4:05 MST",
-						"Mon, 2-Jan-06 15:4:5 MST",
-						"Mon, 2-Jan-06 15:04:5 MST",
-						"Mon, 2-Jan-6 15:04:05 MST",
-						"Mon, 2-Jan-6 15:4:05 MST",
-						"Mon, 2-Jan-6 15:4:5 MST",
-						"Mon, 2-Jan-6 15:04:5 MST",
-					} {
-						if t, err := parse(layout, datestr, loc); err == nil {
-							return t, nil
-						}
-					}
+					state = stateWeekdayAbbrevCommaDash
+					break iterRunes
 				}
 				state = stateWeekdayAbbrevCommaOffset
 			case r == '+':
@@ -1474,6 +1454,27 @@ iterRunes:
 			}
 		}
 
+	case stateWeekdayCommaDash:
+		// Monday, 02-Jan-06 15:04:05 MST
+		for _, layout := range []string{
+			"Monday, 02-Jan-06 15:04:05 MST",
+			"Monday, 02-Jan-06 15:4:05 MST",
+			"Monday, 02-Jan-06 15:04:5 MST",
+			"Monday, 02-Jan-06 15:4:5 MST",
+			"Monday, 2-Jan-06 15:04:05 MST",
+			"Monday, 2-Jan-06 15:4:05 MST",
+			"Monday, 2-Jan-06 15:4:5 MST",
+			"Monday, 2-Jan-06 15:04:5 MST",
+			"Monday, 2-Jan-6 15:04:05 MST",
+			"Monday, 2-Jan-6 15:4:05 MST",
+			"Monday, 2-Jan-6 15:4:5 MST",
+			"Monday, 2-Jan-6 15:04:5 MST",
+		} {
+			if t, err := parse(layout, datestr, loc); err == nil {
+				return t, nil
+			}
+		}
+
 	case stateWeekdayAbbrevComma: // Starts alpha then comma
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
@@ -1482,6 +1483,28 @@ iterRunes:
 			"Mon, _2 Jan 2006 15:04:5 MST",
 			"Mon, _2 Jan 2006 15:4:5 MST",
 			"Mon, _2 Jan 2006 15:4:05 MST",
+		} {
+			if t, err := parse(layout, datestr, loc); err == nil {
+				return t, nil
+			}
+		}
+
+	case stateWeekdayAbbrevCommaDash:
+		// Mon, 02-Jan-06 15:04:05 MST
+		// Mon, 2-Jan-06 15:04:05 MST
+		for _, layout := range []string{
+			"Mon, 02-Jan-06 15:04:05 MST",
+			"Mon, 02-Jan-06 15:4:05 MST",
+			"Mon, 02-Jan-06 15:04:5 MST",
+			"Mon, 02-Jan-06 15:4:5 MST",
+			"Mon, 2-Jan-06 15:04:05 MST",
+			"Mon, 2-Jan-06 15:4:05 MST",
+			"Mon, 2-Jan-06 15:4:5 MST",
+			"Mon, 2-Jan-06 15:04:5 MST",
+			"Mon, 2-Jan-6 15:04:05 MST",
+			"Mon, 2-Jan-6 15:4:05 MST",
+			"Mon, 2-Jan-6 15:4:5 MST",
+			"Mon, 2-Jan-6 15:04:5 MST",
 		} {
 			if t, err := parse(layout, datestr, loc); err == nil {
 				return t, nil
@@ -1507,7 +1530,10 @@ iterRunes:
 
 	case stateWeekdayAbbrevCommaOffsetZone:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-		return parse("Mon, _2 Jan 2006 15:04:05 -0700 (CEST)", datestr, loc)
+		if dayLen == 1 {
+			return parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
+		}
+		return parse("Mon, _2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
 	}
 
 	return time.Time{}, fmt.Errorf("Could not find date format for %s", datestr)

@@ -38,6 +38,9 @@ func TestInLocation(t *testing.T) {
 	assert.Equal(t, "UTC", zone, "Should have found zone = UTC %v", zone)
 	assert.Equal(t, "2013-02-01 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("Tue, 5 Jul 2017 16:28:13 -0700 (MST)")
+	assert.Equal(t, "2017-07-05 23:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	// Now we are going to use ParseIn() and see that it gives different answer
 	// with different zone, offset
 	time.Local = nil
@@ -177,6 +180,9 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("Tue, 11 Jul 2017 16:28:13 +0200 (CEST)")
 	assert.Equal(t, "2017-07-11 14:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts = MustParse("Tue, 5 Jul 2017 16:28:13 -0700 (CEST)")
+	assert.Equal(t, "2017-07-05 23:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Thu, 13 Jul 2017 08:58:40 +0100")
 	assert.Equal(t, "2017-07-13 07:58:40 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
