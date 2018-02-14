@@ -30,6 +30,8 @@ func main() {
 
 	datestr = flag.Args()[0]
 
+	zonename, _ := time.Now().In(time.Local).Zone()
+	fmt.Printf("\nYour Current time.Local zone is %v\n", zonename)
 	var loc *time.Location
 	if timezone != "" {
 		// NOTE:  This is very, very important to understand
@@ -39,10 +41,10 @@ func main() {
 			panic(err.Error())
 		}
 		loc = l
+		zonename, _ := time.Now().In(l).Zone()
+		fmt.Printf("Your Using time.Local set to location=%s %v \n", timezone, zonename)
 	}
-
-	zonename, _ := time.Now().In(time.Local).Zone()
-	fmt.Printf("\nYour Current time.Local zone is %v\n\n", zonename)
+	fmt.Printf("\n")
 
 	table := termtables.CreateTable()
 
