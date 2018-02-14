@@ -129,7 +129,7 @@ func parseTime(datestr string, loc *time.Location) (time.Time, error) {
 
 	part1Len := 0
 	part2Len := 0
-	dayLen := 0
+	part3Len := 0
 
 	// General strategy is to read rune by rune through the date looking for
 	// certain hints of what type of date we are dealing with.
@@ -162,6 +162,7 @@ iterRunes:
 			switch r {
 			case '-', '\u2212':
 				state = stateDigitDash
+				part1Len = i
 			case '/':
 				state = stateDigitSlash
 				part1Len = i
@@ -174,22 +175,28 @@ iterRunes:
 			}
 
 		case stateDigitDash: // starts digit then dash 02-
-			// 2006-01-02T15:04:05Z07:00
-			// 2017-06-25T17:46:57.45706582-07:00
-			// 2006-01-02T15:04:05.999999999Z07:00
-			// 2006-01-02T15:04:05+0000
-			// 2012-08-03 18:31:59.257000000
-			// 2014-04-26 17:24:37.3186369
-			// 2017-01-27 00:07:31.945167
-			// 2016-03-14 00:00:00.000
-			// 2014-05-11 08:20:13,787
-			// 2017-07-19 03:21:51+00:00
 			// 2006-01-02
-			// 2013-04-01 22:43:22
-			// 2014-04-26 05:24:37 PM
-			// 2013-Feb-03
+			// stateDigitDashT
+			//  2006-01-02T15:04:05Z07:00
+			//  2017-06-25T17:46:57.45706582-07:00
+			//  2006-01-02T15:04:05.999999999Z07:00
+			//  2006-01-02T15:04:05+0000
+			// stateDigitDashWs
+			//  2012-08-03 18:31:59.257000000
+			//  2014-04-26 17:24:37.3186369
+			//  2017-01-27 00:07:31.945167
+			//  2016-03-14 00:00:00.000
+			//  2014-05-11 08:20:13,787
+			//  2017-07-19 03:21:51+00:00
+			//  2013-04-01 22:43:22
+			//  2014-04-26 05:24:37 PM
+			// stateDigitDashAlpha
+			//  2013-Feb-03
 			switch {
+			case r == '-':
+				part2Len = i - part1Len - 1
 			case r == ' ':
+				part3Len = i - part1Len - part2Len - 1 - 1
 				state = stateDigitDashWs
 			case r == 'T':
 				state = stateDigitDashT
@@ -555,8 +562,8 @@ iterRunes:
 			//   stateWeekdayAbbrevCommaOffsetZone
 			//     Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
-			case r == ' ' && dayLen == 0:
-				dayLen = i - part1Len - 2
+			case r == ' ' && part3Len == 0:
+				part3Len = i - part1Len - 2
 			case r == '-':
 				if i < 15 {
 					state = stateWeekdayAbbrevCommaDash
@@ -915,69 +922,116 @@ iterRunes:
 
 	case stateDigitDashWsWsOffsetColon:
 		// 2006-01-02 15:04:05 -07:00
-		for _, layout := range []string{
-			"2006-01-02 15:04:05 -07:00",
-			"2006-01-02 15:04:5 -07:00",
-			"2006-01-02 15:4:05 -07:00",
-			"2006-01-02 15:4:5 -07:00",
-			"2006-1-02 15:04:05 -07:00",
-			"2006-1-02 15:4:05 -07:00",
-			"2006-1-02 15:04:5 -07:00",
-			"2006-1-02 15:4:5 -07:00",
-			"2006-01-2 15:04:05 -07:00",
-			"2006-01-2 15:04:5 -07:00",
-			"2006-01-2 15:4:05 -07:00",
-			"2006-01-2 15:4:5 -07:00",
-			"2006-1-2 15:04:05 -07:00",
-			"2006-1-2 15:04:5 -07:00",
-			"2006-1-2 15:4:05 -07:00",
-			"2006-1-2 15:4:5 -07:00",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
+		switch {
+		case part2Len == 2 && part3Len == 2:
+			for _, layout := range []string{
+				"2006-01-02 15:04:05 -07:00",
+				"2006-01-02 15:04:5 -07:00",
+				"2006-01-02 15:4:05 -07:00",
+				"2006-01-02 15:4:5 -07:00",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 2 && part3Len == 1:
+			for _, layout := range []string{
+				"2006-01-2 15:04:05 -07:00",
+				"2006-01-2 15:04:5 -07:00",
+				"2006-01-2 15:4:05 -07:00",
+				"2006-01-2 15:4:5 -07:00",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 1 && part3Len == 2:
+			for _, layout := range []string{
+				"2006-1-02 15:04:05 -07:00",
+				"2006-1-02 15:4:05 -07:00",
+				"2006-1-02 15:04:5 -07:00",
+				"2006-1-02 15:4:5 -07:00",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 1 && part3Len == 1:
+			for _, layout := range []string{
+				"2006-1-2 15:04:05 -07:00",
+				"2006-1-2 15:04:5 -07:00",
+				"2006-1-2 15:4:05 -07:00",
+				"2006-1-2 15:4:5 -07:00",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
 			}
 		}
 
 	case stateDigitDashWsWsOffsetAlpha:
 		// 2015-02-18 00:12:00 +0000 UTC
 
-		for _, layout := range []string{
-			"2006-01-02 15:04:05 +0000 GMT",
-			"2006-01-02 15:04:5 +0000 GMT",
-			"2006-01-02 15:4:05 +0000 GMT",
-			"2006-01-02 15:4:5 +0000 GMT",
-			"2006-1-02 15:04:05 +0000 GMT",
-			"2006-1-02 15:4:05 +0000 GMT",
-			"2006-1-02 15:04:5 +0000 GMT",
-			"2006-1-02 15:4:5 +0000 GMT",
-			"2006-01-2 15:04:05 +0000 GMT",
-			"2006-01-2 15:04:5 +0000 GMT",
-			"2006-01-2 15:4:05 +0000 GMT",
-			"2006-01-2 15:4:5 +0000 GMT",
-			"2006-1-2 15:04:05 +0000 GMT",
-			"2006-1-2 15:04:5 +0000 GMT",
-			"2006-1-2 15:4:05 +0000 GMT",
-			"2006-1-2 15:4:5 +0000 GMT",
-
-			"2006-01-02 15:04:05 -0700 UTC",
-			"2006-01-02 15:04:5 -0700 UTC",
-			"2006-01-02 15:4:05 -0700 UTC",
-			"2006-01-02 15:4:5 -0700 UTC",
-			"2006-1-02 15:04:05 -0700 UTC",
-			"2006-1-02 15:4:05 -0700 UTC",
-			"2006-1-02 15:04:5 -0700 UTC",
-			"2006-1-02 15:4:5 -0700 UTC",
-			"2006-01-2 15:04:05 -0700 UTC",
-			"2006-01-2 15:04:5 -0700 UTC",
-			"2006-01-2 15:4:05 -0700 UTC",
-			"2006-01-2 15:4:5 -0700 UTC",
-			"2006-1-2 15:04:05 -0700 UTC",
-			"2006-1-2 15:04:5 -0700 UTC",
-			"2006-1-2 15:4:05 -0700 UTC",
-			"2006-1-2 15:4:5 -0700 UTC",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
+		switch {
+		case part2Len == 2 && part3Len == 2:
+			for _, layout := range []string{
+				"2006-01-02 15:04:05 -0700 MST",
+				"2006-01-02 15:04:5 -0700 MST",
+				"2006-01-02 15:4:05 -0700 MST",
+				"2006-01-02 15:4:5 -0700 MST",
+				"2006-01-02 15:04:05 +0000 GMT",
+				"2006-01-02 15:04:5 +0000 GMT",
+				"2006-01-02 15:4:05 +0000 GMT",
+				"2006-01-02 15:4:5 +0000 GMT",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 2 && part3Len == 1:
+			for _, layout := range []string{
+				"2006-01-2 15:04:05 -0700 MST",
+				"2006-01-2 15:04:5 -0700 MST",
+				"2006-01-2 15:4:05 -0700 MST",
+				"2006-01-2 15:4:5 -0700 MST",
+				"2006-01-2 15:04:05 +0000 GMT",
+				"2006-01-2 15:04:5 +0000 GMT",
+				"2006-01-2 15:4:05 +0000 GMT",
+				"2006-01-2 15:4:5 +0000 GMT",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 1 && part3Len == 2:
+			for _, layout := range []string{
+				"2006-1-02 15:04:05 -0700 MST",
+				"2006-1-02 15:4:05 -0700 MST",
+				"2006-1-02 15:04:5 -0700 MST",
+				"2006-1-02 15:4:5 -0700 MST",
+				"2006-1-02 15:04:05 +0000 GMT",
+				"2006-1-02 15:4:05 +0000 GMT",
+				"2006-1-02 15:04:5 +0000 GMT",
+				"2006-1-02 15:4:5 +0000 GMT",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
+			}
+		case part2Len == 1 && part3Len == 1:
+			for _, layout := range []string{
+				"2006-1-2 15:04:05 -0700 MST",
+				"2006-1-2 15:04:5 -0700 MST",
+				"2006-1-2 15:4:05 -0700 MST",
+				"2006-1-2 15:4:5 -0700 MST",
+				"2006-1-2 15:04:05 +0000 GMT",
+				"2006-1-2 15:04:5 +0000 GMT",
+				"2006-1-2 15:4:05 +0000 GMT",
+				"2006-1-2 15:4:5 +0000 GMT",
+			} {
+				if t, err := parse(layout, datestr, loc); err == nil {
+					return t, nil
+				}
 			}
 		}
 
@@ -1530,7 +1584,7 @@ iterRunes:
 
 	case stateWeekdayAbbrevCommaOffsetZone:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-		if dayLen == 1 {
+		if part3Len == 1 {
 			return parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
 		}
 		return parse("Mon, _2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
