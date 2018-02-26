@@ -222,6 +222,16 @@ func TestParse(t *testing.T) {
 	ts = MustParse("2 Feb 2006 19:17:22")
 	assert.Equal(t, "2006-02-02 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	// // 19 Dec 2013 12:15:23 GMT
+	// ts = MustParse("12 Feb 2006 19:17:22 GMT")
+	// assert.Equal(t, "2006-02-12 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	// ts = MustParse("2 Feb 2006 19:17:22 GMT")
+	// assert.Equal(t, "2006-02-02 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// // 28 Mar 2010 15:45:30 +1100
+	// ts = MustParse("12 Feb 2006 19:17:22")
+	// assert.Equal(t, "2006-02-12 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	ts = MustParse("2013-Feb-03")
 	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 

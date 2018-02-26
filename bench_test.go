@@ -13,6 +13,10 @@ go test -bench Parse
 BenchmarkShotgunParse			50000	     37588 ns/op	   13258 B/op	     167 allocs/op
 BenchmarkDateparseParseAny		500000	      5752 ns/op	       0 B/op	       0 allocs/op
 
+// Aarons Laptop Lenovo 900 Feb 2018
+BenchmarkShotgunParse-4   	   50000	     30045 ns/op	   13136 B/op	     169 allocs/op
+BenchmarkParseAny-4       	  200000	      8627 ns/op	     144 B/op	       3 allocs/op
+
 */
 func BenchmarkShotgunParse(b *testing.B) {
 	b.ReportAllocs()
