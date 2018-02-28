@@ -106,6 +106,13 @@ func TestInLocation(t *testing.T) {
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
+func TestOne(t *testing.T) {
+	time.Local = time.UTC
+	var ts time.Time
+	ts = MustParse("03 February 2013")
+	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+}
 func TestParse(t *testing.T) {
 
 	// Lets ensure we are operating on UTC
@@ -631,4 +638,22 @@ func testDidPanic(datestr string) (paniced bool) {
 	}()
 	MustParse(datestr)
 	return false
+}
+
+func TestPStruct(t *testing.T) {
+
+	denverLoc, err := time.LoadLocation("America/Denver")
+	assert.Equal(t, nil, err)
+
+	p := newParser("08.21.71", denverLoc)
+
+	p.setMonth()
+	assert.Equal(t, 0, p.moi)
+	p.setDay()
+	assert.Equal(t, 0, p.dayi)
+	p.set(-1, "not")
+	p.set(15, "not")
+	assert.Equal(t, "08.21.71", p.datestr)
+	assert.Equal(t, "08.21.71", string(p.format))
+
 }
