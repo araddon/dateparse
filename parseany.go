@@ -32,27 +32,24 @@ const (
 	dateDigitDot
 	dateDigitDotDot
 	dateDigitSlash
-	dateDigitSlashWS
-	dateDigitSlashWSColon
-	dateDigitSlashWSColonAMPM
-	dateDigitSlashWSColonColon
-	dateDigitSlashWSColonColonAMPM
+	dateDigitSlashWs
+	dateDigitSlashWsColon
+	dateDigitSlashWsColonAMPM
+	dateDigitSlashWsColonColon
+	dateDigitSlashWsColonColonAMPM
 	dateDigitChineseYear
 	dateDigitChineseYearWs
 	dateDigitWs
 	dateDigitWsMoYear
+	dateDigitWsMolong
 	dateAlpha
-	dateAlphaWS
-	dateAlphaWSDigit
-	dateAlphaWSDigitComma
-	dateAlphaWSDigitCommaWs
-	dateAlphaWSDigitCommaWsYear
-	dateAlphaWSAlpha
-	dateAlphaWSAlphaColon
-	dateAlphaWSAlphaColonOffset
-	dateAlphaWSAlphaColonAlpha
-	dateAlphaWSAlphaColonAlphaOffset
-	dateAlphaWSAlphaColonAlphaOffsetAlpha
+	dateAlphaWs
+	dateAlphaWsDigit
+	dateAlphaWsDigitComma
+	dateAlphaWsDigitCommaWs
+	dateAlphaWsDigitCommaWsYear
+	dateAlphaWsAlpha
+	dateAlphaWsAlphaYearmaybe
 	dateWeekdayComma
 	dateWeekdayCommaDash
 	dateWeekdayCommaOffset
@@ -66,24 +63,29 @@ const (
 	timeIgnore timeState = iota
 	timeStart
 	timeWs
+	timeWsAlpha // 3
+	timeWsAlphaZoneOffset
+	timeWsAlphaZoneOffsetWs
+	timeWsAlphaZoneOffsetWsYear
+	timeWsAlphaZoneOffsetWsExtra
 	timeWsAMPMMaybe
 	timeWsAMPM
-	timeWsOffset // 5
-	timeWsAlpha
+	timeWsOffset
 	timeWsOffsetAlpha
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
-	timeOffset // 10
+	timeWsYear
+	timeOffset
 	timeOffsetColon
 	timeAlpha
 	timePeriod
 	timePeriodOffset
-	timePeriodOffsetColon // 15
+	timePeriodOffsetColon
 	timePeriodWs
 	timePeriodWsAlpha
 	timePeriodWsOffset
 	timePeriodWsOffsetWs
-	timePeriodWsOffsetWsAlpha // 20
+	timePeriodWsOffsetWsAlpha
 	timeZ
 	timeZDigit
 )
@@ -150,6 +152,8 @@ type parser struct {
 	stateTime        timeState
 	format           []byte
 	datestr          string
+	skip             int
+	extra            int
 	part1Len         int
 	part2Len         int
 	part3Len         int
@@ -168,9 +172,12 @@ type parser struct {
 	msi              int
 	mslen            int
 	offseti          int
+	offsetlen        int
+	tzi              int
+	tzlen            int
 }
 
-func newParser(dateStr string, loc *time.Location) parser {
+func newParser(dateStr string, loc *time.Location) *parser {
 	p := parser{
 		stateDate: dateStart,
 		stateTime: timeIgnore,
@@ -178,60 +185,49 @@ func newParser(dateStr string, loc *time.Location) parser {
 		loc:       loc,
 	}
 	p.format = []byte(dateStr)
-	return p
+	return &p
 }
-func (p parser) set(start int, val string) {
+func (p *parser) set(start int, val string) {
 	if start < 0 {
 		return
 	}
 	if len(p.format) < start+len(val) {
+		u.Warnf("not enough space  %d %d", len(p.format), start+len(val))
+		u.Warnf("%s", p.format[start:])
 		return
 	}
 	for i, r := range val {
 		p.format[start+i] = byte(r)
 	}
 }
-func (p parser) setMonth() {
-	if p.moi <= 0 {
-		return
-	}
+func (p *parser) setMonth() {
 	if p.molen == 2 {
 		p.set(p.moi, "01")
-	} else {
+	} else if p.molen == 1 {
 		p.set(p.moi, "1")
 	}
 }
-func (p parser) monthConvert(start, end int, mo string) {
-	if len(p.format) <= end {
-		return
-	}
-	for i := start; i < end; i++ {
-		p.format[i] = ' '
-	}
-	p.set(start, mo)
-}
 
-func (p parser) setDay() {
-	if p.dayi < 0 {
-		return
-	}
+func (p *parser) setDay() {
 	if p.daylen == 2 {
 		p.set(p.dayi, "02")
-	} else {
+	} else if p.daylen == 1 {
 		p.set(p.dayi, "2")
 	}
 }
-
-func (p parser) coalesceDate(end int) {
+func (p *parser) setYear() {
+	if p.yearlen == 2 {
+		p.set(p.yeari, "06")
+	} else if p.yearlen == 4 {
+		p.set(p.yeari, "2006")
+	}
+}
+func (p *parser) coalesceDate(end int) {
 	if p.yeari > 0 {
 		if p.yearlen == 0 {
 			p.yearlen = end - p.yeari
 		}
-		if p.yearlen == 2 {
-			p.set(p.yeari, "06")
-		} else if p.yearlen == 4 {
-			p.set(p.yeari, "2006")
-		}
+		p.setYear()
 	}
 	if p.moi > 0 && p.molen == 0 {
 		p.molen = end - p.moi
@@ -243,7 +239,7 @@ func (p parser) coalesceDate(end int) {
 	}
 }
 
-func (p parser) coalesceTime(end int) {
+func (p *parser) coalesceTime(end int) {
 	// 03:04:05
 	// 15:04:05
 	// 3:04:05
@@ -252,7 +248,8 @@ func (p parser) coalesceTime(end int) {
 	if p.houri > 0 {
 		if p.hourlen == 2 {
 			p.set(p.houri, "15")
-		} else {
+		} else if p.hourlen == 1 {
+			u.Warnf("WTF houri is wrong?  houri=%d  hourlen=%d", p.houri, p.hourlen)
 			p.set(p.houri, "3")
 		}
 	}
@@ -279,10 +276,10 @@ func (p parser) coalesceTime(end int) {
 	}
 
 	if p.msi > 0 {
-		if p.mslen == 0 {
-			p.mslen = end - p.msi
-			//u.Warnf("set mslen??? %v", p.datestr)
-		}
+		// if p.mslen == 0 {
+		// 	p.mslen = end - p.msi
+		// 	//u.Warnf("set mslen??? %v", p.datestr)
+		// }
 		for i := 0; i < p.mslen; i++ {
 			p.format[p.msi+i] = '0'
 		}
@@ -290,8 +287,25 @@ func (p parser) coalesceTime(end int) {
 	//u.Debugf("coalesce %+v", p)
 }
 
-func (p parser) parse() (time.Time, error) {
-	u.Debugf("parse() loc=%v %50s AS %50s", p.loc.String(), p.datestr, p.format)
+func (p *parser) trimExtra() {
+	if p.extra > 0 && len(p.format) > p.extra {
+		u.Debugf("trim extra %d", p.extra)
+		p.format = p.format[0:p.extra]
+		p.datestr = p.datestr[0:p.extra]
+	}
+}
+
+// func (p parser) fill(start, ct int, b byte) {
+// 	for i := start; i < start+ct; i++ {
+// 		p.format[i] = b
+// 	}
+// }
+func (p *parser) parse() (time.Time, error) {
+	if p.skip > 0 && len(p.format) > p.skip {
+		p.format = p.format[p.skip:]
+		p.datestr = p.datestr[p.skip:]
+	}
+	u.Debugf("parse() loc=%v %50s AS %q", p.loc.String(), p.datestr, p.format)
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}
@@ -342,6 +356,7 @@ iterRunes:
 				// 3.31.2014
 				p.moi = 0
 				p.molen = i
+				p.setMonth()
 				p.dayi = i + 1
 				p.stateDate = dateDigitDot
 			case ' ':
@@ -449,7 +464,7 @@ iterRunes:
 
 			switch r {
 			case ' ':
-				p.stateDate = dateDigitSlashWS
+				p.stateDate = dateDigitSlashWs
 			case '/':
 				continue
 			default:
@@ -457,7 +472,7 @@ iterRunes:
 				// 	continue
 				// }
 			}
-		case dateDigitSlashWS:
+		case dateDigitSlashWs:
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -466,9 +481,9 @@ iterRunes:
 			// 4/8/14 22:05
 			switch r {
 			case ':':
-				p.stateDate = dateDigitSlashWSColon
+				p.stateDate = dateDigitSlashWsColon
 			}
-		case dateDigitSlashWSColon:
+		case dateDigitSlashWsColon:
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -478,11 +493,11 @@ iterRunes:
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case ':':
-				p.stateDate = dateDigitSlashWSColonColon
+				p.stateDate = dateDigitSlashWsColonColon
 			case 'A', 'P':
-				p.stateDate = dateDigitSlashWSColonAMPM
+				p.stateDate = dateDigitSlashWsColonAMPM
 			}
-		case dateDigitSlashWSColonColon:
+		case dateDigitSlashWsColonColon:
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
@@ -492,7 +507,7 @@ iterRunes:
 			// 3/1/2012 10:11:59 AM
 			switch r {
 			case 'A', 'P':
-				p.stateDate = dateDigitSlashWSColonColonAMPM
+				p.stateDate = dateDigitSlashWsColonColonAMPM
 			}
 
 		case dateDigitWs:
@@ -504,7 +519,6 @@ iterRunes:
 			// 12 Feb 2006, 19:17:22
 			switch r {
 			case ' ':
-				u.Infof("part1=%d  i=%d", p.part1Len, i)
 				p.yeari = i + 1
 				p.yearlen = 4
 				p.dayi = 0
@@ -512,20 +526,16 @@ iterRunes:
 				p.setDay()
 				p.stateTime = timeStart
 				if i <= len("12 Feb") {
-
 					p.moi = p.daylen + 1
 					p.molen = 3
 					p.set(p.moi, "Jan")
-					u.Infof("set day dayi=%d len=%d", p.dayi, p.daylen)
+					p.stateDate = dateDigitWsMoYear
 				} else {
-					u.Warnf("unhandled long month")
-					p.monthConvert(p.daylen+1, i, "Jan")
+					p.stateDate = dateDigitWsMolong
 				}
-				p.stateDate = dateDigitWsMoYear
 			}
 
 		case dateDigitWsMoYear:
-			u.Debugf("dateDigitWsMoYear ")
 			// 02 Jan 2018 23:59
 			// 02 Jan 2018 23:59:34
 			// 12 Feb 2006, 19:17
@@ -537,6 +547,9 @@ iterRunes:
 			case ' ':
 				break iterRunes
 			}
+		case dateDigitWsMolong:
+			// 18 January 2018
+			// 8 January 2018
 
 		case dateDigitChineseYear:
 			// dateDigitChineseYear
@@ -552,6 +565,7 @@ iterRunes:
 			if r == '.' {
 				p.daylen = i - p.dayi
 				p.yeari = i + 1
+				p.setDay()
 				p.stateDate = dateDigitDotDot
 			}
 		case dateDigitDotDot:
@@ -584,17 +598,20 @@ iterRunes:
 			//       Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			switch {
 			case r == ' ':
-				p.stateDate = dateAlphaWS
-				p.set(0, "Mon")
-				p.part1Len = i
+				p.stateDate = dateAlphaWs
 			case r == ',':
-				p.part1Len = i
+				p.moi = 0
+				p.molen = i
 				if i == 3 {
 					p.stateDate = dateWeekdayAbbrevComma
 					p.set(0, "Mon")
 				} else {
 					p.stateDate = dateWeekdayComma
-					p.set(0, "Monday")
+					//p.set(0, "Monday")
+					p.skip = i + 2
+					// TODO:  lets just make this "skip" as we don't need
+					// the mon, monday, they are all superfelous and not needed
+					// just lay down the skip, no need to fill and then skip
 				}
 				i++
 			}
@@ -605,15 +622,27 @@ iterRunes:
 			// dateWeekdayCommaOffset
 			//   Monday, 02 Jan 2006 15:04:05 -0700
 			//   Monday, 02 Jan 2006 15:04:05 +0100
-			switch {
-			case r == '-':
-				if i < 15 {
-					p.stateDate = dateWeekdayCommaDash
+			if p.dayi == 0 {
+				p.dayi = i
+			}
+			u.Debugf("weekday %d %q", i, string(r))
+			switch r {
+			case ' ', '-':
+				if p.moi == 0 {
+					p.moi = i + 1
+					p.daylen = i - p.dayi
+					p.setDay()
+				} else if p.yeari == 0 {
+
+					p.yeari = i + 1
+					p.molen = i - p.moi
+					p.set(p.moi, "Jan")
+					u.Warnf("set month? %v  %v", p.moi, p.molen)
+				} else {
+					p.stateTime = timeStart
 					break iterRunes
 				}
-				p.stateDate = dateWeekdayCommaOffset
-			case r == '+':
-				p.stateDate = dateWeekdayCommaOffset
+				//case r == '-':
 			}
 		case dateWeekdayAbbrevComma: // Starts alpha then comma
 			// Mon, 02 Jan 2006 15:04:05 MST
@@ -649,92 +678,142 @@ iterRunes:
 				p.stateDate = dateWeekdayAbbrevCommaOffsetZone
 			}
 
-		case dateAlphaWS: // Starts alpha then whitespace
-			// Mon Jan _2 15:04:05 2006
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Jan 02 15:04:05 -0700 2006
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			// Mon Aug 10 15:44:11 UTC+0100 2015
+		case dateAlphaWs:
+			// dateAlphaWsAlpha
+			//   Mon Jan _2 15:04:05 2006
+			//   Mon Jan _2 15:04:05 MST 2006
+			//   Mon Jan 02 15:04:05 -0700 2006
+			//   Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			//   Mon Aug 10 15:44:11 UTC+0100 2015
+			//  dateAlphaWsDigit
+			//    May 8, 2009 5:57:51 PM
+			u.Infof("dateAlphaWs %s %d", string(r), i)
 			switch {
-			case r == ' ':
-				p.part2Len = i - p.part1Len
+			// case r == ' ':
+			// 	p.part2Len = i - p.part1Len
 			case unicode.IsLetter(r):
-				p.stateDate = dateAlphaWSAlpha
+				p.set(0, "Mon")
+				p.stateDate = dateAlphaWsAlpha
+				//p.moi = i
+				p.set(i, "Jan")
 			case unicode.IsDigit(r):
-				p.stateDate = dateAlphaWSDigit
+				p.set(0, "Jan")
+				p.stateDate = dateAlphaWsDigit
+				p.dayi = i
 			default:
-				u.Warnf("can we drop isLetter? case r=%s", string(r))
+				u.Warnf("what is this? case r=%s", string(r))
 			}
 
-		case dateAlphaWSDigit: // Starts Alpha, whitespace, digit, comma
-			//  dateAlphaWSDigit
+		case dateAlphaWsDigit:
+			//  dateAlphaWsDigit
 			//    May 8, 2009 5:57:51 PM
 			switch {
 			case r == ',':
-				p.stateDate = dateAlphaWSDigitComma
+				p.daylen = i - p.dayi
+				p.setDay()
+				p.stateDate = dateAlphaWsDigitComma
 			case unicode.IsDigit(r):
-				p.stateDate = dateAlphaWSDigit
-			default:
-				u.Warnf("hm, can we drop a case here? %v", string(r))
+				p.stateDate = dateAlphaWsDigit
+				u.Warnf("wtf not possible? %s", datestr)
 			}
-		case dateAlphaWSDigitComma:
+		case dateAlphaWsDigitComma:
 			//          x
 			//    May 8, 2009 5:57:51 PM
 			switch {
 			case r == ' ':
-				p.stateDate = dateAlphaWSDigitCommaWs
+				p.stateDate = dateAlphaWsDigitCommaWs
+				p.yeari = i + 1
 			default:
 				u.Warnf("hm, can we drop a case here? %v", string(r))
 				return time.Time{}, fmt.Errorf("could not find format for %v expected white-space after comma", datestr)
 			}
-		case dateAlphaWSDigitCommaWs:
+		case dateAlphaWsDigitCommaWs:
 			//               x
 			//    May 8, 2009 5:57:51 PM
-			if !unicode.IsDigit(r) {
-				p.stateDate = dateAlphaWSDigitCommaWsYear
+			if r == ' ' {
+				p.stateDate = dateAlphaWsDigitCommaWsYear
+				p.yearlen = i - p.yeari
+				p.setYear()
+				p.stateTime = timeStart
+				u.Debugf("here we are %s i=%d yeari=%d yearlen=%d", string(r), i, p.yeari, p.yearlen)
 				break iterRunes
 			}
 
-		case dateAlphaWSAlpha: // Alpha, whitespace, alpha
+		case dateAlphaWsAlpha:
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan 02 15:04:05 -0700 2006
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			u.Debugf("dateAlphaWsAlpha i=%d  r=%s", i, string(r))
+			if r == ' ' {
+				if p.dayi > 0 {
+					p.daylen = i - p.dayi
+					u.Warnf("%s    dayi=%v  daylen=%v  format=%s", datestr, p.dayi, p.daylen, string(p.format))
+					p.setDay()
+					u.Warnf("%s", string(p.format))
+					p.yeari = i + 1
+					p.stateDate = dateAlphaWsAlphaYearmaybe
+					p.stateTime = timeStart
+				}
+			} else if unicode.IsDigit(r) {
+				if p.dayi == 0 {
+					p.dayi = i
+					u.Warnf("found dayi %d", p.dayi)
+				}
+			}
+		case dateAlphaWsAlphaYearmaybe:
+			//            x
+			// Mon Jan _2 15:04:05 2006
+			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			u.Warnf("%s i=%d  yeari+3=%d", string(r), i, p.yeari+4)
 			if r == ':' {
-				p.stateDate = dateAlphaWSAlphaColon
+				i = i - 3
+				p.stateDate = dateAlphaWsAlpha
+				p.yeari = 0
+				break iterRunes
+			} else if r == ' ' {
+				// must be year format, not 15:04
+				p.yearlen = i - p.yeari
+				u.Infof("yeari=%d yearlen=%d", p.yeari, p.yearlen)
+				p.setYear()
+				u.Debugf("format=%s", string(p.format))
+				break iterRunes
 			}
-		case dateAlphaWSAlphaColon:
-			// Mon Jan _2 15:04:05 2006
-			// Mon Jan 02 15:04:05 -0700 2006
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if unicode.IsLetter(r) {
-				p.stateDate = dateAlphaWSAlphaColonAlpha
-			} else if r == '-' || r == '+' {
-				p.stateDate = dateAlphaWSAlphaColonOffset
-			}
-		case dateAlphaWSAlphaColonAlpha:
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if r == '+' {
-				p.stateDate = dateAlphaWSAlphaColonAlphaOffset
-			}
-		case dateAlphaWSAlphaColonAlphaOffset:
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if unicode.IsLetter(r) {
-				p.stateDate = dateAlphaWSAlphaColonAlphaOffsetAlpha
-			}
+
+		/*
+			case dateAlphaWSAlphaColon:
+				// Mon Jan _2 15:04:05 2006
+				// Mon Jan 02 15:04:05 -0700 2006
+				// Mon Jan _2 15:04:05 MST 2006
+				// Mon Aug 10 15:44:11 UTC+0100 2015
+				// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+				if unicode.IsLetter(r) {
+					p.stateDate = dateAlphaWSAlphaColonAlpha
+				} else if r == '-' || r == '+' {
+					p.stateDate = dateAlphaWSAlphaColonOffset
+				}
+			case dateAlphaWSAlphaColonAlpha:
+				// Mon Jan _2 15:04:05 MST 2006
+				// Mon Aug 10 15:44:11 UTC+0100 2015
+				// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+				if r == '+' {
+					p.stateDate = dateAlphaWSAlphaColonAlphaOffset
+				}
+			case dateAlphaWSAlphaColonAlphaOffset:
+				// Mon Aug 10 15:44:11 UTC+0100 2015
+				// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+				if unicode.IsLetter(r) {
+					p.stateDate = dateAlphaWSAlphaColonAlphaOffsetAlpha
+				}
+		*/
 		default:
 			break iterRunes
 		}
 	}
-
+	u.Warnf("%s", string(p.format))
 	p.coalesceDate(i)
-
+	u.Warnf("%s", string(p.format))
 	if p.stateTime == timeStart {
 		// increment first one, since the i++ occurs at end of loop
 		i++
@@ -743,7 +822,7 @@ iterRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
 
-			u.Debugf("i=%d   r=%s timeState=%d", i, string(r), p.stateTime)
+			u.Debugf("i=%d   r=%s timeState=%d hi=%d hl=%d", i, string(r), p.stateTime, p.houri, p.hourlen)
 			switch p.stateTime {
 			case timeStart:
 				// 22:43:22
@@ -755,6 +834,7 @@ iterRunes:
 				//   00:12:00 +0000 UTC
 				//   15:04:05 -0700
 				//   15:04:05 -07:00
+				//   15:04:05 2008
 				// timeOffset
 				//   03:21:51+00:00
 				//   19:55:00+0100
@@ -815,6 +895,7 @@ iterRunes:
 					if p.mini == 0 {
 						p.mini = i + 1
 						p.hourlen = i - p.houri
+						u.Infof("hour  i=%v l=%d", p.houri, p.hourlen)
 					} else if p.seci == 0 {
 						p.seci = i + 1
 						p.minlen = i - p.mini
@@ -830,8 +911,10 @@ iterRunes:
 					p.stateTime = timeOffsetColon
 				}
 			case timeWs:
-				// timeAlpha
+				// timeWsAlpha
 				//   06:20:00 UTC
+				//   15:44:11 UTC+0100 2015
+				//   18:04:07 GMT+0100 (GMT Daylight Time)
 				//   timeWsAMPMMaybe
 				//     05:24:37 PM
 				// timeWsOffset
@@ -842,11 +925,15 @@ iterRunes:
 				//       00:12:00 +00:00 UTC
 				//   timeWsOffsetAlpha
 				//     00:12:00 +0000 UTC
+				// timeWsYear
+				//     00:12:00 2008
 				// timeZ
 				//   15:04:05.99Z
+				u.Debugf("timeWs")
 				switch r {
 				case 'A', 'P':
 					// Could be AM/PM or could be PST or similar
+					p.tzi = i
 					p.stateTime = timeWsAMPMMaybe
 				case '+', '-':
 					p.offseti = i
@@ -854,17 +941,81 @@ iterRunes:
 				default:
 					if unicode.IsLetter(r) {
 						// 06:20:00 UTC
+						// 15:44:11 UTC+0100 2015
+						p.tzi = i
 						p.stateTime = timeWsAlpha
-						break iterTimeRunes
+						//break iterTimeRunes
+					} else if unicode.IsDigit(r) {
+						// 00:12:00 2008
+						p.stateTime = timeWsYear
+						p.yeari = i
 					}
 				}
-
+			case timeWsAlpha:
+				// 06:20:00 UTC
+				// timeWsAlphaZoneOffset
+				// timeWsAlphaZoneOffsetWs
+				//   timeWsAlphaZoneOffsetWsExtra
+				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//   timeWsAlphaZoneOffsetWsYear
+				//     15:44:11 UTC+0100 2015
+				u.Debugf("timeWsAlpha")
+				switch r {
+				case '+', '-':
+					p.tzlen = i - p.tzi
+					u.Infof("tzi=%d tzlen=%d", p.tzi, p.tzlen)
+					if p.tzlen == 4 {
+						p.set(p.tzi, "MST ")
+					} else if p.tzlen == 3 {
+						p.set(p.tzi, "MST")
+					}
+					p.stateTime = timeWsAlphaZoneOffset
+					p.offseti = i
+				}
+			case timeWsAlphaZoneOffset:
+				// timeWsAlphaZoneOffset
+				// timeWsAlphaZoneOffsetWs
+				//   timeWsAlphaZoneOffsetWsExtra
+				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//   timeWsAlphaZoneOffsetWsYear
+				//     15:44:11 UTC+0100 2015
+				u.Debugf("timeWsAlphaZoneOffset")
+				switch r {
+				case ' ':
+					p.set(p.offseti, "-0700")
+					p.yeari = i + 1
+					p.stateTime = timeWsAlphaZoneOffsetWs
+				}
+			case timeWsAlphaZoneOffsetWs:
+				// timeWsAlphaZoneOffsetWs
+				//   timeWsAlphaZoneOffsetWsExtra
+				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//   timeWsAlphaZoneOffsetWsYear
+				//     15:44:11 UTC+0100 2015
+				u.Debugf("timeWsAlphaZoneOffsetWs")
+				if unicode.IsDigit(r) {
+					p.stateTime = timeWsAlphaZoneOffsetWsYear
+				} else {
+					p.extra = i - 1
+					p.stateTime = timeWsAlphaZoneOffsetWsExtra
+					u.Warnf("going to chop some stuff off %d", p.extra)
+				}
+			case timeWsAlphaZoneOffsetWsYear:
+				// 15:44:11 UTC+0100 2015
+				if unicode.IsDigit(r) {
+					p.yearlen = i - p.yeari + 1
+					if p.yearlen == 4 {
+						p.setYear()
+					}
+				}
+				u.Debugf("timeWsAlphaZoneOffsetWsYear yeari=%d yearlen=%d", p.yeari, p.yearlen)
 			case timeWsAMPMMaybe:
 				// timeWsAMPMMaybe
 				//   timeWsAMPM
 				//     05:24:37 PM
 				//   timeWsAlpha
 				//     00:12:00 PST
+				//     15:44:11 UTC+0100 2015
 				if r == 'M' {
 					//return parse("2006-01-02 03:04:05 PM", datestr, loc)
 					p.stateTime = timeWsAMPM
@@ -1035,11 +1186,26 @@ iterRunes:
 			}
 		}
 
+		u.Debugf("timestate = %d", p.stateTime)
 		switch p.stateTime {
+		case timeWsAlpha:
+			u.Warnf("timeWsAlpha?")
+		case timeWsYear:
+			p.yearlen = i - p.yeari
+			u.Infof("got WsYear yeari=%d yearlen=%d", p.yeari, p.yearlen)
+			p.setYear()
+		case timeWsAlphaZoneOffsetWsExtra:
+			u.Warnf("%s", string(p.format))
+			p.trimExtra()
+			u.Warnf("%s", string(p.format))
 		case timePeriod:
 			p.mslen = i - p.msi
 		case timeOffset:
 			// 19:55:00+0100
+			u.Warnf("offset?")
+			p.set(p.offseti, "-0700")
+		case timeWsOffset:
+			u.Warnf("timeWsOffset?")
 			p.set(p.offseti, "-0700")
 		case timeOffsetColon:
 			// 15:04:05+07:00
@@ -1062,8 +1228,9 @@ iterRunes:
 		default:
 			//u.Warnf("un-handled statetime: %d for %v", p.stateTime, p.datestr)
 		}
-
+		u.Warnf("%s", string(p.format))
 		p.coalesceTime(i)
+		u.Warnf("parse: %q AS %q", p.datestr, string(p.format))
 	}
 
 	//u.Infof("%60s %q\n\t%+v", datestr, string(p.format), p)
@@ -1143,12 +1310,12 @@ iterRunes:
 		// 03.31.1981
 		// 3.2.1981
 		// 3.2.81
+		p.setYear()
 		p.yearlen = i - p.yeari
 		return p.parse()
 
 	case dateDigitWs:
-		// 18 January 2018
-		// 8 January 2018
+		u.Warnf("what?  %s", datestr)
 		return p.parse()
 
 	case dateDigitWsMoYear:
@@ -1158,247 +1325,120 @@ iterRunes:
 		// 12 Feb 2006, 19:17
 		// 12 Feb 2006, 19:17:22
 		return p.parse()
+	case dateDigitWsMolong:
+		// 18 January 2018
+		// 8 January 2018
+		if p.daylen == 2 {
+			return parse("02 January 2006", datestr, loc)
+		}
+		return parse("2 January 2006", datestr, loc)
 
-	case dateAlphaWSDigitCommaWsYear:
+	case dateAlphaWsDigitCommaWsYear:
 		// May 8, 2009 5:57:51 PM
-		for _, layout := range []string{
-			"Jan 2, 2006 3:04:05 PM",
-			"Jan 2, 2006 3:4:05 PM",
-			"Jan 2, 2006 3:4:5 PM",
-			"Jan 2, 2006 3:04:5 PM",
-			"Jan 02, 2006 3:04:05 PM",
-			"Jan 02, 2006 3:4:05 PM",
-			"Jan 02, 2006 3:4:5 PM",
-			"Jan 02, 2006 3:04:5 PM",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
-	case dateAlphaWSAlphaColon:
-		// Mon Jan _2 15:04:05 2006
-		return parse(time.ANSIC, datestr, loc)
+		return p.parse()
 
-	case dateAlphaWSAlphaColonOffset:
-		// Mon Jan 02 15:04:05 -0700 2006
-		return parse(time.RubyDate, datestr, loc)
+	case dateAlphaWsAlpha:
+		return p.parse()
 
-	case dateAlphaWSAlphaColonAlpha:
-		// Mon Jan _2 15:04:05 MST 2006
-		return parse(time.UnixDate, datestr, loc)
+	case dateAlphaWsAlphaYearmaybe:
+		return p.parse()
+	case dateAlphaWsDigitCommaWs:
+		return p.parse()
 
-	case dateAlphaWSAlphaColonAlphaOffset:
-		// Mon Aug 10 15:44:11 UTC+0100 2015
-		return parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr, loc)
+		/*
+			case dateAlphaWsAlphaWs:
+			case dateAlphaWSAlphaColon:
+				// Mon Jan _2 15:04:05 2006
+				return parse(time.ANSIC, datestr, loc)
 
-	case dateAlphaWSAlphaColonAlphaOffsetAlpha:
-		// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-		if len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700") {
-			// What effing time stamp is this?
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			dateTmp := datestr[:33]
-			return parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp, loc)
-		}
+			case dateAlphaWSAlphaColonOffset:
+				// Mon Jan 02 15:04:05 -0700 2006
+				return parse(time.RubyDate, datestr, loc)
+
+			case dateAlphaWSAlphaColonAlpha:
+				// Mon Jan _2 15:04:05 MST 2006
+				return parse(time.UnixDate, datestr, loc)
+
+			case dateAlphaWSAlphaColonAlphaOffset:
+				// Mon Aug 10 15:44:11 UTC+0100 2015
+				return parse("Mon Jan 02 15:04:05 MST-0700 2006", datestr, loc)
+
+			case dateAlphaWSAlphaColonAlphaOffsetAlpha:
+				// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+				if len(datestr) > len("Mon Jan 02 2006 15:04:05 MST-0700") {
+					// What effing time stamp is this?
+					// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+					dateTmp := datestr[:33]
+					return parse("Mon Jan 02 2006 15:04:05 MST-0700", dateTmp, loc)
+				}
+		*/
 	case dateDigitSlash: // starts digit then slash 02/ (but nothing else)
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
 		// 2014/10/13
-		if p.part1Len == 4 {
-			if len(datestr) == len("2006/01/02") {
-				return parse("2006/01/02", datestr, loc)
-			}
-			return parse("2006/1/2", datestr, loc)
-		}
-		for _, parseFormat := range shortDates {
-			if t, err := parse(parseFormat, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
+		return p.parse()
 
-	case dateDigitSlashWSColon: // starts digit then slash 02/ more digits/slashes then whitespace
+	case dateDigitSlashWsColon:
 		// 4/8/2014 22:05
 		// 04/08/2014 22:05
 		// 2014/4/8 22:05
 		// 2014/04/08 22:05
 
-		if p.part1Len == 4 {
-			for _, layout := range []string{"2006/01/02 15:04", "2006/1/2 15:04", "2006/01/2 15:04", "2006/1/02 15:04", "2006/01/02 15:4", "2006/1/2 15:4", "2006/01/2 15:4", "2006/1/02 15:4"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		} else {
-			for _, layout := range []string{"01/02/2006 15:4", "01/2/2006 15:4", "1/02/2006 15:4", "1/2/2006 15:4", "1/2/06 15:4", "01/02/06 15:4", "01/02/2006 15:04", "01/2/2006 15:04", "1/02/2006 15:04", "1/2/2006 15:04", "1/2/06 15:04", "01/02/06 15:04"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		}
+		return p.parse()
 
-	case dateDigitSlashWSColonAMPM: // starts digit then slash 02/ more digits/slashes then whitespace
+	case dateDigitSlashWsColonAMPM:
 		// 4/8/2014 22:05 PM
 		// 04/08/2014 22:05 PM
 		// 04/08/2014 1:05 PM
 		// 2014/4/8 22:05 PM
 		// 2014/04/08 22:05 PM
+		return p.parse()
 
-		if p.part1Len == 4 {
-			for _, layout := range []string{"2006/01/02 03:04 PM", "2006/01/2 03:04 PM", "2006/1/02 03:04 PM", "2006/1/2 03:04 PM",
-				"2006/01/02 3:04 PM", "2006/01/2 3:04 PM", "2006/1/02 3:04 PM", "2006/1/2 3:04 PM", "2006/01/02 3:4 PM", "2006/01/2 3:4 PM", "2006/1/02 3:4 PM", "2006/1/2 3:4 PM",
-				"2006/01/02 3:4 PM", "2006/01/2 3:4 PM", "2006/1/02 3:4 PM", "2006/1/2 3:4 PM"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		} else {
-			for _, layout := range []string{"01/02/2006 03:04 PM", "01/2/2006 03:04 PM", "1/02/2006 03:04 PM", "1/2/2006 03:04 PM",
-				"01/02/2006 03:4 PM", "01/2/2006 03:4 PM", "1/02/2006 03:4 PM", "1/2/2006 03:4 PM",
-				"01/02/2006 3:04 PM", "01/2/2006 3:04 PM", "1/02/2006 3:04 PM", "1/2/2006 3:04 PM",
-				"01/02/2006 3:04 PM", "01/2/2006 3:04 PM", "1/02/2006 3:04 PM", "1/2/2006 3:04 PM",
-				"01/02/2006 3:4 PM", "01/2/2006 3:4 PM", "1/02/2006 3:4 PM", "1/2/2006 3:4 PM",
-				"01/02/2006 3:4 PM", "01/2/2006 3:4 PM", "1/02/2006 3:4 PM", "1/2/2006 3:4 PM"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-
-			}
-		}
-
-	case dateDigitSlashWSColonColon: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case dateDigitSlashWsColonColon:
 		// 2014/07/10 06:55:38.156283
 		// 03/19/2012 10:11:59
 		// 3/1/2012 10:11:59
 		// 03/1/2012 10:11:59
 		// 3/01/2012 10:11:59
 		// 4/8/14 22:05
-		if p.part1Len == 4 {
-			for _, layout := range []string{"2006/01/02 15:04:05", "2006/1/02 15:04:05", "2006/01/2 15:04:05", "2006/1/2 15:04:05",
-				"2006/01/02 15:04:5", "2006/1/02 15:04:5", "2006/01/2 15:04:5", "2006/1/2 15:04:5",
-				"2006/01/02 15:4:05", "2006/1/02 15:4:05", "2006/01/2 15:4:05", "2006/1/2 15:4:05",
-				"2006/01/02 15:4:5", "2006/1/02 15:4:5", "2006/01/2 15:4:5", "2006/1/2 15:4:5"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		} else {
-			for _, layout := range []string{"01/02/2006 15:04:05", "1/02/2006 15:04:05", "01/2/2006 15:04:05", "1/2/2006 15:04:05",
-				"01/02/2006 15:4:5", "1/02/2006 15:4:5", "01/2/2006 15:4:5", "1/2/2006 15:4:5",
-				"01/02/2006 15:4:05", "1/02/2006 15:4:05", "01/2/2006 15:4:05", "1/2/2006 15:4:05",
-				"01/02/2006 15:04:5", "1/02/2006 15:04:5", "01/2/2006 15:04:5", "1/2/2006 15:04:5"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		}
+		return p.parse()
 
-	case dateDigitSlashWSColonColonAMPM: // starts digit then slash 02/ more digits/slashes then whitespace double colons
+	case dateDigitSlashWsColonColonAMPM:
 		// 2014/07/10 06:55:38.156283 PM
 		// 03/19/2012 10:11:59 PM
 		// 3/1/2012 10:11:59 PM
 		// 03/1/2012 10:11:59 PM
 		// 3/01/2012 10:11:59 PM
+		return p.parse()
 
-		if p.part1Len == 4 {
-			for _, layout := range []string{"2006/01/02 03:04:05 PM", "2006/1/02 03:04:05 PM", "2006/01/2 03:04:05 PM", "2006/1/2 03:04:05 PM",
-				"2006/01/02 03:4:5 PM", "2006/1/02 03:4:5 PM", "2006/01/2 03:4:5 PM", "2006/1/2 03:4:5 PM",
-				"2006/01/02 03:4:05 PM", "2006/1/02 03:4:05 PM", "2006/01/2 03:4:05 PM", "2006/1/2 03:4:05 PM",
-				"2006/01/02 03:04:5 PM", "2006/1/02 03:04:5 PM", "2006/01/2 03:04:5 PM", "2006/1/2 03:04:5 PM",
-
-				"2006/01/02 3:4:5 PM", "2006/1/02 3:4:5 PM", "2006/01/2 3:4:5 PM", "2006/1/2 3:4:5 PM",
-				"2006/01/02 3:4:05 PM", "2006/1/02 3:4:05 PM", "2006/01/2 3:4:05 PM", "2006/1/2 3:4:05 PM",
-				"2006/01/02 3:04:5 PM", "2006/1/02 3:04:5 PM", "2006/01/2 3:04:5 PM", "2006/1/2 3:04:5 PM"} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		} else {
-			for _, layout := range []string{"01/02/2006 03:04:05 PM", "1/02/2006 03:04:05 PM", "01/2/2006 03:04:05 PM", "1/2/2006 03:04:05 PM",
-				"01/02/2006 03:4:05 PM", "1/02/2006 03:4:05 PM", "01/2/2006 03:4:05 PM", "1/2/2006 03:4:05 PM",
-				"01/02/2006 03:04:5 PM", "1/02/2006 03:04:5 PM", "01/2/2006 03:04:5 PM", "1/2/2006 03:04:5 PM",
-				"01/02/2006 03:4:5 PM", "1/02/2006 03:4:5 PM", "01/2/2006 03:4:5 PM", "1/2/2006 03:4:5 PM",
-			} {
-				if t, err := parse(layout, datestr, loc); err == nil {
-					return t, nil
-				}
-			}
-		}
 	case dateDigitChineseYear:
 		// dateDigitChineseYear
 		//   2014年04月08日
 		return parse("2006年01月02日", datestr, loc)
+
 	case dateDigitChineseYearWs:
 		return parse("2006年01月02日 15:04:05", datestr, loc)
-	case dateWeekdayCommaOffset:
+
+	case dateWeekdayComma:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
-		for _, layout := range []string{
-			"Monday, _2 Jan 2006 15:04:05 -0700",
-			"Monday, _2 Jan 2006 15:04:5 -0700",
-			"Monday, _2 Jan 2006 15:4:05 -0700",
-			"Monday, _2 Jan 2006 15:4:5 -0700",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
-
-	case dateWeekdayCommaDash:
 		// Monday, 02-Jan-06 15:04:05 MST
-		for _, layout := range []string{
-			"Monday, 02-Jan-06 15:04:05 MST",
-			"Monday, 02-Jan-06 15:4:05 MST",
-			"Monday, 02-Jan-06 15:04:5 MST",
-			"Monday, 02-Jan-06 15:4:5 MST",
-			"Monday, 2-Jan-06 15:04:05 MST",
-			"Monday, 2-Jan-06 15:4:05 MST",
-			"Monday, 2-Jan-06 15:4:5 MST",
-			"Monday, 2-Jan-06 15:04:5 MST",
-			"Monday, 2-Jan-6 15:04:05 MST",
-			"Monday, 2-Jan-6 15:4:05 MST",
-			"Monday, 2-Jan-6 15:4:5 MST",
-			"Monday, 2-Jan-6 15:04:5 MST",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
+		return p.parse()
+
+	// case dateWeekdayCommaDash:
+	//
+	// 	return p.parse()
 
 	case dateWeekdayAbbrevComma: // Starts alpha then comma
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
-		for _, layout := range []string{
-			"Mon, _2 Jan 2006 15:04:05 MST",
-			"Mon, _2 Jan 2006 15:04:5 MST",
-			"Mon, _2 Jan 2006 15:4:5 MST",
-			"Mon, _2 Jan 2006 15:4:05 MST",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
+		return p.parse()
 
 	case dateWeekdayAbbrevCommaDash:
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 2-Jan-06 15:04:05 MST
-		for _, layout := range []string{
-			"Mon, 02-Jan-06 15:04:05 MST",
-			"Mon, 02-Jan-06 15:4:05 MST",
-			"Mon, 02-Jan-06 15:04:5 MST",
-			"Mon, 02-Jan-06 15:4:5 MST",
-			"Mon, 2-Jan-06 15:04:05 MST",
-			"Mon, 2-Jan-06 15:4:05 MST",
-			"Mon, 2-Jan-06 15:4:5 MST",
-			"Mon, 2-Jan-06 15:04:5 MST",
-			"Mon, 2-Jan-6 15:04:05 MST",
-			"Mon, 2-Jan-6 15:4:05 MST",
-			"Mon, 2-Jan-6 15:4:5 MST",
-			"Mon, 2-Jan-6 15:04:5 MST",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
+		return p.parse()
 
 	case dateWeekdayAbbrevCommaOffset:
 		// Mon, 02 Jan 2006 15:04:05 -0700
@@ -1406,23 +1446,11 @@ iterRunes:
 		// RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" // RFC1123 with numeric zone
 		//
 		// Thu, 4 Jan 2018 17:53:36 +0000
-		for _, layout := range []string{
-			"Mon, _2 Jan 2006 15:04:05 -0700",
-			"Mon, _2 Jan 2006 15:4:05 -0700",
-			"Mon, _2 Jan 2006 15:4:5 -0700",
-			"Mon, _2 Jan 2006 15:04:5 -0700",
-		} {
-			if t, err := parse(layout, datestr, loc); err == nil {
-				return t, nil
-			}
-		}
+		return p.parse()
 
 	case dateWeekdayAbbrevCommaOffsetZone:
 		// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-		if p.part3Len == 1 {
-			return parse("Mon, 2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
-		}
-		return parse("Mon, _2 Jan 2006 15:04:05 -0700 (MST)", datestr, loc)
+		return p.parse()
 	}
 
 	//u.Warnf("no format for %d  %d   %s", p.stateDate, p.stateTime, p.datestr)

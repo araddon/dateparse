@@ -105,7 +105,7 @@ func parseAny(datestr string, loc *time.Location, utc bool) string {
 		return err.Error()
 	}
 	if utc {
-		return t.In(time.UTC).String()
+		return fmt.Sprintf("%s day=%d", t.In(time.UTC), t.In(time.UTC).Weekday())
 	}
 	return t.String()
 }
