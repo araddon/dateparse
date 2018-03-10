@@ -278,6 +278,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
+	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}
@@ -350,6 +351,7 @@ iterRunes:
 			case ' ':
 				// 18 January 2018
 				// 8 January 2018
+				// 8 jan 2018
 				// 02 Jan 2018 23:59
 				// 02 Jan 2018 23:59:34
 				// 12 Feb 2006, 19:17
@@ -486,6 +488,8 @@ iterRunes:
 		case dateDigitWs:
 			// 18 January 2018
 			// 8 January 2018
+			// 8 jan 2018
+			// 1 jan 18
 			// 02 Jan 2018 23:59
 			// 02 Jan 2018 23:59:34
 			// 12 Feb 2006, 19:17
@@ -493,7 +497,7 @@ iterRunes:
 			switch r {
 			case ' ':
 				p.yeari = i + 1
-				p.yearlen = 4
+				//p.yearlen = 4
 				p.dayi = 0
 				p.daylen = p.part1Len
 				p.setDay()
@@ -509,6 +513,7 @@ iterRunes:
 			}
 
 		case dateDigitWsMoYear:
+			// 8 jan 2018
 			// 02 Jan 2018 23:59
 			// 02 Jan 2018 23:59:34
 			// 12 Feb 2006, 19:17
@@ -552,6 +557,7 @@ iterRunes:
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			//  dateAlphaWSDigit
 			//    May 8, 2009 5:57:51 PM
+			//    oct 1, 1970
 			//
 			// dateWeekdayComma
 			//   Monday, 02 Jan 2006 15:04:05 MST
@@ -652,6 +658,8 @@ iterRunes:
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
 			//  dateAlphaWsDigit
 			//    May 8, 2009 5:57:51 PM
+			//    oct 1, 1970
+			//    oct 7, '70
 			switch {
 			case unicode.IsLetter(r):
 				p.set(0, "Mon")
@@ -665,24 +673,33 @@ iterRunes:
 			}
 
 		case dateAlphaWsDigit:
-			//  dateAlphaWsDigit
-			//    May 8, 2009 5:57:51 PM
+			// May 8, 2009 5:57:51 PM
+			// oct 1, 1970
+			// oct 7, '70
+			//gou.Debugf("%d %s dateAlphaWsDigit  %s %s", i, string(r), p.ds(), p.ts())
 			if r == ',' {
 				p.daylen = i - p.dayi
 				p.setDay()
 				p.stateDate = dateAlphaWsDigitComma
 			}
 		case dateAlphaWsDigitComma:
-			//          x
-			//    May 8, 2009 5:57:51 PM
+			//       x
+			// May 8, 2009 5:57:51 PM
+			// oct 1, 1970
+			// oct 7, '70
 			if r == ' ' {
 				p.stateDate = dateAlphaWsDigitCommaWs
 				p.yeari = i + 1
 			}
 		case dateAlphaWsDigitCommaWs:
-			//               x
-			//    May 8, 2009 5:57:51 PM
-			if r == ' ' {
+			//            x
+			// May 8, 2009 5:57:51 PM
+			// oct 1, 1970
+			// oct 7, '70
+			switch r {
+			case '\'':
+				p.yeari = i + 1
+			case ' ':
 				p.stateDate = dateAlphaWsDigitCommaWsYear
 				p.yearlen = i - p.yeari
 				p.setYear()
@@ -732,7 +749,9 @@ iterRunes:
 	p.coalesceDate(i)
 	if p.stateTime == timeStart {
 		// increment first one, since the i++ occurs at end of loop
-		i++
+		if i < len(p.datestr) {
+			i++
+		}
 
 	iterTimeRunes:
 		for ; i < len(datestr); i++ {
@@ -1192,6 +1211,8 @@ iterRunes:
 		return p.parse()
 
 	case dateDigitWsMoYear:
+		// 2 Jan 2018
+		// 2 Jan 18
 		// 2 Jan 2018 23:59
 		// 02 Jan 2018 23:59
 		// 02 Jan 2018 23:59:45
@@ -1206,6 +1227,12 @@ iterRunes:
 			return parse("02 January 2006", datestr, loc)
 		}
 		return parse("2 January 2006", datestr, loc)
+
+	case dateAlphaWsDigitCommaWs:
+		// oct 1, 1970
+		p.yearlen = i - p.yeari
+		p.setYear()
+		return p.parse()
 
 	case dateAlphaWsDigitCommaWsYear:
 		// May 8, 2009 5:57:51 PM
