@@ -184,14 +184,16 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2015-08-10 15:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 	ts = MustParse("Mon Aug 10 15:44:11 PST-0700 2015")
 	assert.Equal(t, "2015-08-10 22:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Mon Aug 10 15:44:11 CEST+0200 2015")
+	assert.Equal(t, "2015-08-10 13:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Easily the worst Date format I have ever seen
 	//  "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)"
 	ts = MustParse("Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)")
 	assert.Equal(t, "2015-07-03 17:04:07 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts = MustParse("Mon, 02 Jan 2006 15:04:05 MST")
-	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Fri, 03 Jul 2015 13:04:07 MST")
+	assert.Equal(t, "2015-07-03 13:04:07 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Mon, 2 Jan 2006 15:4:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -672,5 +674,6 @@ func TestPStruct(t *testing.T) {
 	p.set(15, "not")
 	assert.Equal(t, "08.21.71", p.datestr)
 	assert.Equal(t, "08.21.71", string(p.format))
-
+	assert.True(t, len(p.ds()) > 0)
+	assert.True(t, len(p.ts()) > 0)
 }
