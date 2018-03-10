@@ -777,17 +777,12 @@ iterRunes:
 				}
 				switch r {
 				case ',':
-					if len(datestr) == len("2014-05-11 08:20:13,787") {
-						// go doesn't seem to parse this one natively?   or did i miss it?
-						t, err := parse("2006-01-02 03:04:05", datestr[:i], loc)
-						if err == nil {
-							ms, err := strconv.Atoi(datestr[i+1:])
-							if err == nil {
-								return time.Unix(0, t.UnixNano()+int64(ms)*1e6), nil
-							}
-						}
-						return t, err
-					}
+					// hm, lets just swap out comma for period.  for some reason go
+					// won't parse it.
+					// 2014-05-11 08:20:13,787
+					ds := []byte(p.datestr)
+					ds[i] = '.'
+					return parseTime(string(ds), loc)
 				case '-', '+':
 					//   03:21:51+00:00
 					p.stateTime = timeOffset
@@ -1203,6 +1198,7 @@ iterRunes:
 		// 12 Feb 2006, 19:17
 		// 12 Feb 2006, 19:17:22
 		return p.parse()
+
 	case dateDigitWsMolong:
 		// 18 January 2018
 		// 8 January 2018

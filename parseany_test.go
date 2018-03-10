@@ -116,8 +116,8 @@ func TestInLocation(t *testing.T) {
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("Mon Aug 10 15:44:11 PST-0700 2015")
-	assert.Equal(t, "2015-08-10 22:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2014-05-11 08:20:13,787")
+	assert.Equal(t, "2014-05-11 08:20:13.787 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 func TestParse(t *testing.T) {
 
