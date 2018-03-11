@@ -119,6 +119,18 @@ func TestOne(t *testing.T) {
 	ts = MustParse("2014-05-11 08:20:13,787")
 	assert.Equal(t, "2014-05-11 08:20:13.787 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
+
+type dateTest struct {
+	in, out string
+}
+
+var testInputs = []dateTest{
+	{in: "oct 7, 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "7 oct 70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "7 oct 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
+}
+
 func TestParse(t *testing.T) {
 
 	/*
@@ -137,6 +149,12 @@ func TestParse(t *testing.T) {
 	assert.NotEqual(t, nil, err)
 
 	assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
+
+	for _, th := range testInputs {
+		ts = MustParse(th.in)
+		got := fmt.Sprintf("%v", ts.In(time.UTC))
+		assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+	}
 
 	// TODO:  Is a utf8 date valid?
 	// ts = MustParse("2014-04\u221226")
