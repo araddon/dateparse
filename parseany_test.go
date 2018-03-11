@@ -124,21 +124,31 @@ type dateTest struct {
 	in, out string
 }
 
+// {in: , out: },
+
 var testInputs = []dateTest{
 	{in: "oct 7, 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "Oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "Feb 8, 2009 5:57:51 AM", out: "2009-02-08 05:57:51 +0000 UTC"},
+	{in: "May 8, 2009 5:57:51 PM", out: "2009-05-08 17:57:51 +0000 UTC"},
+	{in: "May 8, 2009 5:57:1 PM", out: "2009-05-08 17:57:01 +0000 UTC"},
+	{in: "May 8, 2009 5:7:51 PM", out: "2009-05-08 17:07:51 +0000 UTC"},
 	{in: "7 oct 70", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "7 oct 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
+	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
+	{in: "Mon Jan  2 15:04:05 2006", out: "2006-01-02 15:04:05 +0000 UTC"},
+	{in: "Thu May 8 17:57:51 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
+	{in: "Thu May  8 17:57:51 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
+	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
+	{in: "Mon Jan 02 15:04:05 -0700 2006", out: "2006-01-02 22:04:05 +0000 UTC"},
+	{in: "Thu May 08 17:57:51 -0700 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
+	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+	{in: "Mon Jan  2 15:04:05 MST 2006", out: "2006-01-02 15:04:05 +0000 UTC"},
+	{in: "Thu May  8 17:57:51 MST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
-
-	/*
-		TODO:
-		- move to testharness
-		- replace all the default go dates 2006 with others
-		- more tests on AM/PM zones, offsets for each variation
-	*/
 
 	// Lets ensure we are operating on UTC
 	time.Local = time.UTC
@@ -155,29 +165,6 @@ func TestParse(t *testing.T) {
 		got := fmt.Sprintf("%v", ts.In(time.UTC))
 		assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
 	}
-
-	// TODO:  Is a utf8 date valid?
-	// ts = MustParse("2014-04\u221226")
-	// assert.Equal(t, "2014-04-26 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
-	ts = MustParse("May 8, 2009 5:57:51 PM")
-	assert.Equal(t, "2009-05-08 17:57:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	ts = MustParse("May 8, 2009 5:57:1 PM")
-	assert.Equal(t, "2009-05-08 17:57:01 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-	ts = MustParse("May 8, 2009 5:7:51 PM")
-	assert.Equal(t, "2009-05-08 17:07:51 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
-	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
-	ts = MustParse("Mon Jan  2 15:04:05 2006")
-	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
-
-	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-	ts = MustParse("Mon Jan 02 15:04:05 -0700 2006")
-	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)), "%v")
-
-	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
-	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
 	ts = MustParse("Wednesday, 07-May-09 08:00:43 MST")

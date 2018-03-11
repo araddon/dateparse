@@ -9,7 +9,14 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/araddon/gou"
 )
+
+func init() {
+	gou.SetupLogging("debug")
+	gou.SetColorOutput()
+}
 
 type dateState uint8
 type timeState uint8
@@ -55,6 +62,7 @@ const (
 	timeWsAMPMMaybe
 	timeWsAMPM
 	timeWsOffset
+	timeWsOffsetWs
 	timeWsOffsetAlpha
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
@@ -278,7 +286,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
-	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
+	gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}
@@ -715,11 +723,13 @@ iterRunes:
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if r == ' ' {
 				if p.dayi > 0 {
+
 					p.daylen = i - p.dayi
 					p.setDay()
 					p.yeari = i + 1
 					p.stateDate = dateAlphaWsAlphaYearmaybe
 					p.stateTime = timeStart
+					gou.Infof("%d %s dateAlphaWsAlpha %s %s", i, string(r), p.ds(), p.ts())
 				}
 			} else if unicode.IsDigit(r) {
 				if p.dayi == 0 {
@@ -734,6 +744,7 @@ iterRunes:
 				i = i - 3
 				p.stateDate = dateAlphaWsAlpha
 				p.yeari = 0
+				gou.Warnf("hm, not year")
 				break iterRunes
 			} else if r == ' ' {
 				// must be year format, not 15:04
@@ -756,6 +767,8 @@ iterRunes:
 	iterTimeRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
+
+			gou.Debugf("%d %s iterTimeRunes  %s %s", i, string(r), p.ds(), p.ts())
 
 			switch p.stateTime {
 			case timeStart:
@@ -850,6 +863,7 @@ iterRunes:
 				//   15:04:05 -0700
 				//   timeWsOffsetColon
 				//     15:04:05 -07:00
+				//     17:57:51 -0700 2009
 				//     timeWsOffsetColonAlpha
 				//       00:12:00 +00:00 UTC
 				//   timeWsOffsetAlpha
@@ -858,6 +872,7 @@ iterRunes:
 				//     00:12:00 2008
 				// timeZ
 				//   15:04:05.99Z
+				gou.Infof("timeWs")
 				switch r {
 				case 'A', 'P':
 					// Could be AM/PM or could be PST or similar
@@ -954,18 +969,22 @@ iterRunes:
 			case timeWsOffset:
 				// timeWsOffset
 				//   15:04:05 -0700
+				//   timeWsOffsetWs
+				//     17:57:51 -0700 2009
 				//   timeWsOffsetColon
 				//     15:04:05 -07:00
 				//     timeWsOffsetColonAlpha
 				//       00:12:00 +00:00 UTC
 				//   timeWsOffsetAlpha
 				//     00:12:00 +0000 UTC
+				gou.Infof("timeWsOffset")
 				switch r {
 				case ':':
 					p.stateTime = timeWsOffsetColon
 				case ' ':
 					p.set(p.offseti, "-0700")
-					p.stateTime = timeWsOffset
+					gou.Warnf("end of offset?")
+					p.stateTime = timeWsOffsetWs
 				default:
 					if unicode.IsLetter(r) {
 						// 00:12:00 +0000 UTC
@@ -973,6 +992,7 @@ iterRunes:
 						break iterTimeRunes
 					}
 				}
+			case timeWsOffsetWs:
 
 			case timeWsOffsetColon:
 				// timeWsOffsetColon
@@ -1117,6 +1137,8 @@ iterRunes:
 			p.set(p.offseti, "-0700")
 		case timeWsOffset:
 			p.set(p.offseti, "-0700")
+		case timeWsOffsetWs:
+		// 17:57:51 -0700 2009
 		case timeOffsetColon:
 			// 15:04:05+07:00
 			p.set(p.offseti, "-07:00")
