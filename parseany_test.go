@@ -51,6 +51,13 @@ func TestInLocation(t *testing.T) {
 	assert.Equal(t, "MST", zone, "Should have found zone = MST %v", zone)
 	assert.Equal(t, "2013-02-01 07:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts, err = ParseIn("18 January 2018", denverLoc)
+	assert.Equal(t, nil, err)
+	zone, offset = ts.Zone()
+	assert.Equal(t, -25200, offset, "Should have found offset = 0 %v", offset)
+	assert.Equal(t, "MST", zone, "Should have found zone = UTC %v", zone)
+	assert.Equal(t, "2018-01-18 07:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	// Now we are going to use ParseLocal() and see that it gives same
 	// answer as ParseIn when we have time.Local set to a location
 	time.Local = denverLoc
@@ -106,7 +113,20 @@ func TestInLocation(t *testing.T) {
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
+func TestOne(t *testing.T) {
+	time.Local = time.UTC
+	var ts time.Time
+	ts = MustParse("2014-05-11 08:20:13,787")
+	assert.Equal(t, "2014-05-11 08:20:13.787 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+}
 func TestParse(t *testing.T) {
+
+	/*
+		TODO:
+		- move to testharness
+		- replace all the default go dates 2006 with others
+		- more tests on AM/PM zones, offsets for each variation
+	*/
 
 	// Lets ensure we are operating on UTC
 	time.Local = time.UTC
@@ -142,8 +162,10 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
-	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
-	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Wednesday, 07-May-09 08:00:43 MST")
+	assert.Equal(t, "2009-05-07 08:00:43 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Wednesday, 28-Feb-18 09:01:00 MST")
+	assert.Equal(t, "2018-02-28 09:01:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// ST_WEEKDAYCOMMADELTA
 	//   Monday, 02 Jan 2006 15:04:05 -0700
@@ -158,16 +180,20 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "2006-01-02 16:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Another weird one, year on the end after UTC?
-	ts = MustParse("Mon Aug 10 15:44:11 UTC+0100 2015")
+	ts = MustParse("Mon Aug 10 15:44:11 UTC+0000 2015")
 	assert.Equal(t, "2015-08-10 15:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Mon Aug 10 15:44:11 PST-0700 2015")
+	assert.Equal(t, "2015-08-10 22:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Mon Aug 10 15:44:11 CEST+0200 2015")
+	assert.Equal(t, "2015-08-10 13:44:11 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	// Easily the worst Date format i have ever seen
+	// Easily the worst Date format I have ever seen
 	//  "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)"
 	ts = MustParse("Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)")
 	assert.Equal(t, "2015-07-03 17:04:07 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts = MustParse("Mon, 02 Jan 2006 15:04:05 MST")
-	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Fri, 03 Jul 2015 13:04:07 MST")
+	assert.Equal(t, "2015-07-03 13:04:07 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("Mon, 2 Jan 2006 15:4:05 MST")
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -221,6 +247,16 @@ func TestParse(t *testing.T) {
 
 	ts = MustParse("2 Feb 2006 19:17:22")
 	assert.Equal(t, "2006-02-02 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// // 19 Dec 2013 12:15:23 GMT
+	// ts = MustParse("12 Feb 2006 19:17:22 GMT")
+	// assert.Equal(t, "2006-02-12 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	// ts = MustParse("2 Feb 2006 19:17:22 GMT")
+	// assert.Equal(t, "2006-02-02 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// // 28 Mar 2010 15:45:30 +1100
+	// ts = MustParse("12 Feb 2006 19:17:22")
+	// assert.Equal(t, "2006-02-12 19:17:22 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	ts = MustParse("2013-Feb-03")
 	assert.Equal(t, "2013-02-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
@@ -621,4 +657,23 @@ func testDidPanic(datestr string) (paniced bool) {
 	}()
 	MustParse(datestr)
 	return false
+}
+
+func TestPStruct(t *testing.T) {
+
+	denverLoc, err := time.LoadLocation("America/Denver")
+	assert.Equal(t, nil, err)
+
+	p := newParser("08.21.71", denverLoc)
+
+	p.setMonth()
+	assert.Equal(t, 0, p.moi)
+	p.setDay()
+	assert.Equal(t, 0, p.dayi)
+	p.set(-1, "not")
+	p.set(15, "not")
+	assert.Equal(t, "08.21.71", p.datestr)
+	assert.Equal(t, "08.21.71", string(p.format))
+	assert.True(t, len(p.ds()) > 0)
+	assert.True(t, len(p.ts()) > 0)
 }
