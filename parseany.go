@@ -11,6 +11,11 @@ import (
 	"unicode/utf8"
 )
 
+// func init() {
+// 	gou.SetupLogging("debug")
+// 	gou.SetColorOutput()
+// }
+
 type dateState uint8
 type timeState uint8
 
@@ -528,10 +533,10 @@ iterRunes:
 				p.setYear()
 				i++
 				break iterRunes
-				// case ' ':
-				// 	p.yearlen = i - p.yeari
-				// 	p.setYear()
-				// 	break iterRunes
+			case ' ':
+				p.yearlen = i - p.yeari
+				p.setYear()
+				break iterRunes
 			}
 		case dateDigitWsMolong:
 			// 18 January 2018
