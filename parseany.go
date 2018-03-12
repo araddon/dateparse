@@ -9,14 +9,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/araddon/gou"
 )
-
-func init() {
-	gou.SetupLogging("debug")
-	gou.SetColorOutput()
-}
 
 type dateState uint8
 type timeState uint8
@@ -47,14 +40,15 @@ const (
 	dateAlphaWsAlphaYearmaybe
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
-	dateWeekdayAbbrevCommaDash
+	//dateWeekdayAbbrevCommaDash
 )
 const (
 	// Time state
 	timeIgnore timeState = iota
 	timeStart
 	timeWs
-	timeWsAlpha // 3
+	timeWsAlpha
+	timeWsAlphaWs
 	timeWsAlphaZoneOffset
 	timeWsAlphaZoneOffsetWs
 	timeWsAlphaZoneOffsetWsYear
@@ -63,7 +57,6 @@ const (
 	timeWsAMPM
 	timeWsOffset
 	timeWsOffsetWs
-	timeWsOffsetAlpha
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
 	timeWsYear
@@ -73,11 +66,14 @@ const (
 	timePeriod
 	timePeriodOffset
 	timePeriodOffsetColon
+	timePeriodOffsetColonWs
 	timePeriodWs
 	timePeriodWsAlpha
 	timePeriodWsOffset
 	timePeriodWsOffsetWs
 	timePeriodWsOffsetWsAlpha
+	timePeriodWsOffsetColon
+	timePeriodWsOffsetColonAlpha
 	timeZ
 	timeZDigit
 )
@@ -286,7 +282,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
-	gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
+	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}
@@ -528,10 +524,14 @@ iterRunes:
 			// 12 Feb 2006, 19:17:22
 			switch r {
 			case ',':
+				p.yearlen = i - p.yeari
+				p.setYear()
 				i++
 				break iterRunes
-			case ' ':
-				break iterRunes
+				// case ' ':
+				// 	p.yearlen = i - p.yeari
+				// 	p.setYear()
+				// 	break iterRunes
 			}
 		case dateDigitWsMolong:
 			// 18 January 2018
@@ -577,8 +577,7 @@ iterRunes:
 			//   Mon, 02 Jan 2006 15:04:05 -0700
 			//   Thu, 13 Jul 2017 08:58:40 +0100
 			//   Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-			//   dateWeekdayAbbrevCommaDash
-			//     Mon, 02-Jan-06 15:04:05 MST
+			//   Mon, 02-Jan-06 15:04:05 MST
 
 			switch {
 			case r == ' ':
@@ -623,7 +622,6 @@ iterRunes:
 					p.stateTime = timeStart
 					break iterRunes
 				}
-				//case r == '-':
 			}
 		case dateWeekdayAbbrevComma:
 			// Mon, 02 Jan 2006 15:04:05 MST
@@ -631,10 +629,9 @@ iterRunes:
 			// Thu, 13 Jul 2017 08:58:40 +0100
 			// Thu, 4 Jan 2018 17:53:36 +0000
 			// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-			// dateWeekdayAbbrevCommaDash
-			//   Mon, 02-Jan-06 15:04:05 MST
-			switch {
-			case r == ' ':
+			// Mon, 02-Jan-06 15:04:05 MST
+			switch r {
+			case ' ', '-':
 				if p.dayi == 0 {
 					p.dayi = i + 1
 				} else if p.moi == 0 {
@@ -651,10 +648,6 @@ iterRunes:
 					p.stateTime = timeStart
 					break iterRunes
 				}
-
-			case r == '-':
-				p.stateDate = dateWeekdayAbbrevCommaDash
-				break iterRunes
 			}
 
 		case dateAlphaWs:
@@ -729,7 +722,6 @@ iterRunes:
 					p.yeari = i + 1
 					p.stateDate = dateAlphaWsAlphaYearmaybe
 					p.stateTime = timeStart
-					gou.Infof("%d %s dateAlphaWsAlpha %s %s", i, string(r), p.ds(), p.ts())
 				}
 			} else if unicode.IsDigit(r) {
 				if p.dayi == 0 {
@@ -744,7 +736,6 @@ iterRunes:
 				i = i - 3
 				p.stateDate = dateAlphaWsAlpha
 				p.yeari = 0
-				gou.Warnf("hm, not year")
 				break iterRunes
 			} else if r == ' ' {
 				// must be year format, not 15:04
@@ -763,12 +754,19 @@ iterRunes:
 		if i < len(p.datestr) {
 			i++
 		}
+		// ensure we skip any whitespace prefix
+		for ; i < len(datestr); i++ {
+			r := rune(datestr[i])
+			if r != ' ' {
+				break
+			}
+		}
 
 	iterTimeRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
 
-			gou.Debugf("%d %s iterTimeRunes  %s %s", i, string(r), p.ds(), p.ts())
+			//gou.Debugf("%d %s iterTimeRunes  %s %s", i, string(r), p.ds(), p.ts())
 
 			switch p.stateTime {
 			case timeStart:
@@ -857,22 +855,21 @@ iterRunes:
 				//   06:20:00 UTC
 				//   15:44:11 UTC+0100 2015
 				//   18:04:07 GMT+0100 (GMT Daylight Time)
+				//   17:57:51 MST 2009
 				//   timeWsAMPMMaybe
 				//     05:24:37 PM
 				// timeWsOffset
 				//   15:04:05 -0700
+				//   00:12:00 +0000 UTC
 				//   timeWsOffsetColon
 				//     15:04:05 -07:00
 				//     17:57:51 -0700 2009
 				//     timeWsOffsetColonAlpha
 				//       00:12:00 +00:00 UTC
-				//   timeWsOffsetAlpha
-				//     00:12:00 +0000 UTC
 				// timeWsYear
 				//     00:12:00 2008
 				// timeZ
 				//   15:04:05.99Z
-				gou.Infof("timeWs")
 				switch r {
 				case 'A', 'P':
 					// Could be AM/PM or could be PST or similar
@@ -885,6 +882,7 @@ iterRunes:
 					if unicode.IsLetter(r) {
 						// 06:20:00 UTC
 						// 15:44:11 UTC+0100 2015
+						// 17:57:51 MST 2009
 						p.tzi = i
 						p.stateTime = timeWsAlpha
 						//break iterTimeRunes
@@ -896,6 +894,8 @@ iterRunes:
 				}
 			case timeWsAlpha:
 				// 06:20:00 UTC
+				// timeWsAlphaWs
+				//   17:57:51 MST 2009
 				// timeWsAlphaZoneOffset
 				// timeWsAlphaZoneOffsetWs
 				//   timeWsAlphaZoneOffsetWsExtra
@@ -912,7 +912,14 @@ iterRunes:
 					}
 					p.stateTime = timeWsAlphaZoneOffset
 					p.offseti = i
+				case ' ':
+					// 17:57:51 MST 2009
+					p.stateTime = timeWsAlphaWs
+					p.yeari = i + 1
 				}
+			case timeWsAlphaWs:
+				//   17:57:51 MST 2009
+
 			case timeWsAlphaZoneOffset:
 				// timeWsAlphaZoneOffset
 				// timeWsAlphaZoneOffsetWs
@@ -971,29 +978,32 @@ iterRunes:
 				//   15:04:05 -0700
 				//   timeWsOffsetWs
 				//     17:57:51 -0700 2009
+				//     00:12:00 +0000 UTC
 				//   timeWsOffsetColon
 				//     15:04:05 -07:00
 				//     timeWsOffsetColonAlpha
 				//       00:12:00 +00:00 UTC
-				//   timeWsOffsetAlpha
-				//     00:12:00 +0000 UTC
-				gou.Infof("timeWsOffset")
 				switch r {
 				case ':':
 					p.stateTime = timeWsOffsetColon
 				case ' ':
 					p.set(p.offseti, "-0700")
-					gou.Warnf("end of offset?")
+					p.yeari = i + 1
 					p.stateTime = timeWsOffsetWs
-				default:
-					if unicode.IsLetter(r) {
-						// 00:12:00 +0000 UTC
-						p.stateTime = timeWsOffsetAlpha
-						break iterTimeRunes
-					}
 				}
 			case timeWsOffsetWs:
-
+				// 17:57:51 -0700 2009
+				// 00:12:00 +0000 UTC
+				if unicode.IsDigit(r) {
+					p.yearlen = i - p.yeari + 1
+					if p.yearlen == 4 {
+						p.setYear()
+					}
+				} else if unicode.IsLetter(r) {
+					if p.tzi == 0 {
+						p.tzi = i
+					}
+				}
 			case timeWsOffsetColon:
 				// timeWsOffsetColon
 				//   15:04:05 -07:00
@@ -1051,6 +1061,7 @@ iterRunes:
 				//   19:55:00.799+0100
 				//   timePeriodOffsetColon
 				//     15:04:05.999-07:00
+				//     13:31:51.999-07:00 MST
 				if r == ':' {
 					p.stateTime = timePeriodOffsetColon
 				}
@@ -1058,7 +1069,15 @@ iterRunes:
 				// timePeriodOffset
 				//   timePeriodOffsetColon
 				//     15:04:05.999-07:00
-
+				//     13:31:51.999 -07:00 MST
+				switch r {
+				case ' ':
+					p.set(p.offseti, "-07:00")
+					p.stateTime = timePeriodOffsetColonWs
+					p.tzi = i + 1
+				}
+			case timePeriodOffsetColonWs:
+				// continue
 			case timePeriodWs:
 				// timePeriodWs
 				//   timePeriodWsOffset
@@ -1067,6 +1086,8 @@ iterRunes:
 				//   timePeriodWsOffsetAlpha
 				//     00:07:31.945167 +0000 UTC
 				//     00:00:00.000 +0000 UTC
+				//   timePeriodWsOffsetColon
+				//     13:31:51.999 -07:00 MST
 				//   timePeriodWsAlpha
 				//     06:20:00.000 UTC
 				if p.offseti == 0 {
@@ -1094,9 +1115,13 @@ iterRunes:
 				//   timePeriodWsOffsetAlpha
 				//     00:07:31.945167 +0000 UTC
 				//     00:00:00.000 +0000 UTC
+				//   timePeriodWsOffsetColon
+				//     13:31:51.999 -07:00 MST
 				//   timePeriodWsAlpha
 				//     06:20:00.000 UTC
 				switch r {
+				case ':':
+					p.stateTime = timePeriodWsOffsetColon
 				case ' ':
 					p.set(p.offseti, "-0700")
 				default:
@@ -1108,6 +1133,20 @@ iterRunes:
 					}
 				}
 
+			case timePeriodWsOffsetColon:
+				// 13:31:51.999 -07:00 MST
+				switch r {
+				case ' ':
+					p.set(p.offseti, "-07:00")
+				default:
+					if unicode.IsLetter(r) {
+						// 13:31:51.999 -07:00 MST
+						p.tzi = i
+						p.stateTime = timePeriodWsOffsetColonAlpha
+					}
+				}
+			case timePeriodWsOffsetColonAlpha:
+				// continue
 			case timeZ:
 				// timeZ
 				//   15:04:05.99Z
@@ -1124,7 +1163,9 @@ iterRunes:
 		}
 
 		switch p.stateTime {
-		case timeWsAlpha:
+		case timeWsAlphaWs:
+			p.yearlen = i - p.yeari
+			p.setYear()
 		case timeWsYear:
 			p.yearlen = i - p.yeari
 			p.setYear()
@@ -1138,7 +1179,11 @@ iterRunes:
 		case timeWsOffset:
 			p.set(p.offseti, "-0700")
 		case timeWsOffsetWs:
-		// 17:57:51 -0700 2009
+			// 17:57:51 -0700 2009
+			// 00:12:00 +0000 UTC
+		case timeWsOffsetColon:
+			// 17:57:51 -07:00
+			p.set(p.offseti, "-07:00")
 		case timeOffsetColon:
 			// 15:04:05+07:00
 			p.set(p.offseti, "-07:00")
@@ -1147,6 +1192,14 @@ iterRunes:
 			p.set(p.offseti, "-0700")
 		case timePeriodOffsetColon:
 			p.set(p.offseti, "-07:00")
+		case timePeriodWsOffsetColonAlpha:
+			p.tzlen = i - p.tzi
+			switch p.tzlen {
+			case 3:
+				p.set(p.tzi, "MST")
+			case 4:
+				p.set(p.tzi, "MST ")
+			}
 		case timePeriodWsOffset:
 			p.set(p.offseti, "-0700")
 		}
@@ -1266,7 +1319,7 @@ iterRunes:
 	case dateAlphaWsAlphaYearmaybe:
 		return p.parse()
 
-	case dateDigitSlash: // starts digit then slash 02/ (but nothing else)
+	case dateDigitSlash:
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
@@ -1287,14 +1340,9 @@ iterRunes:
 		// Monday, 02-Jan-06 15:04:05 MST
 		return p.parse()
 
-	case dateWeekdayAbbrevComma: // Starts alpha then comma
+	case dateWeekdayAbbrevComma:
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
-		return p.parse()
-
-	case dateWeekdayAbbrevCommaDash:
-		// Mon, 02-Jan-06 15:04:05 MST
-		// Mon, 2-Jan-06 15:04:05 MST
 		return p.parse()
 
 	}
