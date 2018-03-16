@@ -586,6 +586,13 @@ iterRunes:
 
 			switch {
 			case r == ' ':
+				if i > 4 {
+					// September 17, 2012 at 5:00pm UTC-05
+					// This one doesn't follow standard parse methodologies.   the "January"
+					// is difficult to use the format string replace method because of its variable-length (march, june)
+					// so we just use this format here.  If we see more similar to this we will do something else.
+					return parse("January 02, 2006 at 3:04pm MST-07", datestr, loc)
+				}
 				p.stateDate = dateAlphaWs
 			case r == ',':
 				// p.moi = 0
