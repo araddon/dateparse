@@ -9,7 +9,7 @@ Parse many date strings without knowing format in advance.  Uses a scanner to re
 [![Build Status](https://travis-ci.org/araddon/dateparse.svg?branch=master)](https://travis-ci.org/araddon/dateparse)
 [![Go ReportCard](https://goreportcard.com/badge/araddon/dateparse)](https://goreportcard.com/report/araddon/dateparse)
 
-**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous will work on alternate api for preferring dd/mm https://github.com/araddon/dateparse/issues/28.  
+**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous will.  Plan an alternate api for preferring dd/mm https://github.com/araddon/dateparse/issues/28   
 
 **Timezones** The location your server is configured effects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
 
