@@ -111,6 +111,16 @@ func TestInLocation(t *testing.T) {
 	_, offset = ts.Zone()
 	assert.NotEqual(t, 0, offset, "Should have found offset %v", offset)
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// Now some errors
+	zeroTime := time.Time{}.Unix()
+	ts, err = ParseIn("INVALID", denverLoc)
+	assert.Equal(t, zeroTime, ts.Unix())
+	assert.NotEqual(t, nil, err)
+
+	ts, err = ParseLocal("INVALID")
+	assert.Equal(t, zeroTime, ts.Unix())
+	assert.NotEqual(t, nil, err)
 }
 
 func TestOne(t *testing.T) {
@@ -461,6 +471,8 @@ func TestParse(t *testing.T) {
 
 	// some errors
 
+	assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
+
 	_, err = ParseAny("138421636711122233311111") // too many digits
 	assert.NotEqual(t, nil, err)
 
@@ -498,4 +510,40 @@ func TestPStruct(t *testing.T) {
 	assert.Equal(t, "08.21.71", string(p.format))
 	assert.True(t, len(p.ds()) > 0)
 	assert.True(t, len(p.ts()) > 0)
+}
+
+var testParseFormat = []dateTest{
+	{in: "oct 7, 1970", out: "Jan 2, 2006"},
+	// 03 February 2013
+	{in: "03 February 2013", out: "02 January 2006"},
+	// 13:31:51.999 -07:00 MST
+	//   yyyy-mm-dd hh:mm:ss +00:00
+	{in: "2012-08-03 18:31:59 +00:00", out: "2006-01-02 15:04:05 -07:00"},
+	//   yyyy-mm-dd hh:mm:ss +0000 TZ
+	// Golang Native Format
+	{in: "2012-08-03 18:31:59 +0000 UTC", out: "2006-01-02 15:04:05 -0700 UTC"},
+	//   yyyy-mm-dd hh:mm:ss TZ
+	{in: "2012-08-03 18:31:59 UTC", out: "2006-01-02 15:04:05 UTC"},
+	//   yyyy-mm-ddThh:mm:ss-07:00
+	{in: "2009-08-12T22:15:09-07:00", out: "2006-01-02T15:04:05-07:00"},
+	//   yyyy-mm-ddThh:mm:ss-0700
+	{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
+	//   yyyy-mm-ddThh:mm:ssZ
+	{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+}
+
+func TestParseLayout(t *testing.T) {
+
+	for _, th := range testParseFormat {
+		l, err := ParseFormat(th.in)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, th.out, l, "for in=%v", th.in)
+	}
+
+	// errors
+	_, err := ParseFormat(`{"hello"}`)
+	assert.NotEqual(t, nil, err)
+
+	_, err = ParseFormat("2009-15-12T22:15Z")
+	assert.NotEqual(t, nil, err)
 }

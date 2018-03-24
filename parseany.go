@@ -90,7 +90,11 @@ var (
 // ParseAny parse an unknown date format, detect the layout, parse.
 // Normal parse.  Equivalent Timezone rules as time.Parse()
 func ParseAny(datestr string) (time.Time, error) {
-	return parseTime(datestr, nil)
+	p, err := parseTime(datestr, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return p.parse()
 }
 
 // ParseIn with Location, equivalent to time.ParseInLocation() timezone/offset
@@ -99,7 +103,11 @@ func ParseAny(datestr string) (time.Time, error) {
 // That is, MST means one thing when using America/Denver and something else
 // in other locations.
 func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
-	return parseTime(datestr, loc)
+	p, err := parseTime(datestr, loc)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return p.parse()
 }
 
 // ParseLocal Given an unknown date format, detect the layout,
@@ -118,29 +126,44 @@ func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 //     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 //
 func ParseLocal(datestr string) (time.Time, error) {
-	return parseTime(datestr, time.Local)
+	p, err := parseTime(datestr, time.Local)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return p.parse()
 }
 
 // MustParse  parse a date, and panic if it can't be parsed.  Used for testing.
 // Not recommended for most use-cases.
 func MustParse(datestr string) time.Time {
-	t, err := parseTime(datestr, nil)
+	p, err := parseTime(datestr, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	t, err := p.parse()
 	if err != nil {
 		panic(err.Error())
 	}
 	return t
 }
 
-func parse(layout, datestr string, loc *time.Location) (time.Time, error) {
-	if loc == nil {
-		return time.Parse(layout, datestr)
+// ParseFormat parse an unknown date format, detect the layout and return layout.
+func ParseFormat(datestr string) (string, error) {
+	p, err := parseTime(datestr, nil)
+	if err != nil {
+		return "", err
 	}
-	return time.ParseInLocation(layout, datestr, loc)
+	_, err = p.parse()
+	if err != nil {
+		return "", err
+	}
+	return string(p.format), nil
 }
 
 type parser struct {
 	loc              *time.Location
 	preferMonthFirst bool
+	ambiguousMD      bool
 	stateDate        dateState
 	stateTime        timeState
 	format           []byte
@@ -166,6 +189,7 @@ type parser struct {
 	offsetlen        int
 	tzi              int
 	tzlen            int
+	t                *time.Time
 }
 
 func newParser(dateStr string, loc *time.Location) *parser {
@@ -283,6 +307,9 @@ func (p *parser) trimExtra() {
 }
 
 func (p *parser) parse() (time.Time, error) {
+	if p.t != nil {
+		return *p.t, nil
+	}
 	if p.skip > 0 && len(p.format) > p.skip {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
@@ -293,7 +320,7 @@ func (p *parser) parse() (time.Time, error) {
 	}
 	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
 }
-func parseTime(datestr string, loc *time.Location) (time.Time, error) {
+func parseTime(datestr string, loc *time.Location) (*parser, error) {
 
 	p := newParser(datestr, loc)
 	i := 0
@@ -316,6 +343,8 @@ iterRunes:
 				p.stateDate = dateDigit
 			} else if unicode.IsLetter(r) {
 				p.stateDate = dateAlpha
+			} else {
+				return nil, fmt.Errorf("unrecognized first character '%s' in %v", string(r), datestr)
 			}
 		case dateDigit:
 
@@ -341,6 +370,7 @@ iterRunes:
 					p.moi = i + 1
 					p.setYear()
 				} else {
+					p.ambiguousMD = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							p.molen = i
@@ -352,6 +382,7 @@ iterRunes:
 
 			case '.':
 				// 3.31.2014
+				p.ambiguousMD = true
 				p.moi = 0
 				p.molen = i
 				p.setMonth()
@@ -426,7 +457,6 @@ iterRunes:
 			//  2017-07-19 03:21:51+00:00
 			//  2013-04-01 22:43:22
 			//  2014-04-26 05:24:37 PM
-
 			switch r {
 			case ' ':
 				p.daylen = i - p.dayi
@@ -487,11 +517,6 @@ iterRunes:
 						p.yeari = i + 1
 					}
 				}
-
-			default:
-				// if unicode.IsDigit(r) || r == '/' {
-				// 	continue
-				// }
 			}
 
 		case dateDigitWs:
@@ -583,7 +608,6 @@ iterRunes:
 			//   Thu, 13 Jul 2017 08:58:40 +0100
 			//   Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			//   Mon, 02-Jan-06 15:04:05 MST
-
 			switch {
 			case r == ' ':
 				if i > 4 {
@@ -591,7 +615,8 @@ iterRunes:
 					// This one doesn't follow standard parse methodologies.   the "January"
 					// is difficult to use the format string replace method because of its variable-length (march, june)
 					// so we just use this format here.  If we see more similar to this we will do something else.
-					return parse("January 02, 2006 at 3:04pm MST-07", datestr, loc)
+					p.format = []byte("January 02, 2006 at 3:04pm MST-07")
+					return p, nil
 				}
 				p.stateDate = dateAlphaWs
 			case r == ',':
@@ -609,7 +634,6 @@ iterRunes:
 					// the mon, monday, they are all superfelous and not needed
 					// just lay down the skip, no need to fill and then skip
 				}
-
 			}
 		case dateWeekdayComma:
 			// Monday, 02 Jan 2006 15:04:05 MST
@@ -1242,9 +1266,11 @@ iterRunes:
 				t = time.Unix(0, miliSecs*1000*1000)
 			}
 		} else if len(datestr) == len("20140601") {
-			return parse("20060102", datestr, loc)
+			p.format = []byte("20060102")
+			return p, nil
 		} else if len(datestr) == len("2014") {
-			return parse("2006", datestr, loc)
+			p.format = []byte("2006")
+			return p, nil
 		}
 		if t.IsZero() {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
@@ -1253,41 +1279,45 @@ iterRunes:
 					// nothing before unix-epoch
 				} else {
 					t = time.Unix(secs, 0)
+					p.t = &t
 				}
 			}
 		}
 		if !t.IsZero() {
 			if loc == nil {
-				return t, nil
+				p.t = &t
+				return p, nil
 			}
-			return t.In(loc), nil
+			t = t.In(loc)
+			p.t = &t
+			return p, nil
 		}
 
 	case dateDigitDash:
 		// 2006-01
-		return p.parse()
+		return p, nil
 
 	case dateDigitDashDash:
 		// 2006-01-02
 		// 2006-1-02
 		// 2006-1-2
 		// 2006-01-2
-		return p.parse()
+		return p, nil
 
 	case dateDigitDashDashAlpha:
 		// 2013-Feb-03
 		// 2013-Feb-3
 		p.daylen = i - p.dayi
 		p.setDay()
-		return p.parse()
+		return p, nil
 
 	case dateDigitDashDashWs: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
 		// 2013-04-01 22:43:22
 		// 2013-04-01 22:43
-		return p.parse()
+		return p, nil
 
 	case dateDigitDashDashT:
-		return p.parse()
+		return p, nil
 
 	case dateDigitDotDot:
 		// 03.31.1981
@@ -1295,7 +1325,7 @@ iterRunes:
 		// 3.2.81
 		p.setYear()
 		p.yearlen = i - p.yeari
-		return p.parse()
+		return p, nil
 
 	case dateDigitWsMoYear:
 		// 2 Jan 2018
@@ -1305,59 +1335,63 @@ iterRunes:
 		// 02 Jan 2018 23:59:45
 		// 12 Feb 2006, 19:17
 		// 12 Feb 2006, 19:17:22
-		return p.parse()
+		return p, nil
 
 	case dateDigitWsMolong:
 		// 18 January 2018
 		// 8 January 2018
 		if p.daylen == 2 {
-			return parse("02 January 2006", datestr, loc)
+			p.format = []byte("02 January 2006")
+			return p, nil
 		}
-		return parse("2 January 2006", datestr, loc)
+		p.format = []byte("2 January 2006")
+		return p, nil // parse("2 January 2006", datestr, loc)
 
 	case dateAlphaWsDigitCommaWs:
 		// oct 1, 1970
 		p.yearlen = i - p.yeari
 		p.setYear()
-		return p.parse()
+		return p, nil
 
 	case dateAlphaWsDigitCommaWsYear:
 		// May 8, 2009 5:57:51 PM
-		return p.parse()
+		return p, nil
 
 	case dateAlphaWsAlpha:
-		return p.parse()
+		return p, nil
 
 	case dateAlphaWsAlphaYearmaybe:
-		return p.parse()
+		return p, nil
 
 	case dateDigitSlash:
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
 		// 2014/10/13
-		return p.parse()
+		return p, nil
 
 	case dateDigitChineseYear:
 		// dateDigitChineseYear
 		//   2014年04月08日
-		return parse("2006年01月02日", datestr, loc)
+		p.format = []byte("2006年01月02日")
+		return p, nil
 
 	case dateDigitChineseYearWs:
-		return parse("2006年01月02日 15:04:05", datestr, loc)
+		p.format = []byte("2006年01月02日 15:04:05")
+		return p, nil
 
 	case dateWeekdayComma:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
 		// Monday, 02-Jan-06 15:04:05 MST
-		return p.parse()
+		return p, nil
 
 	case dateWeekdayAbbrevComma:
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
-		return p.parse()
+		return p, nil
 
 	}
 
-	return time.Time{}, fmt.Errorf("Could not find date format for %s", datestr)
+	return nil, fmt.Errorf("Could not find date format for %s", datestr)
 }
