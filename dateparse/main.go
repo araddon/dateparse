@@ -48,7 +48,7 @@ func main() {
 		}
 		loc = l
 		zonename, _ := time.Now().In(l).Zone()
-		fmt.Printf("Your Using time.Local set to location=%s %v \n", timezone, zonename)
+		fmt.Printf("\nYour Using time.Local set to location=%s %v \n", timezone, zonename)
 	}
 	fmt.Printf("\n")
 
@@ -57,9 +57,10 @@ func main() {
 	table.AddHeaders("method", "Zone Source", "Parsed", "Parsed: t.In(time.UTC)")
 
 	parsers := map[string]parser{
-		"ParseAny":   parseAny,
-		"ParseIn":    parseIn,
-		"ParseLocal": parseLocal,
+		"ParseAny":    parseAny,
+		"ParseIn":     parseIn,
+		"ParseLocal":  parseLocal,
+		"ParseStrict": parseStrict,
 	}
 
 	for name, parser := range parsers {
@@ -112,6 +113,17 @@ func parseAny(datestr string, loc *time.Location, utc bool) string {
 	}
 	if utc {
 		return fmt.Sprintf("%s day=%d", t.In(time.UTC), t.In(time.UTC).Weekday())
+	}
+	return t.String()
+}
+
+func parseStrict(datestr string, loc *time.Location, utc bool) string {
+	t, err := dateparse.ParseStrict(datestr)
+	if err != nil {
+		return err.Error()
+	}
+	if utc {
+		return t.In(time.UTC).String()
 	}
 	return t.String()
 }
