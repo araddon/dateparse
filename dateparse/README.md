@@ -144,6 +144,29 @@ Your Using time.Local set to location=America/New_York EDT
 | ParseStrict | time.Local = time.UTC     | 2017-07-19 03:21:00 +0000 UTC | 2017-07-19 03:21:00 +0000 UTC       |
 +-------------+---------------------------+-------------------------------+-------------------------------------+
 
+$ dateparse --timezone="America/New_York" "03/03/2017"
 
+Your Current time.Local zone is PDT
+
+Layout String: dateparse.ParseFormat() => 01/02/2006
+
+Your Using time.Local set to location=America/New_York EDT 
+
++-------------+---------------------------+----------------------------------------------------+----------------------------------------------------+
+| method      | Zone Source               | Parsed                                             | Parsed: t.In(time.UTC)                             |
++-------------+---------------------------+----------------------------------------------------+----------------------------------------------------+
+| ParseIn     | time.Local = nil          | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC                      |
+| ParseIn     | time.Local = timezone arg | 2017-03-03 00:00:00 -0500 EST                      | 2017-03-03 05:00:00 +0000 UTC                      |
+| ParseIn     | time.Local = time.UTC     | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC                      |
+| ParseLocal  | time.Local = nil          | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC                      |
+| ParseLocal  | time.Local = timezone arg | 2017-03-03 00:00:00 -0500 EST                      | 2017-03-03 05:00:00 +0000 UTC                      |
+| ParseLocal  | time.Local = time.UTC     | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC                      |
+| ParseStrict | time.Local = nil          | This date has ambiguous mm/dd vs dd/mm type format | This date has ambiguous mm/dd vs dd/mm type format |
+| ParseStrict | time.Local = timezone arg | This date has ambiguous mm/dd vs dd/mm type format | This date has ambiguous mm/dd vs dd/mm type format |
+| ParseStrict | time.Local = time.UTC     | This date has ambiguous mm/dd vs dd/mm type format | This date has ambiguous mm/dd vs dd/mm type format |
+| ParseAny    | time.Local = nil          | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC day=5                |
+| ParseAny    | time.Local = timezone arg | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC day=5                |
+| ParseAny    | time.Local = time.UTC     | 2017-03-03 00:00:00 +0000 UTC                      | 2017-03-03 00:00:00 +0000 UTC day=5                |
++-------------+---------------------------+----------------------------------------------------+----------------------------------------------------+
 
 ```
