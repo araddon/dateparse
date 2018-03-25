@@ -36,6 +36,11 @@ t, err := dateparse.ParseLocal("3/1/2014")
 // Equivalent to
 t, err := dateparse.ParseIn("3/1/2014", time.Local)
 
+
+// Return a string that represents the layout to parse the given date-time.
+layout, err := dateparse.ParseFormat("May 8, 2009 5:57:51 PM")
+> "Jan 2, 2006 3:04:05 PM"
+
 ```
 
 cli tool for testing dateformats

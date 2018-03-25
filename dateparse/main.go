@@ -30,8 +30,14 @@ func main() {
 
 	datestr = flag.Args()[0]
 
+	layout, err := dateparse.ParseFormat(datestr)
+	if err != nil {
+		panic(err.Error())
+	}
+
 	zonename, _ := time.Now().In(time.Local).Zone()
 	fmt.Printf("\nYour Current time.Local zone is %v\n", zonename)
+	fmt.Printf("\nLayout String: dateparse.ParseFormat() => %v\n", layout)
 	var loc *time.Location
 	if timezone != "" {
 		// NOTE:  This is very, very important to understand
