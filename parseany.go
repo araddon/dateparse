@@ -84,12 +84,12 @@ const (
 )
 
 var (
-	//shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
 	ErrAmbiguousMMDD = fmt.Errorf("This date has ambiguous mm/dd vs dd/mm type format")
 )
 
-// ParseAny parse an unknown date format, detect the layout, parse.
-// Normal parse.  Equivalent Timezone rules as time.Parse()
+// ParseAny parse an unknown date format, detect the layout.
+// Normal parse.  Equivalent Timezone rules as time.Parse().
+// NOTE:  please see readme on mmdd vs ddmm ambiguous dates.
 func ParseAny(datestr string) (time.Time, error) {
 	p, err := parseTime(datestr, nil)
 	if err != nil {
@@ -148,7 +148,12 @@ func MustParse(datestr string) time.Time {
 	return t
 }
 
-// ParseFormat parse an unknown date format, detect the layout and return layout.
+// ParseFormat parse's an unknown date-time string and returns a layout
+// string that can parse this (and exact same format) other date-time strings.
+//
+//     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
+//     // layout = "2006-01-02 15:04:05"
+//
 func ParseFormat(datestr string) (string, error) {
 	p, err := parseTime(datestr, nil)
 	if err != nil {
@@ -162,8 +167,7 @@ func ParseFormat(datestr string) (string, error) {
 }
 
 // ParseStrict parse an unknown date format.  IF the date is ambigous
-// mm/dd vs dd/mm then return an error.
-// These return errors:   3.3.2014 , 8/8/71 etc
+// mm/dd vs dd/mm then return an error. These return errors:   3.3.2014 , 8/8/71 etc
 func ParseStrict(datestr string) (time.Time, error) {
 	p, err := parseTime(datestr, nil)
 	if err != nil {
@@ -1289,10 +1293,9 @@ iterRunes:
 		}
 		if t.IsZero() {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				if secs < 0 {
+				if secs > 0 {
 					// Now, for unix-seconds we aren't going to guess a lot
 					// nothing before unix-epoch
-				} else {
 					t = time.Unix(secs, 0)
 					p.t = &t
 				}
