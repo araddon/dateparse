@@ -84,7 +84,8 @@ const (
 )
 
 var (
-	shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
+	//shortDates = []string{"01/02/2006", "1/2/2006", "06/01/02", "01/02/06", "1/2/06"}
+	ErrAmbiguousMMDD = fmt.Errorf("This date has ambiguous mm/dd vs dd/mm type format")
 )
 
 // ParseAny parse an unknown date format, detect the layout, parse.
@@ -158,6 +159,20 @@ func ParseFormat(datestr string) (string, error) {
 		return "", err
 	}
 	return string(p.format), nil
+}
+
+// ParseStrict parse an unknown date format.  IF the date is ambigous
+// mm/dd vs dd/mm then return an error.
+// These return errors:   3.3.2014 , 8/8/71 etc
+func ParseStrict(datestr string) (time.Time, error) {
+	p, err := parseTime(datestr, nil)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if p.ambiguousMD {
+		return time.Time{}, ErrAmbiguousMMDD
+	}
+	return p.parse()
 }
 
 type parser struct {

@@ -19,6 +19,10 @@ Parse many date strings without knowing format in advance.  Uses a scanner to re
 // Normal parse.  Equivalent Timezone rules as time.Parse()
 t, err := dateparse.ParseAny("3/1/2014")
 
+// Parse Strict, error on ambigous mm/dd vs dd/mm dates
+t, err := dateparse.ParseStrict("3/1/2014")
+> returns error 
+
 // Parse with Location, equivalent to time.ParseInLocation() timezone/offset
 // rules.  Using location arg, if timezone/offset info exists in the 
 // datestring, it uses the given location rules for any zone interpretation.

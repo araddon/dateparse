@@ -547,3 +547,32 @@ func TestParseLayout(t *testing.T) {
 	_, err = ParseFormat("2009-15-12T22:15Z")
 	assert.NotEqual(t, nil, err)
 }
+
+var testParseStrict = []dateTest{
+	//   mm.dd.yyyy
+	{in: "3.3.2014"},
+	//   mm.dd.yy
+	{in: "08.09.71"},
+	//  mm/dd/yyyy
+	{in: "3/5/2014"},
+	//  mm/dd/yy
+	{in: "08/08/71"},
+	{in: "8/8/71"},
+	//  mm/dd/yy hh:mm:ss
+	{in: "04/02/2014 04:08:09"},
+	{in: "4/2/2014 04:08:09"},
+}
+
+func TestParseStrict(t *testing.T) {
+
+	for _, th := range testParseStrict {
+		_, err := ParseStrict(th.in)
+		assert.NotEqual(t, nil, err)
+	}
+
+	_, err := ParseStrict(`{"hello"}`)
+	assert.NotEqual(t, nil, err)
+
+	_, err = ParseStrict("2009-08-12T22:15Z")
+	assert.Equal(t, nil, err)
+}
