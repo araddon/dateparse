@@ -126,8 +126,8 @@ func TestInLocation(t *testing.T) {
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("2014-05-11 08:20:13,787")
-	assert.Equal(t, "2014-05-11 08:20:13.787 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2018-04-02T22:18+0000")
+	assert.Equal(t, "2018-04-02 22:18:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -310,6 +310,9 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.12 +0000", out: "2014-04-26 17:24:37.12 +0000 UTC"},
 	{in: "2014-04-26 17:24:37.1 +0000", out: "2014-04-26 17:24:37.1 +0000 UTC"},
 	{in: "2014-05-11 08:20:13 +0000", out: "2014-05-11 08:20:13 +0000 UTC"},
+	//   yyyy-mm-dd hh:mm:ss+0000
+	//   yyyy-mm-dd hh:mm+0000
+	{in: "2014-05-11 08:20:13 +0530", out: "2014-05-11 02:50:13 +0000 UTC"},
 
 	// 13:31:51.999 -07:00 MST
 	//   yyyy-mm-dd hh:mm:ss +00:00
@@ -400,6 +403,8 @@ var testInputs = []dateTest{
 	{in: "2016-06-21T19:55:00+0100", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55:00-0700", out: "2016-06-22 02:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55:00.799+0100", out: "2016-06-21 18:55:00.799 +0000 UTC"},
+	{in: "2016-06-21T19:55+0100", out: "2016-06-21 18:55:00 +0000 UTC"},
+	{in: "2016-06-21T19:55+0130", out: "2016-06-21 18:25:00 +0000 UTC"},
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2009-08-12 22:15:00 +0000 UTC"},
 	{in: "2009-08-12T22:15:09Z", out: "2009-08-12 22:15:09 +0000 UTC"},

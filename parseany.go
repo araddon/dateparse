@@ -821,7 +821,7 @@ iterRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
 
-			//gou.Debugf("%d %s iterTimeRunes  %s %s", i, string(r), p.ds(), p.ts())
+			//gou.Debugf("%d %s %d iterTimeRunes  %s %s", i, string(r), p.stateTime, p.ds(), p.ts())
 
 			switch p.stateTime {
 			case timeStart:
@@ -871,7 +871,12 @@ iterRunes:
 				case '-', '+':
 					//   03:21:51+00:00
 					p.stateTime = timeOffset
-					p.seclen = i - p.seci
+					if p.seci == 0 {
+						// 22:18+0530
+						p.minlen = i - p.mini
+					} else {
+						p.seclen = i - p.seci
+					}
 					p.offseti = i
 				case '.':
 					p.stateTime = timePeriod
