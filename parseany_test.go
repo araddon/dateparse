@@ -132,6 +132,7 @@ func TestOne(t *testing.T) {
 
 type dateTest struct {
 	in, out, loc string
+	err          bool
 }
 
 // {in: , out: },
@@ -518,6 +519,11 @@ func TestPStruct(t *testing.T) {
 }
 
 var testParseFormat = []dateTest{
+	// errors
+	{in: "3", err: true},
+	{in: `{"hello"}`, err: true},
+	{in: "2009-15-12T22:15Z", err: true},
+	//
 	{in: "oct 7, 1970", out: "Jan 2, 2006"},
 	// 03 February 2013
 	{in: "03 February 2013", out: "02 January 2006"},
@@ -538,19 +544,15 @@ var testParseFormat = []dateTest{
 }
 
 func TestParseLayout(t *testing.T) {
-
 	for _, th := range testParseFormat {
 		l, err := ParseFormat(th.in)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, th.out, l, "for in=%v", th.in)
+		if th.err {
+			assert.NotEqual(t, nil, err)
+		} else {
+			assert.Equal(t, nil, err)
+			assert.Equal(t, th.out, l, "for in=%v", th.in)
+		}
 	}
-
-	// errors
-	_, err := ParseFormat(`{"hello"}`)
-	assert.NotEqual(t, nil, err)
-
-	_, err = ParseFormat("2009-15-12T22:15Z")
-	assert.NotEqual(t, nil, err)
 }
 
 var testParseStrict = []dateTest{

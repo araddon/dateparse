@@ -1295,6 +1295,8 @@ iterRunes:
 		} else if len(datestr) == len("2014") {
 			p.format = []byte("2006")
 			return p, nil
+		} else if len(datestr) < 4 {
+			return nil, fmt.Errorf("unrecognized format, to short %v", datestr)
 		}
 		if t.IsZero() {
 			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
