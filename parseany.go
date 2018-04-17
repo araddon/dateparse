@@ -49,32 +49,32 @@ const (
 )
 const (
 	// Time state
-	timeIgnore timeState = iota
+	timeIgnore timeState = iota // 0
 	timeStart
 	timeWs
 	timeWsAlpha
 	timeWsAlphaWs
-	timeWsAlphaZoneOffset
+	timeWsAlphaZoneOffset // 5
 	timeWsAlphaZoneOffsetWs
 	timeWsAlphaZoneOffsetWsYear
 	timeWsAlphaZoneOffsetWsExtra
 	timeWsAMPMMaybe
-	timeWsAMPM
+	timeWsAMPM // 10
 	timeWsOffset
-	timeWsOffsetWs
+	timeWsOffsetWs // 12
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
-	timeWsYear
+	timeWsYear // 15
 	timeOffset
 	timeOffsetColon
 	timeAlpha
 	timePeriod
-	timePeriodOffset
+	timePeriodOffset // 20
 	timePeriodOffsetColon
 	timePeriodOffsetColonWs
 	timePeriodWs
 	timePeriodWsAlpha
-	timePeriodWsOffset
+	timePeriodWsOffset // 25
 	timePeriodWsOffsetWs
 	timePeriodWsOffsetWsAlpha
 	timePeriodWsOffsetColon
@@ -833,6 +833,7 @@ iterRunes:
 				//   05:24:37 PM
 				//   06:20:00 UTC
 				//   00:12:00 +0000 UTC
+				//   22:18:00 +0000 UTC m=+0.000000001
 				//   15:04:05 -0700
 				//   15:04:05 -07:00
 				//   15:04:05 2008
@@ -854,6 +855,7 @@ iterRunes:
 				//       00:00:00.000 +0000
 				//     timePeriodWsOffsetAlpha
 				//       00:07:31.945167 +0000 UTC
+				//       22:18:00.001 +0000 UTC m=+0.000000001
 				//       00:00:00.000 +0000 UTC
 				//     timePeriodWsAlpha
 				//       06:20:00.000 UTC
@@ -1054,16 +1056,27 @@ iterRunes:
 			case timeWsOffsetWs:
 				// 17:57:51 -0700 2009
 				// 00:12:00 +0000 UTC
-				if unicode.IsDigit(r) {
+				// 22:18:00.001 +0000 UTC m=+0.000000001
+
+				switch {
+				case unicode.IsDigit(r):
 					p.yearlen = i - p.yeari + 1
 					if p.yearlen == 4 {
 						p.setYear()
 					}
-				} else if unicode.IsLetter(r) {
+				case unicode.IsLetter(r):
 					if p.tzi == 0 {
 						p.tzi = i
 					}
+				case r == '=':
+					// eff you golang
+					if datestr[i-1] == 'm' {
+						p.extra = i - 2
+						p.trimExtra()
+						break
+					}
 				}
+
 			case timeWsOffsetColon:
 				// timeWsOffsetColon
 				//   15:04:05 -07:00
@@ -1098,6 +1111,7 @@ iterRunes:
 				//     timePeriodWsOffsetAlpha
 				//       00:07:31.945167 +0000 UTC
 				//       00:00:00.000 +0000 UTC
+				//       22:18:00.001 +0000 UTC m=+0.000000001
 				//     timePeriodWsAlpha
 				//       06:20:00.000 UTC
 				switch r {
@@ -1175,6 +1189,7 @@ iterRunes:
 				//   timePeriodWsOffsetAlpha
 				//     00:07:31.945167 +0000 UTC
 				//     00:00:00.000 +0000 UTC
+				//     03:02:00.001 +0300 MSK m=+0.000000001
 				//   timePeriodWsOffsetColon
 				//     13:31:51.999 -07:00 MST
 				//   timePeriodWsAlpha
@@ -1188,9 +1203,17 @@ iterRunes:
 					if unicode.IsLetter(r) {
 						// 00:07:31.945167 +0000 UTC
 						// 00:00:00.000 +0000 UTC
+						// 03:02:00.001 +0300 MSK m=+0.000000001
 						p.stateTime = timePeriodWsOffsetWsAlpha
-						break iterTimeRunes
 					}
+				}
+			case timePeriodWsOffsetWsAlpha:
+				// 03:02:00.001 +0300 MSK m=+0.000000001
+				// eff you golang
+				if r == '=' && datestr[i-1] == 'm' {
+					p.extra = i - 2
+					p.trimExtra()
+					break
 				}
 
 			case timePeriodWsOffsetColon:
