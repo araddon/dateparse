@@ -45,7 +45,6 @@ const (
 	dateAlphaWsAlphaYearmaybe
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
-	//dateWeekdayAbbrevCommaDash
 )
 const (
 	// Time state
@@ -356,6 +355,7 @@ iterRunes:
 			i += (bytesConsumed - 1)
 		}
 
+		//gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
 		switch p.stateDate {
 		case dateStart:
 			if unicode.IsDigit(r) {
@@ -421,6 +421,8 @@ iterRunes:
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
+			case ',':
+				return nil, fmt.Errorf("Unrecognized format %q", datestr)
 			default:
 				//if unicode.IsDigit(r) {
 				continue

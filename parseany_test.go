@@ -523,11 +523,27 @@ func TestPStruct(t *testing.T) {
 	assert.True(t, len(p.ts()) > 0)
 }
 
+var testParseErrors = []dateTest{
+	{in: "3", err: true},
+	{in: `{"hello"}`, err: true},
+	{in: "2009-15-12T22:15Z", err: true},
+	{in: "5,000-9,999", err: true},
+	{in: "xyzq-baad"},
+}
+
+func TestParseErrors(t *testing.T) {
+	for _, th := range testParseErrors {
+		v, err := ParseAny(th.in)
+		assert.NotEqual(t, nil, err, "%v for %v", v, th.in)
+	}
+}
+
 var testParseFormat = []dateTest{
 	// errors
 	{in: "3", err: true},
 	{in: `{"hello"}`, err: true},
 	{in: "2009-15-12T22:15Z", err: true},
+	{in: "5,000-9,999", err: true},
 	//
 	{in: "oct 7, 1970", out: "Jan 2, 2006"},
 	// 03 February 2013
