@@ -401,12 +401,21 @@ iterRunes:
 
 			case '.':
 				// 3.31.2014
-				p.ambiguousMD = true
-				p.moi = 0
-				p.molen = i
-				p.setMonth()
-				p.dayi = i + 1
+				// 08.21.71
+				// 2014.05
 				p.stateDate = dateDigitDot
+				if i == 4 {
+					p.yearlen = i
+					p.moi = i + 1
+					p.setYear()
+				} else {
+					p.ambiguousMD = true
+					p.moi = 0
+					p.molen = i
+					p.setMonth()
+					p.dayi = i + 1
+				}
+
 			case ' ':
 				// 18 January 2018
 				// 8 January 2018
@@ -599,6 +608,8 @@ iterRunes:
 			}
 		case dateDigitDot:
 			// 3.31.2014
+			// 08.21.71
+			// 2014.05
 			if r == '.' {
 				p.daylen = i - p.dayi
 				p.yeari = i + 1
@@ -1369,10 +1380,18 @@ iterRunes:
 	case dateDigitDashDashT:
 		return p, nil
 
+	case dateDigitDot:
+		// 2014.05
+		p.molen = i - p.moi
+		p.setMonth()
+		return p, nil
+
 	case dateDigitDotDot:
 		// 03.31.1981
+		// 3.31.2014
 		// 3.2.1981
 		// 3.2.81
+		// 08.21.71
 		p.setYear()
 		p.yearlen = i - p.yeari
 		return p, nil
