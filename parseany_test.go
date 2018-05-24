@@ -13,8 +13,8 @@ func TestOne(t *testing.T) {
 	var ts time.Time
 	// {in: "2015-02-08 03:02:00 +0300 MSK m=+0.000000001", out: "2015-02-08 00:02:00 +0000 UTC"},
 	// {in: "2015-02-08 03:02:00.001 +0300 MSK m=+0.000000001", out: "2015-02-08 00:02:00.001 +0000 UTC"},
-	ts = MustParse("2018.05")
-	assert.Equal(t, "2018-05-01 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("April 3, 2018")
+	assert.Equal(t, "2018-04-03 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -58,9 +58,12 @@ var testInputs = []dateTest{
 	{in: "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 17:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 05:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 PST-0700 (Pacific Daylight Time)", out: "2015-07-03 13:04:07 +0000 UTC"},
-	// Month dd, yyyy
+	// Month dd, yyyy time
 	{in: "September 17, 2012 at 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC"},
 	{in: "September 17, 2012 at 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC"},
+	// Monty dd, yyyy
+	{in: "September 17, 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
+	{in: "May 7, 2012", out: "2012-05-07 00:00:00 +0000 UTC"},
 	// ?
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},

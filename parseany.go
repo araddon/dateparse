@@ -6,6 +6,7 @@ package dateparse
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -15,6 +16,21 @@ import (
 // 	gou.SetupLogging("debug")
 // 	gou.SetColorOutput()
 // }
+
+var months = []string{
+	"january",
+	"february",
+	"march",
+	"april",
+	"may",
+	"june",
+	"july",
+	"august",
+	"september",
+	"october",
+	"november",
+	"december",
+}
 
 type dateState uint8
 type timeState uint8
@@ -41,6 +57,7 @@ const (
 	dateAlphaWsDigitComma
 	dateAlphaWsDigitCommaWs
 	dateAlphaWsDigitCommaWsYear
+	dateAlphaWsMonth
 	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe
 	dateWeekdayComma
@@ -628,7 +645,10 @@ iterRunes:
 			//  dateAlphaWSDigit
 			//    May 8, 2009 5:57:51 PM
 			//    oct 1, 1970
-			//
+			//  dateAlphaWsMonth
+			//    April 8, 2009
+			//  dateAlphaWsMonthTime
+			//    January 02, 2006 at 3:04pm MST-07
 			// dateWeekdayComma
 			//   Monday, 02 Jan 2006 15:04:05 MST
 			//   Monday, 02-Jan-06 15:04:05 MST
@@ -643,14 +663,30 @@ iterRunes:
 			switch {
 			case r == ' ':
 				if i > 4 {
-					// September 17, 2012 at 5:00pm UTC-05
-					// This one doesn't follow standard parse methodologies.   the "January"
-					// is difficult to use the format string replace method because of its variable-length (march, june)
-					// so we just use this format here.  If we see more similar to this we will do something else.
-					p.format = []byte("January 02, 2006 at 3:04pm MST-07")
-					return p, nil
+					prefix := strings.ToLower(datestr[0:i])
+					for _, month := range months {
+						if prefix == month {
+							// len(" 31, 2018")   = 9
+							if len(datestr[i:]) < 10 {
+								// April 8, 2009
+								p.dayi = i + 1
+								p.stateDate = dateAlphaWsMonth
+								break
+							}
+						}
+					}
+					if p.stateDate != dateAlphaWsMonth {
+						// September 17, 2012 at 5:00pm UTC-05
+						// This one doesn't follow standard parse methodologies.   the "January"
+						// is difficult to use the format string replace method because of its variable-length (march, june)
+						// so we just use this format here.  If we see more similar to this we will do something else.
+						p.format = []byte("January 02, 2006 at 3:04pm MST-07")
+						return p, nil
+					}
+				} else {
+					p.stateDate = dateAlphaWs
 				}
-				p.stateDate = dateAlphaWs
+
 			case r == ',':
 				// p.moi = 0
 				// p.molen = i
@@ -666,6 +702,16 @@ iterRunes:
 					// the mon, monday, they are all superfelous and not needed
 					// just lay down the skip, no need to fill and then skip
 				}
+			}
+		case dateAlphaWsMonth:
+			// April 8, 2009
+			if r == ',' {
+				if i-p.dayi == 2 {
+					p.format = []byte("January 02, 2006")
+					return p, nil
+				}
+				p.format = []byte("January 2, 2006")
+				return p, nil
 			}
 		case dateWeekdayComma:
 			// Monday, 02 Jan 2006 15:04:05 MST
