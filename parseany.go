@@ -660,9 +660,10 @@ iterRunes:
 			//   Thu, 13 Jul 2017 08:58:40 +0100
 			//   Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			//   Mon, 02-Jan-06 15:04:05 MST
+
 			switch {
 			case r == ' ':
-				if i > 4 {
+				if i > 3 {
 					prefix := strings.ToLower(datestr[0:i])
 					for _, month := range months {
 						if prefix == month {
