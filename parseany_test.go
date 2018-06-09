@@ -11,8 +11,7 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	//
-	ts = MustParse("June 7, 2012")
+	ts = MustParse("jun. 7, 2012")
 	assert.Equal(t, "2012-06-07 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
@@ -25,6 +24,9 @@ var testInputs = []dateTest{
 	{in: "oct 7, 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "Oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "Oct. 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "oct. 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
+	{in: "oct. 7, 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "Feb 8, 2009 5:57:51 AM", out: "2009-02-08 05:57:51 +0000 UTC"},
 	{in: "May 8, 2009 5:57:51 PM", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "May 8, 2009 5:57:1 PM", out: "2009-05-08 17:57:01 +0000 UTC"},
@@ -417,6 +419,7 @@ var testParseErrors = []dateTest{
 	{in: "2009-15-12T22:15Z", err: true},
 	{in: "5,000-9,999", err: true},
 	{in: "xyzq-baad"},
+	{in: "oct.-7-1970", err: true},
 }
 
 func TestParseErrors(t *testing.T) {
