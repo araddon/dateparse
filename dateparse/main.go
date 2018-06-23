@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/apcera/termtables"
@@ -32,7 +33,7 @@ func main() {
 
 	layout, err := dateparse.ParseFormat(datestr)
 	if err != nil {
-		panic(err.Error())
+		fatal(err)
 	}
 
 	zonename, _ := time.Now().In(time.Local).Zone()
@@ -44,7 +45,7 @@ func main() {
 		// time-parsing in go
 		l, err := time.LoadLocation(timezone)
 		if err != nil {
-			panic(err.Error())
+			fatal(err)
 		}
 		loc = l
 		zonename, _ := time.Now().In(l).Zone()
@@ -75,10 +76,6 @@ func main() {
 	}
 
 	fmt.Println(table.Render())
-}
-
-func stuff() (string, string) {
-	return "more", "stuff"
 }
 
 type parser func(datestr string, loc *time.Location, utc bool) string
@@ -126,4 +123,9 @@ func parseStrict(datestr string, loc *time.Location, utc bool) string {
 		return t.In(time.UTC).String()
 	}
 	return t.String()
+}
+
+func fatal(err error) {
+	fmt.Printf("fatal: %s\n", err)
+	os.Exit(1)
 }
