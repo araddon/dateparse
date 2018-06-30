@@ -101,6 +101,8 @@ const (
 )
 
 var (
+	// ErrAmbiguousMMDD for date formats such as 04/02/2014 the mm/dd vs dd/mm are
+	// ambiguous, so it is an error for strict parse rules.
 	ErrAmbiguousMMDD = fmt.Errorf("This date has ambiguous mm/dd vs dd/mm type format")
 )
 
@@ -1123,6 +1125,8 @@ iterRunes:
 			case timeWsOffset:
 				// timeWsOffset
 				//   15:04:05 -0700
+				//   timeWsOffsetWsOffset
+				//     17:57:51 -0700 -07
 				//   timeWsOffsetWs
 				//     17:57:51 -0700 2009
 				//     00:12:00 +0000 UTC
@@ -1142,23 +1146,36 @@ iterRunes:
 				// 17:57:51 -0700 2009
 				// 00:12:00 +0000 UTC
 				// 22:18:00.001 +0000 UTC m=+0.000000001
-
-				switch {
-				case unicode.IsDigit(r):
-					p.yearlen = i - p.yeari + 1
-					if p.yearlen == 4 {
-						p.setYear()
-					}
-				case unicode.IsLetter(r):
-					if p.tzi == 0 {
-						p.tzi = i
-					}
-				case r == '=':
+				// w Extra
+				//   17:57:51 -0700 -07
+				switch r {
+				case '=':
 					// eff you golang
 					if datestr[i-1] == 'm' {
 						p.extra = i - 2
 						p.trimExtra()
 						break
+					}
+				case '+', '-':
+					// This really doesn't seem valid, but for some reason when round-tripping a go date
+					// their is an extra +03 printed out.  seems like go bug to me, but, parsing anyway.
+					// 00:00:00 +0300 +03
+					// 00:00:00 +0300 +0300
+					p.extra = i - 1
+					p.stateTime = timeWsOffset
+					p.trimExtra()
+					break
+				default:
+					switch {
+					case unicode.IsDigit(r):
+						p.yearlen = i - p.yeari + 1
+						if p.yearlen == 4 {
+							p.setYear()
+						}
+					case unicode.IsLetter(r):
+						if p.tzi == 0 {
+							p.tzi = i
+						}
 					}
 				}
 
@@ -1172,7 +1189,6 @@ iterRunes:
 					p.stateTime = timeWsOffsetColonAlpha
 					break iterTimeRunes
 				}
-
 			case timePeriod:
 				// 15:04:05.999999999+07:00
 				// 15:04:05.999999999-07:00
@@ -1193,6 +1209,8 @@ iterRunes:
 				//     timePeriodWsOffset
 				//       00:07:31.945167 +0000
 				//       00:00:00.000 +0000
+				//       With Extra
+				//         00:00:00.000 +0300 +03
 				//     timePeriodWsOffsetAlpha
 				//       00:07:31.945167 +0000 UTC
 				//       00:00:00.000 +0000 UTC
@@ -1266,11 +1284,12 @@ iterRunes:
 				}
 
 			case timePeriodWsOffset:
-
 				// timePeriodWs
 				//   timePeriodWsOffset
 				//     00:07:31.945167 +0000
 				//     00:00:00.000 +0000
+				//     With Extra
+				//       00:00:00.000 +0300 +03
 				//   timePeriodWsOffsetAlpha
 				//     00:07:31.945167 +0000 UTC
 				//     00:00:00.000 +0000 UTC
@@ -1284,6 +1303,14 @@ iterRunes:
 					p.stateTime = timePeriodWsOffsetColon
 				case ' ':
 					p.set(p.offseti, "-0700")
+				case '+', '-':
+					// This really doesn't seem valid, but for some reason when round-tripping a go date
+					// their is an extra +03 printed out.  seems like go bug to me, but, parsing anyway.
+					// 00:00:00.000 +0300 +03
+					// 00:00:00.000 +0300 +0300
+					p.extra = i - 1
+					p.trimExtra()
+					break
 				default:
 					if unicode.IsLetter(r) {
 						// 00:07:31.945167 +0000 UTC

@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("jun. 7, 2012")
-	assert.Equal(t, "2012-06-07 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2018-06-29 19:09:57.77297118 +0300 +03")
+	assert.Equal(t, "2018-06-29 16:09:57.77297118 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -201,9 +201,12 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.12 +0000", out: "2014-04-26 17:24:37.12 +0000 UTC"},
 	{in: "2014-04-26 17:24:37.1 +0000", out: "2014-04-26 17:24:37.1 +0000 UTC"},
 	{in: "2014-05-11 08:20:13 +0000", out: "2014-05-11 08:20:13 +0000 UTC"},
-	//   yyyy-mm-dd hh:mm:ss+0000
-	//   yyyy-mm-dd hh:mm+0000
 	{in: "2014-05-11 08:20:13 +0530", out: "2014-05-11 02:50:13 +0000 UTC"},
+	//   yyyy-mm-dd hh:mm:ss +0300 +03  ?? issue author said this is from golang?
+	{in: "2018-06-29 19:09:57.77297118 +0300 +03", out: "2018-06-29 16:09:57.77297118 +0000 UTC"},
+	{in: "2018-06-29 19:09:57.77297118 +0300 +0300", out: "2018-06-29 16:09:57.77297118 +0000 UTC"},
+	{in: "2018-06-29 19:09:57 +0300 +03", out: "2018-06-29 16:09:57 +0000 UTC"},
+	{in: "2018-06-29 19:09:57 +0300 +0300", out: "2018-06-29 16:09:57 +0000 UTC"},
 
 	// 13:31:51.999 -07:00 MST
 	//   yyyy-mm-dd hh:mm:ss +00:00
