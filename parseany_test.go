@@ -443,6 +443,7 @@ var testParseFormat = []dateTest{
 	{in: "5,000-9,999", err: true},
 	//
 	{in: "oct 7, 1970", out: "Jan 2, 2006"},
+	{in: "sept. 7, 1970", out: "Jan. 2, 2006"},
 	// 03 February 2013
 	{in: "03 February 2013", out: "02 January 2006"},
 	// 13:31:51.999 -07:00 MST

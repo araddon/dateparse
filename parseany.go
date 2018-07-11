@@ -720,7 +720,7 @@ iterRunes:
 					p.set(0, "Jan")
 				} else if i == 4 {
 					// gross
-					datestr = datestr[0:i-1] + datestr[i+1:]
+					datestr = datestr[0:i-1] + datestr[i:]
 					return parseTime(datestr, loc)
 				} else {
 					return nil, unknownErr(datestr)
