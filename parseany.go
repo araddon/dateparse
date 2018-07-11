@@ -670,7 +670,6 @@ iterRunes:
 			//   Thu, 13 Jul 2017 08:58:40 +0100
 			//   Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			//   Mon, 02-Jan-06 15:04:05 MST
-
 			switch {
 			case r == ' ':
 				if i > 3 {
@@ -713,9 +712,19 @@ iterRunes:
 					// just lay down the skip, no need to fill and then skip
 				}
 			case r == '.':
+				// sept. 28, 2017
+				// jan. 28, 2017
 				p.stateDate = dateAlphaPeriodWsDigit
-				p.molen = i
-				p.set(0, "Jan")
+				if i == 3 {
+					p.molen = i
+					p.set(0, "Jan")
+				} else if i == 4 {
+					// gross
+					datestr = datestr[0:i-1] + datestr[i+1:]
+					return parseTime(datestr, loc)
+				} else {
+					return nil, unknownErr(datestr)
+				}
 			}
 
 		case dateAlphaWs:
