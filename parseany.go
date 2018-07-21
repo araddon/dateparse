@@ -1413,25 +1413,36 @@ iterRunes:
 	switch p.stateDate {
 	case dateDigit:
 		// unixy timestamps ish
-		//  1499979655583057426  nanoseconds
-		//  1499979795437000     micro-seconds
-		//  1499979795437        milliseconds
-		//  1384216367189
-		//  1332151919           seconds
-		//  20140601             yyyymmdd
-		//  2014                 yyyy
+		//  example              ct type
+		//  1499979655583057426  19 nanoseconds
+		//  1499979795437000     16 micro-seconds
+		//  20180722105203       14 yyyyMMddhhmmss
+		//  1499979795437        13 milliseconds
+		//  1332151919           10 seconds
+		//  20140601             8  yyyymmdd
+		//  2014                 4  yyyy
 		t := time.Time{}
-		if len(datestr) > len("1499979795437000") {
+		if len(datestr) == len("1499979655583057426") { // 19
+			// nano-seconds
 			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				t = time.Unix(0, nanoSecs)
 			}
-		} else if len(datestr) > len("1499979795437") {
+		} else if len(datestr) == len("1499979795437000") { // 16
+			// micro-seconds
 			if microSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				t = time.Unix(0, microSecs*1000)
 			}
-		} else if len(datestr) > len("1332151919") {
+		} else if len(datestr) == len("yyyyMMddhhmmss") { // 14
+			// yyyyMMddhhmmss
+			p.format = []byte("20060102150405")
+			return p, nil
+		} else if len(datestr) == len("1332151919000") { // 13
 			if miliSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
 				t = time.Unix(0, miliSecs*1000*1000)
+			}
+		} else if len(datestr) == len("1332151919") { //10
+			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+				t = time.Unix(secs, 0)
 			}
 		} else if len(datestr) == len("20140601") {
 			p.format = []byte("20060102")
@@ -1441,16 +1452,6 @@ iterRunes:
 			return p, nil
 		} else if len(datestr) < 4 {
 			return nil, fmt.Errorf("unrecognized format, to short %v", datestr)
-		}
-		if t.IsZero() {
-			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
-				if secs > 0 {
-					// Now, for unix-seconds we aren't going to guess a lot
-					// nothing before unix-epoch
-					t = time.Unix(secs, 0)
-					p.t = &t
-				}
-			}
 		}
 		if !t.IsZero() {
 			if loc == nil {

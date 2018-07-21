@@ -322,6 +322,8 @@ var testInputs = []dateTest{
 	//  yyyymmdd and similar
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
+	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC"},
+
 	// all digits:  unix secs, ms etc
 	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC"},
 	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver"},
