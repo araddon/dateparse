@@ -9,7 +9,7 @@ Parse many date strings without knowing format in advance.  Uses a scanner to re
 [![Build Status](https://travis-ci.org/araddon/dateparse.svg?branch=master)](https://travis-ci.org/araddon/dateparse)
 [![Go ReportCard](https://goreportcard.com/badge/araddon/dateparse)](https://goreportcard.com/report/araddon/dateparse)
 
-**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous will.  Plan an alternate api for preferring dd/mm https://github.com/araddon/dateparse/issues/28   
+**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous if this is not desired behavior, use `ParseStrict` which will fail on ambiguous date strings.
 
 **Timezones** The location your server is configured effects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
 
@@ -22,24 +22,6 @@ t, err := dateparse.ParseAny("3/1/2014")
 // Parse Strict, error on ambigous mm/dd vs dd/mm dates
 t, err := dateparse.ParseStrict("3/1/2014")
 > returns error 
-
-// Parse with Location, equivalent to time.ParseInLocation() timezone/offset
-// rules.  Using location arg, if timezone/offset info exists in the 
-// datestring, it uses the given location rules for any zone interpretation.
-// That is, MST means one thing when using America/Denver and something else
-// in other locations.
-denverLoc, _ := time.LoadLocation("America/Denver")
-t, err := dateparse.ParseIn("3/1/2014", denverLoc)
-
-// Set Location to time.Local.  Same as ParseIn Location but lazily uses
-// the global time.Local variable for Location argument.
-denverLoc, _ := time.LoadLocation("America/Denver")
-// use time.Local global variable to store location
-time.Local = denverLoc
-t, err := dateparse.ParseLocal("3/1/2014")
-// Equivalent to
-t, err := dateparse.ParseIn("3/1/2014", time.Local)
-
 
 // Return a string that represents the layout to parse the given date-time.
 layout, err := dateparse.ParseFormat("May 8, 2009 5:57:51 PM")
