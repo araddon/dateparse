@@ -35,6 +35,8 @@ var testInputs = []dateTest{
 	{in: "May 8, 2009 5:7:51 PM", out: "2009-05-08 17:07:51 +0000 UTC"},
 	{in: "7 oct 70", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "7 oct 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
+	// output of time.Now() on https://play.golang.org/p/L6NpVXAtSur
+	{in: "2009-11-10 23:00:00 +0000 UTC m=+0.000000001", "2009-11-10 23:00:00 +0000 UTC"},
 	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
 	{in: "Mon Jan  2 15:04:05 2006", out: "2006-01-02 15:04:05 +0000 UTC"},
 	{in: "Thu May 8 17:57:51 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
