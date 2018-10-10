@@ -11,8 +11,9 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("sept. 28, 2017")
-	assert.Equal(t, "2017-09-28 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("11-Jun-11 18:09:59")
+	// "2016-06-29 18:09:59 +0000 UTC"
+	assert.Equal(t, "2011-06-11 18:09:59 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -100,21 +101,25 @@ var testInputs = []dateTest{
 	{in: "Wednesday, 2 Feb 2018 09:01:00 -0300", out: "2018-02-02 12:01:00 +0000 UTC"},
 	{in: "Wednesday, 2 Feb 2018 9:01:00 -0300", out: "2018-02-02 12:01:00 +0000 UTC"},
 	{in: "Wednesday, 2 Feb 2018 09:1:00 -0300", out: "2018-02-02 12:01:00 +0000 UTC"},
-	//  12 Feb 2006, 19:17:08
+	//  dd mon yyyy  12 Feb 2006, 19:17:08
 	{in: "07 Feb 2004, 09:07", out: "2004-02-07 09:07:00 +0000 UTC"},
 	{in: "07 Feb 2004, 09:07:07", out: "2004-02-07 09:07:07 +0000 UTC"},
 	{in: "7 Feb 2004, 09:07:07", out: "2004-02-07 09:07:07 +0000 UTC"},
 	{in: "07 Feb 2004, 9:7:7", out: "2004-02-07 09:07:07 +0000 UTC"},
-	// DD Mon yyyy hh:mm:ss
+	// dd Mon yyyy hh:mm:ss
 	{in: "07 Feb 2004 09:07:08", out: "2004-02-07 09:07:08 +0000 UTC"},
 	{in: "07 Feb 2004 09:07", out: "2004-02-07 09:07:00 +0000 UTC"},
 	{in: "7 Feb 2004 9:7:8", out: "2004-02-07 09:07:08 +0000 UTC"},
 	{in: "07 Feb 2004 09:07:08.123", out: "2004-02-07 09:07:08.123 +0000 UTC"},
-	//  12 Feb 2006, 19:17:08 GMT
+	//  dd-mon-yyyy  12 Feb 2006, 19:17:08 GMT
 	{in: "07 Feb 2004, 09:07:07 GMT", out: "2004-02-07 09:07:07 +0000 UTC"},
-	//  12 Feb 2006, 19:17:08 +0100
+	//  dd-mon-yyyy  12 Feb 2006, 19:17:08 +0100
 	{in: "07 Feb 2004, 09:07:07 +0100", out: "2004-02-07 08:07:07 +0000 UTC"},
-	// 2013-Feb-03
+	//  dd-mon-yyyy   12-Feb-2006 19:17:08
+	{in: "07-Feb-2004 09:07:07 +0100", out: "2004-02-07 08:07:07 +0000 UTC"},
+	//  dd-mon-yy   12-Feb-2006 19:17:08
+	{in: "07-Feb-04 09:07:07 +0100", out: "2004-02-07 08:07:07 +0000 UTC"},
+	// yyyy-mon-dd    2013-Feb-03
 	{in: "2013-Feb-03", out: "2013-02-03 00:00:00 +0000 UTC"},
 	// 03 February 2013
 	{in: "03 February 2013", out: "2013-02-03 00:00:00 +0000 UTC"},
@@ -426,6 +431,9 @@ var testParseErrors = []dateTest{
 	{in: "xyzq-baad"},
 	{in: "oct.-7-1970", err: true},
 	{in: "septe. 7, 1970", err: true},
+	{in: "29-06-2016", err: true},
+	// this is just testing the empty space up front
+	{in: " 2018-01-02 17:08:09 -07:00", err: true},
 }
 
 func TestParseErrors(t *testing.T) {
@@ -475,6 +483,8 @@ func TestParseLayout(t *testing.T) {
 }
 
 var testParseStrict = []dateTest{
+	//   dd-mon-yy  13-Feb-03
+	{in: "03-03-14"},
 	//   mm.dd.yyyy
 	{in: "3.3.2014"},
 	//   mm.dd.yy

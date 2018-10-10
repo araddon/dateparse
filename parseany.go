@@ -38,11 +38,14 @@ type timeState uint8
 const (
 	dateStart dateState = iota
 	dateDigit
+	dateYearDash
+	dateYearDashAlphaDash
+	dateYearDashDash
+	dateYearDashDashWs
+	dateYearDashDashT
 	dateDigitDash
-	dateDigitDashDash
-	dateDigitDashDashWs
-	dateDigitDashDashT
-	dateDigitDashDashAlpha
+	dateDigitDashAlpha
+	dateDigitDashAlphaDash
 	dateDigitDot
 	dateDigitDotDot
 	dateDigitSlash
@@ -202,167 +205,6 @@ func ParseStrict(datestr string) (time.Time, error) {
 	return p.parse()
 }
 
-type parser struct {
-	loc              *time.Location
-	preferMonthFirst bool
-	ambiguousMD      bool
-	stateDate        dateState
-	stateTime        timeState
-	format           []byte
-	datestr          string
-	skip             int
-	extra            int
-	part1Len         int
-	yeari            int
-	yearlen          int
-	moi              int
-	molen            int
-	dayi             int
-	daylen           int
-	houri            int
-	hourlen          int
-	mini             int
-	minlen           int
-	seci             int
-	seclen           int
-	msi              int
-	mslen            int
-	offseti          int
-	offsetlen        int
-	tzi              int
-	tzlen            int
-	t                *time.Time
-}
-
-func newParser(dateStr string, loc *time.Location) *parser {
-	p := parser{
-		stateDate:        dateStart,
-		stateTime:        timeIgnore,
-		datestr:          dateStr,
-		loc:              loc,
-		preferMonthFirst: true,
-	}
-	p.format = []byte(dateStr)
-	return &p
-}
-func (p *parser) set(start int, val string) {
-	if start < 0 {
-		return
-	}
-	if len(p.format) < start+len(val) {
-		return
-	}
-	for i, r := range val {
-		p.format[start+i] = byte(r)
-	}
-}
-func (p *parser) setMonth() {
-	if p.molen == 2 {
-		p.set(p.moi, "01")
-	} else if p.molen == 1 {
-		p.set(p.moi, "1")
-	}
-}
-
-func (p *parser) setDay() {
-	if p.daylen == 2 {
-		p.set(p.dayi, "02")
-	} else if p.daylen == 1 {
-		p.set(p.dayi, "2")
-	}
-}
-func (p *parser) setYear() {
-	if p.yearlen == 2 {
-		p.set(p.yeari, "06")
-	} else if p.yearlen == 4 {
-		p.set(p.yeari, "2006")
-	}
-}
-func (p *parser) coalesceDate(end int) {
-	if p.yeari > 0 {
-		if p.yearlen == 0 {
-			p.yearlen = end - p.yeari
-		}
-		p.setYear()
-	}
-	if p.moi > 0 && p.molen == 0 {
-		p.molen = end - p.moi
-		p.setMonth()
-	}
-	if p.dayi > 0 && p.daylen == 0 {
-		p.daylen = end - p.dayi
-		p.setDay()
-	}
-}
-func (p *parser) ts() string {
-	return fmt.Sprintf("h:(%d:%d) m:(%d:%d) s:(%d:%d)", p.houri, p.hourlen, p.mini, p.minlen, p.seci, p.seclen)
-}
-func (p *parser) ds() string {
-	return fmt.Sprintf("%s d:(%d:%d) m:(%d:%d) y:(%d:%d)", p.datestr, p.dayi, p.daylen, p.moi, p.molen, p.yeari, p.yearlen)
-}
-func (p *parser) coalesceTime(end int) {
-	// 03:04:05
-	// 15:04:05
-	// 3:04:05
-	// 3:4:5
-	// 15:04:05.00
-	if p.houri > 0 {
-		if p.hourlen == 2 {
-			p.set(p.houri, "15")
-		} else if p.hourlen == 1 {
-			p.set(p.houri, "3")
-		}
-	}
-	if p.mini > 0 {
-		if p.minlen == 0 {
-			p.minlen = end - p.mini
-		}
-		if p.minlen == 2 {
-			p.set(p.mini, "04")
-		} else {
-			p.set(p.mini, "4")
-		}
-	}
-	if p.seci > 0 {
-		if p.seclen == 0 {
-			p.seclen = end - p.seci
-		}
-		if p.seclen == 2 {
-			p.set(p.seci, "05")
-		} else {
-			p.set(p.seci, "5")
-		}
-	}
-
-	if p.msi > 0 {
-		for i := 0; i < p.mslen; i++ {
-			p.format[p.msi+i] = '0'
-		}
-	}
-}
-
-func (p *parser) trimExtra() {
-	if p.extra > 0 && len(p.format) > p.extra {
-		p.format = p.format[0:p.extra]
-		p.datestr = p.datestr[0:p.extra]
-	}
-}
-
-func (p *parser) parse() (time.Time, error) {
-	if p.t != nil {
-		return *p.t, nil
-	}
-	if p.skip > 0 && len(p.format) > p.skip {
-		p.format = p.format[p.skip:]
-		p.datestr = p.datestr[p.skip:]
-	}
-	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
-	if p.loc == nil {
-		return time.Parse(string(p.format), p.datestr)
-	}
-	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
-}
-
 func parseTime(datestr string, loc *time.Location) (*parser, error) {
 
 	p := newParser(datestr, loc)
@@ -395,15 +237,17 @@ iterRunes:
 			switch r {
 			case '-', '\u2212':
 				// 2006-01-02
-				// 2006-01-02T15:04:05Z07:00
-				// 13-Feb-03
 				// 2013-Feb-03
-				p.stateDate = dateDigitDash
-				p.yeari = 0
-				p.yearlen = i
-				p.moi = i + 1
+				// 13-Feb-03
+				// 29-Jun-2016
 				if i == 4 {
+					p.stateDate = dateYearDash
+					p.yeari = 0
+					p.yearlen = i
+					p.moi = i + 1
 					p.set(0, "2006")
+				} else {
+					p.stateDate = dateDigitDash
 				}
 			case '/':
 				// 03/31/2005
@@ -458,83 +302,110 @@ iterRunes:
 			case ',':
 				return nil, unknownErr(datestr)
 			default:
-				//if unicode.IsDigit(r) {
 				continue
 			}
 			p.part1Len = i
 
-		case dateDigitDash:
-			// 2006-01
-			// 2006-01-02
-			// dateDigitDashDashT
+		case dateYearDash:
+			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
-			//  2017-06-25T17:46:57.45706582-07:00
-			//  2006-01-02T15:04:05.999999999Z07:00
-			//  2006-01-02T15:04:05+0000
-			// dateDigitDashDashWs
-			//  2012-08-03 18:31:59.257000000
-			//  2014-04-26 17:24:37.3186369
-			//  2017-01-27 00:07:31.945167
-			//  2016-03-14 00:00:00.000
-			//  2014-05-11 08:20:13,787
-			//  2017-07-19 03:21:51+00:00
+			// dateYearDashDashWs
 			//  2013-04-01 22:43:22
-			//  2014-04-26 05:24:37 PM
-			// dateDigitDashDashAlpha
-			//  2013-Feb-03
-			//  13-Feb-03
+			// dateYearDashAlphaDash
+			//   2013-Feb-03
 			switch r {
 			case '-':
 				p.molen = i - p.moi
 				p.dayi = i + 1
-				p.stateDate = dateDigitDashDash
+				p.stateDate = dateYearDashDash
 				p.setMonth()
 			default:
-				if unicode.IsDigit(r) {
-					//continue
-				} else if unicode.IsLetter(r) {
-					p.stateDate = dateDigitDashDashAlpha
+				if unicode.IsLetter(r) {
+					p.stateDate = dateYearDashAlphaDash
 				}
 			}
-		case dateDigitDashDash:
-			// 2006-01-02
-			// dateDigitDashDashT
+
+		case dateYearDashDash:
+			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
-			//  2017-06-25T17:46:57.45706582-07:00
-			//  2006-01-02T15:04:05.999999999Z07:00
-			//  2006-01-02T15:04:05+0000
-			// dateDigitDashDashWs
-			//  2012-08-03 18:31:59.257000000
-			//  2014-04-26 17:24:37.3186369
-			//  2017-01-27 00:07:31.945167
-			//  2016-03-14 00:00:00.000
-			//  2014-05-11 08:20:13,787
-			//  2017-07-19 03:21:51+00:00
+			// dateYearDashDashWs
 			//  2013-04-01 22:43:22
-			//  2014-04-26 05:24:37 PM
 			switch r {
 			case ' ':
 				p.daylen = i - p.dayi
-				p.stateDate = dateDigitDashDashWs
+				p.stateDate = dateYearDashDashWs
 				p.stateTime = timeStart
 				p.setDay()
 				break iterRunes
 			case 'T':
 				p.daylen = i - p.dayi
-				p.stateDate = dateDigitDashDashT
+				p.stateDate = dateYearDashDashT
 				p.stateTime = timeStart
 				p.setDay()
 				break iterRunes
 			}
-		case dateDigitDashDashAlpha:
+		case dateYearDashAlphaDash:
 			// 2013-Feb-03
-			// 13-Feb-03
 			switch r {
 			case '-':
 				p.molen = i - p.moi
 				p.set(p.moi, "Jan")
 				p.dayi = i + 1
 			}
+		case dateDigitDash:
+			// 13-Feb-03
+			// 29-Jun-2016
+			if unicode.IsLetter(r) {
+				p.stateDate = dateDigitDashAlpha
+				p.moi = i
+			} else {
+				return nil, unknownErr(datestr)
+			}
+		case dateDigitDashAlpha:
+			// 13-Feb-03
+			// 28-Feb-03
+			// 29-Jun-2016
+			switch r {
+			case '-':
+				p.molen = i - p.moi
+				p.set(p.moi, "Jan")
+				p.yeari = i + 1
+				p.stateDate = dateDigitDashAlphaDash
+			}
+
+		case dateDigitDashAlphaDash:
+			// 13-Feb-03   ambiguous
+			// 28-Feb-03   ambiguous
+			// 29-Jun-2016
+			switch r {
+			case ' ':
+				// we need to find if this was 4 digits, aka year
+				// or 2 digits which makes it ambiguous year/day
+				length := i - (p.moi + p.molen + 1)
+				if length == 4 {
+					p.yearlen = 4
+					p.set(p.yeari, "2006")
+					// We now also know that part1 was the day
+					p.dayi = 0
+					p.daylen = p.part1Len
+					p.setDay()
+				} else if length == 2 {
+					// We have no idea if this is
+					// yy-mon-dd   OR  dd-mon-yy
+					//
+					// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+					p.ambiguousMD = true
+					p.yearlen = 2
+					p.set(p.yeari, "06")
+					// We now also know that part1 was the day
+					p.dayi = 0
+					p.daylen = p.part1Len
+					p.setDay()
+				}
+				p.stateTime = timeStart
+				break iterRunes
+			}
+
 		case dateDigitSlash:
 			// 2014/07/10 06:55:38.156283
 			// 03/19/2012 10:11:59
@@ -1462,30 +1333,35 @@ iterRunes:
 			return p, nil
 		}
 
-	case dateDigitDash:
+	case dateYearDash:
 		// 2006-01
 		return p, nil
 
-	case dateDigitDashDash:
+	case dateYearDashDash:
 		// 2006-01-02
 		// 2006-1-02
 		// 2006-1-2
 		// 2006-01-2
 		return p, nil
 
-	case dateDigitDashDashAlpha:
+	case dateYearDashAlphaDash:
 		// 2013-Feb-03
 		// 2013-Feb-3
 		p.daylen = i - p.dayi
 		p.setDay()
 		return p, nil
 
-	case dateDigitDashDashWs: // starts digit then dash 02-  then whitespace   1 << 2  << 5 + 3
-		// 2013-04-01 22:43:22
-		// 2013-04-01 22:43
+	case dateYearDashDashWs:
+		// 2013-04-01
 		return p, nil
 
-	case dateDigitDashDashT:
+	case dateYearDashDashT:
+		return p, nil
+
+	case dateDigitDashAlphaDash:
+		// 13-Feb-03   ambiguous
+		// 28-Feb-03   ambiguous
+		// 29-Jun-2016
 		return p, nil
 
 	case dateDigitDot:
@@ -1509,9 +1385,7 @@ iterRunes:
 		// 2 Jan 18
 		// 2 Jan 2018 23:59
 		// 02 Jan 2018 23:59
-		// 02 Jan 2018 23:59:45
 		// 12 Feb 2006, 19:17
-		// 12 Feb 2006, 19:17:22
 		return p, nil
 
 	case dateDigitWsMolong:
@@ -1571,4 +1445,165 @@ iterRunes:
 	}
 
 	return nil, unknownErr(datestr)
+}
+
+type parser struct {
+	loc              *time.Location
+	preferMonthFirst bool
+	ambiguousMD      bool
+	stateDate        dateState
+	stateTime        timeState
+	format           []byte
+	datestr          string
+	skip             int
+	extra            int
+	part1Len         int
+	yeari            int
+	yearlen          int
+	moi              int
+	molen            int
+	dayi             int
+	daylen           int
+	houri            int
+	hourlen          int
+	mini             int
+	minlen           int
+	seci             int
+	seclen           int
+	msi              int
+	mslen            int
+	offseti          int
+	offsetlen        int
+	tzi              int
+	tzlen            int
+	t                *time.Time
+}
+
+func newParser(dateStr string, loc *time.Location) *parser {
+	p := parser{
+		stateDate:        dateStart,
+		stateTime:        timeIgnore,
+		datestr:          dateStr,
+		loc:              loc,
+		preferMonthFirst: true,
+	}
+	p.format = []byte(dateStr)
+	return &p
+}
+func (p *parser) set(start int, val string) {
+	if start < 0 {
+		return
+	}
+	if len(p.format) < start+len(val) {
+		return
+	}
+	for i, r := range val {
+		p.format[start+i] = byte(r)
+	}
+}
+func (p *parser) setMonth() {
+	if p.molen == 2 {
+		p.set(p.moi, "01")
+	} else if p.molen == 1 {
+		p.set(p.moi, "1")
+	}
+}
+
+func (p *parser) setDay() {
+	if p.daylen == 2 {
+		p.set(p.dayi, "02")
+	} else if p.daylen == 1 {
+		p.set(p.dayi, "2")
+	}
+}
+func (p *parser) setYear() {
+	if p.yearlen == 2 {
+		p.set(p.yeari, "06")
+	} else if p.yearlen == 4 {
+		p.set(p.yeari, "2006")
+	}
+}
+func (p *parser) coalesceDate(end int) {
+	if p.yeari > 0 {
+		if p.yearlen == 0 {
+			p.yearlen = end - p.yeari
+		}
+		p.setYear()
+	}
+	if p.moi > 0 && p.molen == 0 {
+		p.molen = end - p.moi
+		p.setMonth()
+	}
+	if p.dayi > 0 && p.daylen == 0 {
+		p.daylen = end - p.dayi
+		p.setDay()
+	}
+}
+func (p *parser) ts() string {
+	return fmt.Sprintf("h:(%d:%d) m:(%d:%d) s:(%d:%d)", p.houri, p.hourlen, p.mini, p.minlen, p.seci, p.seclen)
+}
+func (p *parser) ds() string {
+	return fmt.Sprintf("%s d:(%d:%d) m:(%d:%d) y:(%d:%d)", p.datestr, p.dayi, p.daylen, p.moi, p.molen, p.yeari, p.yearlen)
+}
+func (p *parser) coalesceTime(end int) {
+	// 03:04:05
+	// 15:04:05
+	// 3:04:05
+	// 3:4:5
+	// 15:04:05.00
+	if p.houri > 0 {
+		if p.hourlen == 2 {
+			p.set(p.houri, "15")
+		} else if p.hourlen == 1 {
+			p.set(p.houri, "3")
+		}
+	}
+	if p.mini > 0 {
+		if p.minlen == 0 {
+			p.minlen = end - p.mini
+		}
+		if p.minlen == 2 {
+			p.set(p.mini, "04")
+		} else {
+			p.set(p.mini, "4")
+		}
+	}
+	if p.seci > 0 {
+		if p.seclen == 0 {
+			p.seclen = end - p.seci
+		}
+		if p.seclen == 2 {
+			p.set(p.seci, "05")
+		} else {
+			p.set(p.seci, "5")
+		}
+	}
+
+	if p.msi > 0 {
+		for i := 0; i < p.mslen; i++ {
+			p.format[p.msi+i] = '0'
+		}
+	}
+}
+
+func (p *parser) trimExtra() {
+	if p.extra > 0 && len(p.format) > p.extra {
+		p.format = p.format[0:p.extra]
+		p.datestr = p.datestr[0:p.extra]
+	}
+}
+
+func (p *parser) parse() (time.Time, error) {
+	if p.t != nil {
+		return *p.t, nil
+	}
+	if p.skip > 0 && len(p.format) > p.skip {
+		p.format = p.format[p.skip:]
+		p.datestr = p.datestr[p.skip:]
+	}
+	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
+	if p.loc == nil {
+		return time.Parse(string(p.format), p.datestr)
+	}
+	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
 }
