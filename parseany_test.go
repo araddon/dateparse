@@ -48,6 +48,7 @@ var testInputs = []dateTest{
 	{in: "Thu May  8 17:57:51 MST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "Thu May  8 17:57:51 PST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "Thu May 08 17:57:51 PST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
+	{in: "Thu May 08 17:57:51 CEST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "Thu May 08 05:05:07 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC"},
 	{in: "Thu May 08 5:5:7 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC"},
 	// ??
@@ -327,6 +328,8 @@ var testInputs = []dateTest{
 	//  yyyymmdd and similar
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
+	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC"},
+
 	// all digits:  unix secs, ms etc
 	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC"},
 	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver"},
