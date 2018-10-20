@@ -462,13 +462,19 @@ iterRunes:
 				p.daylen = p.part1Len
 				p.setDay()
 				p.stateTime = timeStart
-				if i <= len("12 Feb") {
+				if i > p.daylen+len(" Sep") { //  November etc
+					// If len greather than space + 3 it must be full month
+					p.stateDate = dateDigitWsMolong
+				} else {
+					// If len=3, the might be Feb or May?  Ie ambigous abbreviated but
+					// we can parse may with either.  BUT, that means the
+					// format may not be correct?
+					// mo := strings.ToLower(datestr[p.daylen+1 : i])
+					// gou.Warnf("mo = %q", mo)
 					p.moi = p.daylen + 1
-					p.molen = 3
+					p.molen = i - p.moi
 					p.set(p.moi, "Jan")
 					p.stateDate = dateDigitWsMoYear
-				} else {
-					p.stateDate = dateDigitWsMolong
 				}
 			}
 

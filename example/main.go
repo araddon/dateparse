@@ -32,6 +32,7 @@ var examples = []string{
 	"7 oct 70",
 	"7 oct 1970",
 	"03 February 2013",
+	"1 July 2013",
 	"2013-Feb-03",
 	//   mm/dd/yy
 	"3/31/2014",
