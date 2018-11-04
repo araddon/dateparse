@@ -10,12 +10,14 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/araddon/gou"
 )
 
-// func init() {
-// 	gou.SetupLogging("debug")
-// 	gou.SetColorOutput()
-// }
+func init() {
+	gou.SetupLogging("debug")
+	gou.SetColorOutput()
+}
 
 var months = []string{
 	"january",
@@ -61,6 +63,8 @@ const (
 	dateAlphaWsDigitCommaWs
 	dateAlphaWsDigitCommaWsYear
 	dateAlphaWsMonth
+	dateAlphaWsMore
+	dateAlphaWsAtTime
 	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe
 	dateAlphaPeriodWsDigit
@@ -222,7 +226,7 @@ iterRunes:
 			i += (bytesConsumed - 1)
 		}
 
-		//gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
+		gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
 		switch p.stateDate {
 		case dateStart:
 			if unicode.IsDigit(r) {
@@ -532,8 +536,10 @@ iterRunes:
 			//    oct 1, 1970
 			//  dateAlphaWsMonth
 			//    April 8, 2009
-			//  dateAlphaWsMonthTime
-			//    January 02, 2006 at 3:04pm MST-07
+			//  dateAlphaWsMore
+			//    dateAlphaWsAtTime
+			//      January 02, 2006 at 3:04pm MST-07
+			//
 			//  dateAlphaPeriodWsDigit
 			//    oct. 1, 1970
 			// dateWeekdayComma
@@ -549,6 +555,8 @@ iterRunes:
 			//   Mon, 02-Jan-06 15:04:05 MST
 			switch {
 			case r == ' ':
+				//      X
+				// April 8, 2009
 				if i > 3 {
 					prefix := strings.ToLower(datestr[0:i])
 					for _, month := range months {
@@ -556,19 +564,13 @@ iterRunes:
 							// len(" 31, 2018")   = 9
 							if len(datestr[i:]) < 10 {
 								// April 8, 2009
-								p.dayi = i + 1
 								p.stateDate = dateAlphaWsMonth
-								break
+							} else {
+								p.stateDate = dateAlphaWsMore
 							}
+							p.dayi = i + 1
+							break
 						}
-					}
-					if p.stateDate != dateAlphaWsMonth {
-						// September 17, 2012 at 5:00pm UTC-05
-						// This one doesn't follow standard parse methodologies.   the "January"
-						// is difficult to use the format string replace method because of its variable-length (march, june)
-						// so we just use this format here.  If we see more similar to this we will do something else.
-						p.format = []byte("January 02, 2006 at 3:04pm MST-07")
-						return p, nil
 					}
 				} else {
 					p.stateDate = dateAlphaWs
@@ -709,6 +711,28 @@ iterRunes:
 				p.format = []byte("January 2, 2006")
 				return p, nil
 			}
+		case dateAlphaWsMore:
+			// January 02, 2006, 15:04:05
+			// January 02 2006, 15:04:05
+			// September 17, 2012 at 5:00pm UTC-05
+			switch {
+			case r == ' ':
+				// continue
+			case r == ' ':
+
+			default:
+				continue
+			}
+		/*
+			if p.stateDate != dateAlphaWsMonth {
+				// September 17, 2012 at 5:00pm UTC-05
+				// This one doesn't follow standard parse methodologies.   the "January"
+				// is difficult to use the format string replace method because of its variable-length (march, june)
+				// so we just use this format here.  If we see more similar to this we will do something else.
+				p.format = []byte("January 02, 2006 at 3:04pm MST-07")
+				return p, nil
+			}
+		*/
 
 		case dateAlphaPeriodWsDigit:
 			//    oct. 7, '70
