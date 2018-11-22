@@ -751,6 +751,12 @@ iterRunes:
 			// January 02, 2006 15:04:05
 			// January 02 2006 15:04:05
 			switch r {
+			case ',':
+				p.yearlen = i - p.yeari
+				p.setYear()
+				p.stateTime = timeStart
+				i++
+				break iterRunes
 			case ' ':
 				p.yearlen = i - p.yeari
 				p.setYear()
