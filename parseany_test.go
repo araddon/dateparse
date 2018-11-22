@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("1 May 2013")
-	assert.Equal(t, "2013-05-01 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("September 17, 2012, 10:10:09")
+	assert.Equal(t, "2012-09-17 10:10:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -33,6 +33,7 @@ var testInputs = []dateTest{
 	{in: "May 8, 2009 5:57:51 PM", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "May 8, 2009 5:57:1 PM", out: "2009-05-08 17:57:01 +0000 UTC"},
 	{in: "May 8, 2009 5:7:51 PM", out: "2009-05-08 17:07:51 +0000 UTC"},
+	{in: "May 8, 2009, 5:7:51 PM", out: "2009-05-08 17:07:51 +0000 UTC"},
 	{in: "7 oct 70", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "7 oct 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "7 May 1970", out: "1970-05-07 00:00:00 +0000 UTC"},
@@ -54,7 +55,7 @@ var testInputs = []dateTest{
 	{in: "Thu May 08 17:57:51 CEST 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "Thu May 08 05:05:07 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC"},
 	{in: "Thu May 08 5:5:7 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC"},
-	// ??
+	// Day Month dd time
 	{in: "Mon Aug 10 15:44:11 UTC+0000 2015", out: "2015-08-10 15:44:11 +0000 UTC"},
 	{in: "Mon Aug 10 15:44:11 PST-0700 2015", out: "2015-08-10 22:44:11 +0000 UTC"},
 	{in: "Mon Aug 10 15:44:11 CEST+0200 2015", out: "2015-08-10 13:44:11 +0000 UTC"},
@@ -64,13 +65,42 @@ var testInputs = []dateTest{
 	{in: "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 17:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 05:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 PST-0700 (Pacific Daylight Time)", out: "2015-07-03 13:04:07 +0000 UTC"},
-	// Month dd, yyyy time
+	// Month dd, yyyy at time
 	{in: "September 17, 2012 at 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC"},
 	{in: "September 17, 2012 at 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC"},
+	{in: "September 17, 2012, 10:10:09", out: "2012-09-17 10:10:09 +0000 UTC"},
+	{in: "May 17, 2012 at 10:09am PST-08", out: "2012-05-17 18:09:00 +0000 UTC"},
+	{in: "May 17, 2012 AT 10:09am PST-08", out: "2012-05-17 18:09:00 +0000 UTC"},
+	// Month dd, yyyy time
+	{in: "September 17, 2012 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC"},
+	{in: "September 17, 2012 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC"},
+	{in: "September 17, 2012 09:01:00", out: "2012-09-17 09:01:00 +0000 UTC"},
+	// Month dd yyyy time
+	{in: "September 17 2012 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC"},
+	{in: "September 17 2012 5:00pm UTC-0500", out: "2012-09-17 17:00:00 +0000 UTC"},
+	{in: "September 17 2012 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC"},
+	{in: "September 17 2012 5:00PM UTC-05", out: "2012-09-17 17:00:00 +0000 UTC"},
+	{in: "September 17 2012 10:09AM PST-08", out: "2012-09-17 18:09:00 +0000 UTC"},
+	{in: "September 17 2012 09:01:00", out: "2012-09-17 09:01:00 +0000 UTC"},
+	{in: "May 17, 2012 10:10:09", out: "2012-05-17 10:10:09 +0000 UTC"},
 	// Month dd, yyyy
 	{in: "September 17, 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
 	{in: "May 7, 2012", out: "2012-05-07 00:00:00 +0000 UTC"},
 	{in: "June 7, 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
+	{in: "June 7 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
+	// Month dd[th,nd,st] yyyy
+	{in: "September 17th, 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
+	{in: "September 17th 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
+	{in: "September 7th, 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
+	{in: "September 7th 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
+	{in: "May 1st 2012", out: "2012-05-01 00:00:00 +0000 UTC"},
+	{in: "May 1st, 2012", out: "2012-05-01 00:00:00 +0000 UTC"},
+	{in: "May 21st 2012", out: "2012-05-21 00:00:00 +0000 UTC"},
+	{in: "May 21st, 2012", out: "2012-05-21 00:00:00 +0000 UTC"},
+	{in: "June 2nd, 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
+	{in: "June 2nd 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
+	{in: "June 22nd, 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
+	{in: "June 22nd 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
 	// ?
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},
@@ -341,11 +371,6 @@ var testInputs = []dateTest{
 	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
 }
 
-/*
- {in: , out: },
-
-
-*/
 func TestParse(t *testing.T) {
 
 	// Lets ensure we are operating on UTC
@@ -437,6 +462,7 @@ var testParseErrors = []dateTest{
 	{in: "xyzq-baad"},
 	{in: "oct.-7-1970", err: true},
 	{in: "septe. 7, 1970", err: true},
+	{in: "SeptemberRR 7th, 1970", err: true},
 	{in: "29-06-2016", err: true},
 	// this is just testing the empty space up front
 	{in: " 2018-01-02 17:08:09 -07:00", err: true},
@@ -458,6 +484,7 @@ var testParseFormat = []dateTest{
 	//
 	{in: "oct 7, 1970", out: "Jan 2, 2006"},
 	{in: "sept. 7, 1970", out: "Jan. 2, 2006"},
+	{in: "May 05, 2015, 05:05:07", out: "Jan 02, 2006, 15:04:05"},
 	// 03 February 2013
 	{in: "03 February 2013", out: "02 January 2006"},
 	// 13:31:51.999 -07:00 MST

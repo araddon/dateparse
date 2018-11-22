@@ -36,31 +36,35 @@ type dateState uint8
 type timeState uint8
 
 const (
-	dateStart dateState = iota
+	dateStart dateState = iota // 0
 	dateDigit
 	dateYearDash
 	dateYearDashAlphaDash
 	dateYearDashDash
-	dateYearDashDashWs
+	dateYearDashDashWs // 5
 	dateYearDashDashT
 	dateDigitDash
 	dateDigitDashAlpha
 	dateDigitDashAlphaDash
-	dateDigitDot
+	dateDigitDot // 10
 	dateDigitDotDot
 	dateDigitSlash
 	dateDigitChineseYear
 	dateDigitChineseYearWs
-	dateDigitWs
+	dateDigitWs // 15
 	dateDigitWsMoYear
 	dateDigitWsMolong
 	dateAlpha
 	dateAlphaWs
-	dateAlphaWsDigit
-	dateAlphaWsDigitComma
-	dateAlphaWsDigitCommaWs
-	dateAlphaWsDigitCommaWsYear
+	dateAlphaWsDigit // 20
+	dateAlphaWsDigitMore
+	dateAlphaWsDigitMoreWs
+	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth
+	dateAlphaWsMonthMore
+	dateAlphaWsMonthSuffix
+	dateAlphaWsMore
+	dateAlphaWsAtTime
 	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe
 	dateAlphaPeriodWsDigit
@@ -470,7 +474,6 @@ iterRunes:
 					// we can parse may with either.  BUT, that means the
 					// format may not be correct?
 					// mo := strings.ToLower(datestr[p.daylen+1 : i])
-					// gou.Warnf("mo = %q", mo)
 					p.moi = p.daylen + 1
 					p.molen = i - p.moi
 					p.set(p.moi, "Jan")
@@ -532,8 +535,10 @@ iterRunes:
 			//    oct 1, 1970
 			//  dateAlphaWsMonth
 			//    April 8, 2009
-			//  dateAlphaWsMonthTime
-			//    January 02, 2006 at 3:04pm MST-07
+			//  dateAlphaWsMore
+			//    dateAlphaWsAtTime
+			//      January 02, 2006 at 3:04pm MST-07
+			//
 			//  dateAlphaPeriodWsDigit
 			//    oct. 1, 1970
 			// dateWeekdayComma
@@ -549,32 +554,35 @@ iterRunes:
 			//   Mon, 02-Jan-06 15:04:05 MST
 			switch {
 			case r == ' ':
+				//      X
+				// April 8, 2009
 				if i > 3 {
-					prefix := strings.ToLower(datestr[0:i])
-					for _, month := range months {
-						if prefix == month {
-							// len(" 31, 2018")   = 9
-							if len(datestr[i:]) < 10 {
-								// April 8, 2009
-								p.dayi = i + 1
-								p.stateDate = dateAlphaWsMonth
-								break
-							}
+					// Check to see if the alpha is name of month?  or Day?
+					month := strings.ToLower(datestr[0:i])
+					if isMonthFull(month) {
+						p.fullMonth = month
+						// len(" 31, 2018")   = 9
+						if len(datestr[i:]) < 10 {
+							// April 8, 2009
+							p.stateDate = dateAlphaWsMonth
+						} else {
+							p.stateDate = dateAlphaWsMore
 						}
+						p.dayi = i + 1
+						break
 					}
-					if p.stateDate != dateAlphaWsMonth {
-						// September 17, 2012 at 5:00pm UTC-05
-						// This one doesn't follow standard parse methodologies.   the "January"
-						// is difficult to use the format string replace method because of its variable-length (march, june)
-						// so we just use this format here.  If we see more similar to this we will do something else.
-						p.format = []byte("January 02, 2006 at 3:04pm MST-07")
-						return p, nil
-					}
+
 				} else {
+					// This is possibly ambiguous?  May will parse as either though.
+					// So, it could return in-correct format.
+					// May 05, 2005, 05:05:05
+					// May 05 2005, 05:05:05
+					// Jul 05, 2005, 05:05:05
 					p.stateDate = dateAlphaWs
 				}
 
 			case r == ',':
+				// Mon, 02 Jan 2006
 				// p.moi = 0
 				// p.molen = i
 				if i == 3 {
@@ -613,6 +621,7 @@ iterRunes:
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
 			//  dateAlphaWsDigit
 			//    May 8, 2009 5:57:51 PM
+			//    May 8 2009 5:57:51 PM
 			//    oct 1, 1970
 			//    oct 7, '70
 			switch {
@@ -628,34 +637,49 @@ iterRunes:
 
 		case dateAlphaWsDigit:
 			// May 8, 2009 5:57:51 PM
+			// May 8 2009 5:57:51 PM
 			// oct 1, 1970
 			// oct 7, '70
 			// oct. 7, 1970
-			//gou.Debugf("%d %s dateAlphaWsDigit  %s %s", i, string(r), p.ds(), p.ts())
 			if r == ',' {
 				p.daylen = i - p.dayi
 				p.setDay()
-				p.stateDate = dateAlphaWsDigitComma
+				p.stateDate = dateAlphaWsDigitMore
+			} else if r == ' ' {
+				p.daylen = i - p.dayi
+				p.setDay()
+				p.yeari = i + 1
+				p.stateDate = dateAlphaWsDigitMoreWs
+			} else if unicode.IsLetter(r) {
+				p.stateDate = dateAlphaWsMonthSuffix
+				i--
 			}
-		case dateAlphaWsDigitComma:
+		case dateAlphaWsDigitMore:
 			//       x
 			// May 8, 2009 5:57:51 PM
+			// May 05, 2005, 05:05:05
+			// May 05 2005, 05:05:05
 			// oct 1, 1970
 			// oct 7, '70
 			if r == ' ' {
-				p.stateDate = dateAlphaWsDigitCommaWs
 				p.yeari = i + 1
+				p.stateDate = dateAlphaWsDigitMoreWs
 			}
-		case dateAlphaWsDigitCommaWs:
+		case dateAlphaWsDigitMoreWs:
 			//            x
 			// May 8, 2009 5:57:51 PM
+			// May 05, 2005, 05:05:05
 			// oct 1, 1970
 			// oct 7, '70
 			switch r {
 			case '\'':
 				p.yeari = i + 1
-			case ' ':
-				p.stateDate = dateAlphaWsDigitCommaWsYear
+			case ' ', ',':
+				//            x
+				// May 8, 2009 5:57:51 PM
+				//            x
+				// May 8, 2009, 5:57:51 PM
+				p.stateDate = dateAlphaWsDigitMoreWsYear
 				p.yearlen = i - p.yeari
 				p.setYear()
 				p.stateTime = timeStart
@@ -670,7 +694,6 @@ iterRunes:
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if r == ' ' {
 				if p.dayi > 0 {
-
 					p.daylen = i - p.dayi
 					p.setDay()
 					p.yeari = i + 1
@@ -701,13 +724,114 @@ iterRunes:
 
 		case dateAlphaWsMonth:
 			// April 8, 2009
-			if r == ',' {
-				if i-p.dayi == 2 {
-					p.format = []byte("January 02, 2006")
-					return p, nil
+			// April 8 2009
+			switch r {
+			case ' ', ',':
+				//       x
+				// June 8, 2009
+				//       x
+				// June 8 2009
+				if p.daylen == 0 {
+					p.daylen = i - p.dayi
+					p.setDay()
 				}
-				p.format = []byte("January 2, 2006")
-				return p, nil
+			case 's', 'S', 'r', 'R', 't', 'T', 'n', 'N':
+				// st, rd, nd, st
+				i--
+				p.stateDate = dateAlphaWsMonthSuffix
+			default:
+				if p.daylen > 0 && p.yeari == 0 {
+					p.yeari = i
+				}
+			}
+		case dateAlphaWsMonthMore:
+			//                  X
+			// January 02, 2006, 15:04:05
+			// January 02 2006, 15:04:05
+			// January 02, 2006 15:04:05
+			// January 02 2006 15:04:05
+			switch r {
+			case ',':
+				p.yearlen = i - p.yeari
+				p.setYear()
+				p.stateTime = timeStart
+				i++
+				break iterRunes
+			case ' ':
+				p.yearlen = i - p.yeari
+				p.setYear()
+				p.stateTime = timeStart
+				break iterRunes
+			}
+		case dateAlphaWsMonthSuffix:
+			//        x
+			// April 8th, 2009
+			// April 8th 2009
+			switch r {
+			case 't', 'T':
+				if p.nextIs(i, 'h') || p.nextIs(i, 'h') {
+					if len(datestr) > i+2 {
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+					}
+				}
+			case 'n', 'N':
+				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
+					if len(datestr) > i+2 {
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+					}
+				}
+			case 's', 'S':
+				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
+					if len(datestr) > i+2 {
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+					}
+				}
+				// case ',':
+				// 	//          x
+				// 	// April 8th, 2009
+				// case ' ':
+				// 	//          x
+				// 	// April 8th 2009
+				// 	// p.yeari = i + 1
+				// 	p.yeari = i + 1
+				// 	p.stateDate = dateAlphaWsMonthMore
+			}
+		case dateAlphaWsMore:
+			// January 02, 2006, 15:04:05
+			// January 02 2006, 15:04:05
+			// January 2nd, 2006, 15:04:05
+			// January 2nd 2006, 15:04:05
+			// September 17, 2012 at 5:00pm UTC-05
+			switch {
+			case r == ',':
+				//           x
+				// January 02, 2006, 15:04:05
+				if p.nextIs(i, ' ') {
+					p.daylen = i - p.dayi
+					p.setDay()
+					p.yeari = i + 2
+					p.stateDate = dateAlphaWsMonthMore
+					i++
+				}
+
+			case r == ' ':
+				//           x
+				// January 02 2006, 15:04:05
+				p.daylen = i - p.dayi
+				p.setDay()
+				p.yeari = i + 1
+				p.stateDate = dateAlphaWsMonthMore
+			case unicode.IsDigit(r):
+				//         XX
+				// January 02, 2006, 15:04:05
+				continue
+			case unicode.IsLetter(r):
+				//          X
+				// January 2nd, 2006, 15:04:05
+				p.daylen = i - p.dayi
+				p.setDay()
+				p.stateDate = dateAlphaWsMonthSuffix
+				i--
 			}
 
 		case dateAlphaPeriodWsDigit:
@@ -736,7 +860,6 @@ iterRunes:
 					p.daylen = i - p.dayi
 					p.setDay()
 				} else if p.yeari == 0 {
-
 					p.yeari = i + 1
 					p.molen = i - p.moi
 					p.set(p.moi, "Jan")
@@ -805,6 +928,7 @@ iterRunes:
 				// timeWs
 				//   05:24:37 PM
 				//   06:20:00 UTC
+				//   06:20:00 UTC-05
 				//   00:12:00 +0000 UTC
 				//   22:18:00 +0000 UTC m=+0.000000001
 				//   15:04:05 -0700
@@ -864,6 +988,38 @@ iterRunes:
 					} else {
 						p.seclen = i - p.seci
 					}
+				case 'a', 'A':
+					if p.nextIs(i, 't') || p.nextIs(i, 'T') {
+						//                    x
+						// September 17, 2012 at 5:00pm UTC-05
+						i++ // skip t
+						if p.nextIs(i, ' ') {
+							//                      x
+							// September 17, 2012 at 5:00pm UTC-05
+							i++         // skip '
+							p.houri = 0 // reset hour
+						}
+					} else {
+						switch {
+						case r == 'a' && p.nextIs(i, 'm'):
+							p.coalesceTime(i)
+							p.set(i, "am")
+						case r == 'A' && p.nextIs(i, 'M'):
+							p.coalesceTime(i)
+							p.set(i, "PM")
+						}
+					}
+
+				case 'p', 'P':
+					// Could be AM/PM
+					switch {
+					case r == 'p' && p.nextIs(i, 'm'):
+						p.coalesceTime(i)
+						p.set(i, "pm")
+					case r == 'P' && p.nextIs(i, 'M'):
+						p.coalesceTime(i)
+						p.set(i, "PM")
+					}
 				case ' ':
 					p.coalesceTime(i)
 					p.stateTime = timeWs
@@ -875,7 +1031,6 @@ iterRunes:
 						p.seci = i + 1
 						p.minlen = i - p.mini
 					}
-
 				}
 			case timeOffset:
 				// 19:55:00+0100
@@ -888,6 +1043,7 @@ iterRunes:
 			case timeWs:
 				// timeWsAlpha
 				//   06:20:00 UTC
+				//   06:20:00 UTC-05
 				//   15:44:11 UTC+0100 2015
 				//   18:04:07 GMT+0100 (GMT Daylight Time)
 				//   17:57:51 MST 2009
@@ -916,6 +1072,7 @@ iterRunes:
 				default:
 					if unicode.IsLetter(r) {
 						// 06:20:00 UTC
+						// 06:20:00 UTC-05
 						// 15:44:11 UTC+0100 2015
 						// 17:57:51 MST 2009
 						p.tzi = i
@@ -929,6 +1086,7 @@ iterRunes:
 				}
 			case timeWsAlpha:
 				// 06:20:00 UTC
+				// 06:20:00 UTC-05
 				// timeWsAlphaWs
 				//   17:57:51 MST 2009
 				// timeWsAlphaZoneOffset
@@ -962,6 +1120,7 @@ iterRunes:
 				//   17:57:51 MST 2009
 
 			case timeWsAlphaZoneOffset:
+				// 06:20:00 UTC-05
 				// timeWsAlphaZoneOffset
 				// timeWsAlphaZoneOffsetWs
 				//   timeWsAlphaZoneOffsetWsExtra
@@ -1258,6 +1417,14 @@ iterRunes:
 			p.setYear()
 		case timeWsAlphaZoneOffsetWsExtra:
 			p.trimExtra()
+		case timeWsAlphaZoneOffset:
+			// 06:20:00 UTC-05
+			if i-p.offseti < 4 {
+				p.set(p.offseti, "-07")
+			} else {
+				p.set(p.offseti, "-0700")
+			}
+
 		case timePeriod:
 			p.mslen = i - p.msi
 		case timeOffset:
@@ -1411,14 +1578,23 @@ iterRunes:
 		p.format = []byte("2 January 2006")
 		return p, nil // parse("2 January 2006", datestr, loc)
 
-	case dateAlphaWsDigitCommaWs:
+	case dateAlphaWsMonth:
+		p.yearlen = i - p.yeari
+		p.setYear()
+		return p, nil
+
+	case dateAlphaWsMonthMore:
+		return p, nil
+
+	case dateAlphaWsDigitMoreWs:
 		// oct 1, 1970
 		p.yearlen = i - p.yeari
 		p.setYear()
 		return p, nil
 
-	case dateAlphaWsDigitCommaWsYear:
+	case dateAlphaWsDigitMoreWsYear:
 		// May 8, 2009 5:57:51 PM
+		// Jun 7, 2005, 05:57:51
 		return p, nil
 
 	case dateAlphaWsAlpha:
@@ -1468,6 +1644,7 @@ type parser struct {
 	stateTime        timeState
 	format           []byte
 	datestr          string
+	fullMonth        string
 	skip             int
 	extra            int
 	part1Len         int
@@ -1503,6 +1680,14 @@ func newParser(dateStr string, loc *time.Location) *parser {
 	p.format = []byte(dateStr)
 	return &p
 }
+
+func (p *parser) nextIs(i int, b byte) bool {
+	if len(p.datestr) > i+1 && p.datestr[i+1] == b {
+		return true
+	}
+	return false
+}
+
 func (p *parser) set(start int, val string) {
 	if start < 0 {
 		return
@@ -1598,6 +1783,11 @@ func (p *parser) coalesceTime(end int) {
 		}
 	}
 }
+func (p *parser) setFullMonth(month string) {
+	if p.moi == 0 {
+		p.format = []byte(fmt.Sprintf("%s%s", "January", p.format[len(month):]))
+	}
+}
 
 func (p *parser) trimExtra() {
 	if p.extra > 0 && len(p.format) > p.extra {
@@ -1606,9 +1796,23 @@ func (p *parser) trimExtra() {
 	}
 }
 
+// func (p *parser) remove(i, length int) {
+// 	if len(p.format) > i+length {
+// 		//append(a[:i], a[j:]...)
+// 		p.format = append(p.format[0:i], p.format[i+length:]...)
+// 	}
+// 	if len(p.datestr) > i+length {
+// 		//append(a[:i], a[j:]...)
+// 		p.datestr = fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+length:])
+// 	}
+// }
+
 func (p *parser) parse() (time.Time, error) {
 	if p.t != nil {
 		return *p.t, nil
+	}
+	if len(p.fullMonth) > 0 {
+		p.setFullMonth(p.fullMonth)
 	}
 	if p.skip > 0 && len(p.format) > p.skip {
 		p.format = p.format[p.skip:]
@@ -1619,4 +1823,12 @@ func (p *parser) parse() (time.Time, error) {
 		return time.Parse(string(p.format), p.datestr)
 	}
 	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
+}
+func isMonthFull(alpha string) bool {
+	for _, month := range months {
+		if alpha == month {
+			return true
+		}
+	}
+	return false
 }
