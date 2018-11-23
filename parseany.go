@@ -786,15 +786,12 @@ iterRunes:
 						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
 					}
 				}
-				// case ',':
-				// 	//          x
-				// 	// April 8th, 2009
-				// case ' ':
-				// 	//          x
-				// 	// April 8th 2009
-				// 	// p.yeari = i + 1
-				// 	p.yeari = i + 1
-				// 	p.stateDate = dateAlphaWsMonthMore
+			case 'r', 'R':
+				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
+					if len(datestr) > i+2 {
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+					}
+				}
 			}
 		case dateAlphaWsMore:
 			// January 02, 2006, 15:04:05

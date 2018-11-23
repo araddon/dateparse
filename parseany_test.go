@@ -88,7 +88,7 @@ var testInputs = []dateTest{
 	{in: "May 7, 2012", out: "2012-05-07 00:00:00 +0000 UTC"},
 	{in: "June 7, 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
 	{in: "June 7 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
-	// Month dd[th,nd,st] yyyy
+	// Month dd[th,nd,st,rd] yyyy
 	{in: "September 17th, 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
 	{in: "September 17th 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
 	{in: "September 7th, 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
@@ -97,6 +97,8 @@ var testInputs = []dateTest{
 	{in: "May 1st, 2012", out: "2012-05-01 00:00:00 +0000 UTC"},
 	{in: "May 21st 2012", out: "2012-05-21 00:00:00 +0000 UTC"},
 	{in: "May 21st, 2012", out: "2012-05-21 00:00:00 +0000 UTC"},
+	{in: "May 23rd 2012", out: "2012-05-23 00:00:00 +0000 UTC"},
+	{in: "May 23rd, 2012", out: "2012-05-23 00:00:00 +0000 UTC"},
 	{in: "June 2nd, 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
 	{in: "June 2nd 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
 	{in: "June 22nd, 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
