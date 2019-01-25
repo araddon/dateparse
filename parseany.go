@@ -61,7 +61,7 @@ const (
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth
-	dateAlphaWsMonthMore
+	dateAlphaWsMonthMore // 25
 	dateAlphaWsMonthSuffix
 	dateAlphaWsMore
 	dateAlphaWsAtTime
@@ -530,6 +530,7 @@ iterRunes:
 			//  Mon Jan 02 15:04:05 -0700 2006
 			//  Mon Aug 10 15:44:11 UTC+0100 2015
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			//  Jan 20 21:17:01
 			//  dateAlphaWSDigit
 			//    May 8, 2009 5:57:51 PM
 			//    oct 1, 1970
@@ -624,6 +625,7 @@ iterRunes:
 			//    May 8 2009 5:57:51 PM
 			//    oct 1, 1970
 			//    oct 7, '70
+			//    Jan 20 21:17:01
 			switch {
 			case unicode.IsLetter(r):
 				p.set(0, "Mon")
@@ -641,6 +643,7 @@ iterRunes:
 			// oct 1, 1970
 			// oct 7, '70
 			// oct. 7, 1970
+			// Jan 20 21:17:01
 			if r == ',' {
 				p.daylen = i - p.dayi
 				p.setDay()
@@ -671,9 +674,21 @@ iterRunes:
 			// May 05, 2005, 05:05:05
 			// oct 1, 1970
 			// oct 7, '70
+			// Jan 20 21:17:01
 			switch r {
 			case '\'':
 				p.yeari = i + 1
+			case ':':
+				//          x
+				// Jan 20 21:17:01
+				p.stateTime = timeStart
+				p.dayi = i - 2
+				p.setDay()
+				i = i - 3
+				// this is a crap format, no year is in it which
+				// go will not parse.  So, we have to do some ugly crap to create format.
+				datestr = fmt.Sprintf("%s %d %s", datestr[:i], time.Now().Year(), datestr[i:])
+				return parseTime(datestr, loc)
 			case ' ', ',':
 				//            x
 				// May 8, 2009 5:57:51 PM
@@ -685,7 +700,6 @@ iterRunes:
 				p.stateTime = timeStart
 				break iterRunes
 			}
-
 		case dateAlphaWsAlpha:
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan 02 15:04:05 -0700 2006

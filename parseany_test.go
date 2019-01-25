@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("September 17, 2012, 10:10:09")
-	assert.Equal(t, "2012-09-17 10:10:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Jan 20 21:17:01")
+	assert.Equal(t, "2019-01-20 21:17:01 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -88,6 +88,8 @@ var testInputs = []dateTest{
 	{in: "May 7, 2012", out: "2012-05-07 00:00:00 +0000 UTC"},
 	{in: "June 7, 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
 	{in: "June 7 2012", out: "2012-06-07 00:00:00 +0000 UTC"},
+	// Mon dd hh:mm.ss
+	{in: "Sep 17 15:01:00", out: fmt.Sprintf("%d-09-17 15:01:00 +0000 UTC", time.Now().Year())},
 	// Month dd[th,nd,st,rd] yyyy
 	{in: "September 17th, 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
 	{in: "September 17th 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
