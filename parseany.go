@@ -512,14 +512,26 @@ iterRunes:
 				break
 			}
 		case dateDigitDot:
+			// This is the 2nd period
 			// 3.31.2014
 			// 08.21.71
 			// 2014.05
+			// 2018.09.30
 			if r == '.' {
-				p.daylen = i - p.dayi
-				p.yeari = i + 1
-				p.setDay()
-				p.stateDate = dateDigitDotDot
+				if p.moi == 0 {
+					// 3.31.2014
+					p.daylen = i - p.dayi
+					p.yeari = i + 1
+					p.setDay()
+					p.stateDate = dateDigitDotDot
+				} else {
+					// 2018.09.30
+					//p.molen = 2
+					p.molen = i - p.moi
+					p.dayi = i + 1
+					p.setMonth()
+					p.stateDate = dateDigitDotDot
+				}
 			}
 		case dateDigitDotDot:
 			// iterate all the way through
@@ -1553,8 +1565,15 @@ iterRunes:
 		// 3.2.1981
 		// 3.2.81
 		// 08.21.71
-		p.setYear()
-		p.yearlen = i - p.yeari
+		// 2018.09.30
+		if p.yearlen > 0 {
+			// 2018.09.30
+			p.daylen = i - p.dayi
+			p.setDay()
+		} else {
+			p.setYear()
+			p.yearlen = i - p.yeari
+		}
 		return p, nil
 
 	case dateDigitWsMoYear:
@@ -1815,7 +1834,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
-	//gou.Debugf("parse %q   AS   %s", p.datestr, string(p.format))
+	//gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}
