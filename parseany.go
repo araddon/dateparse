@@ -1566,14 +1566,6 @@ iterRunes:
 		// 3.2.81
 		// 08.21.71
 		// 2018.09.30
-		if p.yearlen > 0 {
-			// 2018.09.30
-			p.daylen = i - p.dayi
-			p.setDay()
-		} else {
-			p.setYear()
-			p.yearlen = i - p.yeari
-		}
 		return p, nil
 
 	case dateDigitWsMoYear:
