@@ -11,7 +11,7 @@ Parse many date strings without knowing format in advance.  Uses a scanner to re
 
 **MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous if this is not desired behavior, use `ParseStrict` which will fail on ambiguous date strings.
 
-**Timezones** The location your server is configured effects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
+**Timezones** The location your server is configured affects the results!  See example or https://play.golang.org/p/IDHRalIyXh and last paragraph here https://golang.org/pkg/time/#Parse.
 
 
 ```go
