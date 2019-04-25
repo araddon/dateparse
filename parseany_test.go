@@ -93,6 +93,7 @@ var testInputs = []dateTest{
 	{in: "September 17th 2012", out: "2012-09-17 00:00:00 +0000 UTC"},
 	{in: "September 7th, 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
 	{in: "September 7th 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
+	{in: "September 7tH 2012", out: "2012-09-07 00:00:00 +0000 UTC"},
 	{in: "May 1st 2012", out: "2012-05-01 00:00:00 +0000 UTC"},
 	{in: "May 1st, 2012", out: "2012-05-01 00:00:00 +0000 UTC"},
 	{in: "May 21st 2012", out: "2012-05-21 00:00:00 +0000 UTC"},

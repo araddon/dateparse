@@ -781,7 +781,7 @@ iterRunes:
 			// April 8th 2009
 			switch r {
 			case 't', 'T':
-				if p.nextIs(i, 'h') || p.nextIs(i, 'h') {
+				if p.nextIs(i, 'h') || p.nextIs(i, 'H') {
 					if len(datestr) > i+2 {
 						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
 					}
