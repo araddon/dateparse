@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/simplereach/timeutils"
 )
 
 /*
@@ -44,6 +42,7 @@ func BenchmarkParseAny(b *testing.B) {
 	}
 }
 
+/*
 func BenchmarkParseDateString(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -52,6 +51,7 @@ func BenchmarkParseDateString(b *testing.B) {
 		}
 	}
 }
+*/
 
 var (
 	testDates = []string{
