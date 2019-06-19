@@ -1551,6 +1551,28 @@ iterRunes:
 		// 13-Feb-03   ambiguous
 		// 28-Feb-03   ambiguous
 		// 29-Jun-2016
+		length := len(datestr) - (p.moi + p.molen + 1)
+		if length == 4 {
+			p.yearlen = 4
+			p.set(p.yeari, "2006")
+			// We now also know that part1 was the day
+			p.dayi = 0
+			p.daylen = p.part1Len
+			p.setDay()
+		} else if length == 2 {
+			// We have no idea if this is
+			// yy-mon-dd   OR  dd-mon-yy
+			//
+			// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+			p.ambiguousMD = true
+			p.yearlen = 2
+			p.set(p.yeari, "06")
+			// We now also know that part1 was the day
+			p.dayi = 0
+			p.daylen = p.part1Len
+			p.setDay()
+		}
+
 		return p, nil
 
 	case dateDigitDot:
