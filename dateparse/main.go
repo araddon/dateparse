@@ -22,7 +22,7 @@ func main() {
 	if len(flag.Args()) == 0 {
 		fmt.Println(`Must pass a time, and optional location:
 
-		./dateparse "2009-08-12T22:15:09.99Z" 
+		./dateparse "2009-08-12T22:15:09.99Z"
 
 		./dateparse --timezone="America/Denver" "2017-07-19 03:21:51+00:00"
 		`)
@@ -31,7 +31,7 @@ func main() {
 
 	datestr = flag.Args()[0]
 
-	layout, err := dateparse.ParseFormat(datestr)
+	layout, err := dateparse.ParseFormat(datestr, true)
 	if err != nil {
 		fatal(err)
 	}
@@ -82,7 +82,7 @@ type parser func(datestr string, loc *time.Location, utc bool) string
 
 func parseLocal(datestr string, loc *time.Location, utc bool) string {
 	time.Local = loc
-	t, err := dateparse.ParseLocal(datestr)
+	t, err := dateparse.ParseLocal(datestr, true)
 	if err != nil {
 		return err.Error()
 	}
@@ -93,7 +93,7 @@ func parseLocal(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseIn(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseIn(datestr, loc)
+	t, err := dateparse.ParseIn(datestr, loc, true)
 	if err != nil {
 		return err.Error()
 	}
@@ -104,7 +104,7 @@ func parseIn(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseAny(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseAny(datestr)
+	t, err := dateparse.ParseAny(datestr, true)
 	if err != nil {
 		return err.Error()
 	}
@@ -115,7 +115,7 @@ func parseAny(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseStrict(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseStrict(datestr)
+	t, err := dateparse.ParseStrict(datestr, true)
 	if err != nil {
 		return err.Error()
 	}
