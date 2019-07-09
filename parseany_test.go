@@ -11,7 +11,7 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("2018.09.30")
+	ts = MustParse("2018.09.30", true)
 	assert.Equal(t, "2018-09-30 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
@@ -386,13 +386,13 @@ func TestParse(t *testing.T) {
 	time.Local = time.UTC
 
 	zeroTime := time.Time{}.Unix()
-	ts, err := ParseAny("INVALID")
+	ts, err := ParseAny("INVALID", true)
 	assert.Equal(t, zeroTime, ts.Unix())
 	assert.NotEqual(t, nil, err)
 
 	assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
 	// https://github.com/golang/go/issues/5294
-	_, err = ParseAny(time.RFC3339)
+	_, err = ParseAny(time.RFC3339, true)
 	assert.NotEqual(t, nil, err)
 
 	for _, th := range testInputs {
@@ -401,7 +401,7 @@ func TestParse(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Expected to load location %q but got %v", th.loc, err)
 			}
-			ts, err = ParseIn(th.in, loc)
+			ts, err = ParseIn(th.in, loc, true)
 			if err != nil {
 				t.Fatalf("expected to parse %q but got %v", th.in, err)
 			}
@@ -411,7 +411,7 @@ func TestParse(t *testing.T) {
 				panic("whoops")
 			}
 		} else {
-			ts = MustParse(th.in)
+			ts = MustParse(th.in, true)
 			got := fmt.Sprintf("%v", ts.In(time.UTC))
 			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
 			if th.out != got {
@@ -424,13 +424,13 @@ func TestParse(t *testing.T) {
 
 	assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
 
-	_, err = ParseAny("138421636711122233311111") // too many digits
+	_, err = ParseAny("138421636711122233311111", true) // too many digits
 	assert.NotEqual(t, nil, err)
 
-	_, err = ParseAny("-1314")
+	_, err = ParseAny("-1314", true)
 	assert.NotEqual(t, nil, err)
 
-	_, err = ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
+	_, err = ParseAny("2014-13-13 08:20:13,787", true) // month 13 doesn't exist so error
 	assert.NotEqual(t, nil, err)
 }
 
@@ -440,7 +440,7 @@ func testDidPanic(datestr string) (paniced bool) {
 			paniced = true
 		}
 	}()
-	MustParse(datestr)
+	MustParse(datestr, true)
 	return false
 }
 
@@ -449,7 +449,7 @@ func TestPStruct(t *testing.T) {
 	denverLoc, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
 
-	p := newParser("08.21.71", denverLoc)
+	p := newParser("08.21.71", denverLoc, true)
 
 	p.setMonth()
 	assert.Equal(t, 0, p.moi)
@@ -479,7 +479,7 @@ var testParseErrors = []dateTest{
 
 func TestParseErrors(t *testing.T) {
 	for _, th := range testParseErrors {
-		v, err := ParseAny(th.in)
+		v, err := ParseAny(th.in, true)
 		assert.NotEqual(t, nil, err, "%v for %v", v, th.in)
 	}
 }
@@ -514,7 +514,7 @@ var testParseFormat = []dateTest{
 
 func TestParseLayout(t *testing.T) {
 	for _, th := range testParseFormat {
-		l, err := ParseFormat(th.in)
+		l, err := ParseFormat(th.in, true)
 		if th.err {
 			assert.NotEqual(t, nil, err)
 		} else {
@@ -544,14 +544,14 @@ var testParseStrict = []dateTest{
 func TestParseStrict(t *testing.T) {
 
 	for _, th := range testParseStrict {
-		_, err := ParseStrict(th.in)
+		_, err := ParseStrict(th.in, true)
 		assert.NotEqual(t, nil, err)
 	}
 
-	_, err := ParseStrict(`{"hello"}`)
+	_, err := ParseStrict(`{"hello"}`, true)
 	assert.NotEqual(t, nil, err)
 
-	_, err = ParseStrict("2009-08-12T22:15Z")
+	_, err = ParseStrict("2009-08-12T22:15Z", true)
 	assert.Equal(t, nil, err)
 }
 
@@ -570,7 +570,7 @@ func TestInLocation(t *testing.T) {
 	time.Local = time.UTC
 
 	// Just normal parse to test out zone/offset
-	ts := MustParse("2013-02-01 00:00:00")
+	ts := MustParse("2013-02-01 00:00:00", true)
 	zone, offset := ts.Zone()
 	assert.Equal(t, 0, offset, "Should have found offset = 0 %v", offset)
 	assert.Equal(t, "UTC", zone, "Should have found zone = UTC %v", zone)
@@ -579,26 +579,26 @@ func TestInLocation(t *testing.T) {
 	// Now lets set to denver (MST/MDT) and re-parse the same time string
 	// and since no timezone info in string, we expect same result
 	time.Local = denverLoc
-	ts = MustParse("2013-02-01 00:00:00")
+	ts = MustParse("2013-02-01 00:00:00", true)
 	zone, offset = ts.Zone()
 	assert.Equal(t, 0, offset, "Should have found offset = 0 %v", offset)
 	assert.Equal(t, "UTC", zone, "Should have found zone = UTC %v", zone)
 	assert.Equal(t, "2013-02-01 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts = MustParse("Tue, 5 Jul 2017 16:28:13 -0700 (MST)")
+	ts = MustParse("Tue, 5 Jul 2017 16:28:13 -0700 (MST)", true)
 	assert.Equal(t, "2017-07-05 23:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Now we are going to use ParseIn() and see that it gives different answer
 	// with different zone, offset
 	time.Local = nil
-	ts, err = ParseIn("2013-02-01 00:00:00", denverLoc)
+	ts, err = ParseIn("2013-02-01 00:00:00", denverLoc, true)
 	assert.Equal(t, nil, err)
 	zone, offset = ts.Zone()
 	assert.Equal(t, -25200, offset, "Should have found offset = -25200 %v  %v", offset, denverLoc)
 	assert.Equal(t, "MST", zone, "Should have found zone = MST %v", zone)
 	assert.Equal(t, "2013-02-01 07:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
-	ts, err = ParseIn("18 January 2018", denverLoc)
+	ts, err = ParseIn("18 January 2018", denverLoc, true)
 	assert.Equal(t, nil, err)
 	zone, offset = ts.Zone()
 	assert.Equal(t, -25200, offset, "Should have found offset = 0 %v", offset)
@@ -608,7 +608,7 @@ func TestInLocation(t *testing.T) {
 	// Now we are going to use ParseLocal() and see that it gives same
 	// answer as ParseIn when we have time.Local set to a location
 	time.Local = denverLoc
-	ts, err = ParseLocal("2013-02-01 00:00:00")
+	ts, err = ParseLocal("2013-02-01 00:00:00", true)
 	assert.Equal(t, nil, err)
 	zone, offset = ts.Zone()
 	assert.Equal(t, -25200, offset, "Should have found offset = -25200 %v  %v", offset, denverLoc)
@@ -617,7 +617,7 @@ func TestInLocation(t *testing.T) {
 
 	// Lets advance past daylight savings time start
 	// use parseIn and see offset/zone has changed to Daylight Savings Equivalents
-	ts, err = ParseIn("2013-04-01 00:00:00", denverLoc)
+	ts, err = ParseIn("2013-04-01 00:00:00", denverLoc, true)
 	assert.Equal(t, nil, err)
 	zone, offset = ts.Zone()
 	assert.Equal(t, -21600, offset, "Should have found offset = -21600 %v  %v", offset, denverLoc)
@@ -628,7 +628,7 @@ func TestInLocation(t *testing.T) {
 	time.Local = time.UTC
 
 	//   UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
+	ts = MustParse("Mon Jan  2 15:04:05 MST 2006", true)
 
 	_, offset = ts.Zone()
 	assert.Equal(t, 0, offset, "Should have found offset = 0 %v", offset)
@@ -636,7 +636,7 @@ func TestInLocation(t *testing.T) {
 
 	// Now lets set to denver(mst/mdt)
 	time.Local = denverLoc
-	ts = MustParse("Mon Jan  2 15:04:05 MST 2006")
+	ts = MustParse("Mon Jan  2 15:04:05 MST 2006", true)
 
 	// this time is different from one above parsed with time.Local set to UTC
 	_, offset = ts.Zone()
@@ -647,25 +647,25 @@ func TestInLocation(t *testing.T) {
 	time.Local = time.UTC
 
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
-	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
+	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST", true)
 	_, offset = ts.Zone()
 	assert.Equal(t, 0, offset, "Should have found offset = 0 %v", offset)
 	assert.Equal(t, "2006-01-02 15:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Now lets set to denver
 	time.Local = denverLoc
-	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST")
+	ts = MustParse("Monday, 02-Jan-06 15:04:05 MST", true)
 	_, offset = ts.Zone()
 	assert.NotEqual(t, 0, offset, "Should have found offset %v", offset)
 	assert.Equal(t, "2006-01-02 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	// Now some errors
 	zeroTime := time.Time{}.Unix()
-	ts, err = ParseIn("INVALID", denverLoc)
+	ts, err = ParseIn("INVALID", denverLoc, true)
 	assert.Equal(t, zeroTime, ts.Unix())
 	assert.NotEqual(t, nil, err)
 
-	ts, err = ParseLocal("INVALID")
+	ts, err = ParseLocal("INVALID", true)
 	assert.Equal(t, zeroTime, ts.Unix())
 	assert.NotEqual(t, nil, err)
 }
