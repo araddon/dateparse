@@ -269,7 +269,13 @@ iterRunes:
 							p.setMonth()
 							p.dayi = i + 1
 						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
 					}
+				}
 				}
 
 			case '.':
@@ -446,7 +452,13 @@ iterRunes:
 						p.setDay()
 						p.yeari = i + 1
 					}
+				} else {
+					if p.molen == 0 {
+						p.molen = i - p.moi
+						p.setMonth()
+						p.yeari = i + 1
 				}
+			}
 			}
 
 		case dateDigitWs:
