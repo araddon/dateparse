@@ -209,9 +209,9 @@ func ParseStrict(datestr string) (time.Time, error) {
 	return p.parse()
 }
 
-func parseTime(datestr string, loc *time.Location) (*parser, error) {
+func parseTime(datestr string, loc *time.Location, opts ...Option) (*parser, error) {
 
-	p := newParser(datestr, loc)
+	p := newParser(datestr, loc, opts...)
 	i := 0
 
 	// General strategy is to read rune by rune through the date looking for
@@ -274,8 +274,8 @@ iterRunes:
 							p.daylen = i
 							p.setDay()
 							p.moi = i + 1
+						}
 					}
-				}
 				}
 
 			case '.':
@@ -457,8 +457,8 @@ iterRunes:
 						p.molen = i - p.moi
 						p.setMonth()
 						p.yeari = i + 1
+					}
 				}
-			}
 			}
 
 		case dateDigitWs:
@@ -630,7 +630,7 @@ iterRunes:
 				} else if i == 4 {
 					// gross
 					datestr = datestr[0:i-1] + datestr[i:]
-					return parseTime(datestr, loc)
+					return parseTime(datestr, loc, opts...)
 				} else {
 					return nil, unknownErr(datestr)
 				}
@@ -795,25 +795,25 @@ iterRunes:
 			case 't', 'T':
 				if p.nextIs(i, 'h') || p.nextIs(i, 'H') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
 					}
 				}
 			case 'n', 'N':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
 					}
 				}
 			case 's', 'S':
 				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
 					}
 				}
 			case 'r', 'R':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
 					}
 				}
 			}
@@ -987,7 +987,7 @@ iterRunes:
 					// 2014-05-11 08:20:13,787
 					ds := []byte(p.datestr)
 					ds[i] = '.'
-					return parseTime(string(ds), loc)
+					return parseTime(string(ds), loc, opts...)
 				case '-', '+':
 					//   03:21:51+00:00
 					p.stateTime = timeOffset
@@ -1711,8 +1711,18 @@ type parser struct {
 	t                *time.Time
 }
 
-func newParser(dateStr string, loc *time.Location) *parser {
-	p := parser{
+type Option func(*parser) error
+
+// PreferMonthFirst is an option that allows preferMonthFirst to be changed from its default
+func PreferMonthFirst(preferMonthFirst bool) Option {
+	return func(p *parser) error {
+		p.preferMonthFirst = preferMonthFirst
+		return nil
+	}
+}
+
+func newParser(dateStr string, loc *time.Location, opts ...Option) *parser {
+	p := &parser{
 		stateDate:        dateStart,
 		stateTime:        timeIgnore,
 		datestr:          dateStr,
@@ -1720,7 +1730,12 @@ func newParser(dateStr string, loc *time.Location) *parser {
 		preferMonthFirst: true,
 	}
 	p.format = []byte(dateStr)
-	return &p
+
+	// allow the options to mutate the parser fields from their defaults
+	for _, option := range opts {
+		option(p)
+	}
+	return p
 }
 
 func (p *parser) nextIs(i int, b byte) bool {
