@@ -209,9 +209,25 @@ func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
 	return p.parse()
 }
 
-func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (*parser, error) {
+func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *parser, err error) {
 
-	p := newParser(datestr, loc, opts...)
+	p = newParser(datestr, loc, opts...)
+	if p.retryAmbiguousDateWithSwap {
+		// month out of range signifies that a day/month swap is the correct solution to an ambiguous date
+		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
+		// by retrying in this case, we can fix a common situation with no assumptions
+		defer func() {
+			if err != nil && strings.Contains(err.Error(), "month out of range") {
+				// create the option to reverse the preference
+				preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
+				// turn off the retry to avoid endless recursion
+				retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
+				modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
+				p, err = parseTime(datestr, time.Local, modifiedOpts...)
+			}
+		}()
+	}
+
 	i := 0
 
 	// General strategy is to read rune by rune through the date looking for
@@ -1679,36 +1695,37 @@ iterRunes:
 }
 
 type parser struct {
-	loc              *time.Location
-	preferMonthFirst bool
-	ambiguousMD      bool
-	stateDate        dateState
-	stateTime        timeState
-	format           []byte
-	datestr          string
-	fullMonth        string
-	skip             int
-	extra            int
-	part1Len         int
-	yeari            int
-	yearlen          int
-	moi              int
-	molen            int
-	dayi             int
-	daylen           int
-	houri            int
-	hourlen          int
-	mini             int
-	minlen           int
-	seci             int
-	seclen           int
-	msi              int
-	mslen            int
-	offseti          int
-	offsetlen        int
-	tzi              int
-	tzlen            int
-	t                *time.Time
+	loc                        *time.Location
+	preferMonthFirst           bool
+	retryAmbiguousDateWithSwap bool
+	ambiguousMD                bool
+	stateDate                  dateState
+	stateTime                  timeState
+	format                     []byte
+	datestr                    string
+	fullMonth                  string
+	skip                       int
+	extra                      int
+	part1Len                   int
+	yeari                      int
+	yearlen                    int
+	moi                        int
+	molen                      int
+	dayi                       int
+	daylen                     int
+	houri                      int
+	hourlen                    int
+	mini                       int
+	minlen                     int
+	seci                       int
+	seclen                     int
+	msi                        int
+	mslen                      int
+	offseti                    int
+	offsetlen                  int
+	tzi                        int
+	tzlen                      int
+	t                          *time.Time
 }
 
 type ParserOption func(*parser) error
@@ -1721,13 +1738,22 @@ func PreferMonthFirst(preferMonthFirst bool) ParserOption {
 	}
 }
 
+// RetryAmbiguousDateWithSwap is an option that allows retryAmbiguousDateWithSwap to be changed from its default
+func RetryAmbiguousDateWithSwap(retryAmbiguousDateWithSwap bool) ParserOption {
+	return func(p *parser) error {
+		p.retryAmbiguousDateWithSwap = retryAmbiguousDateWithSwap
+		return nil
+	}
+}
+
 func newParser(dateStr string, loc *time.Location, opts ...ParserOption) *parser {
 	p := &parser{
-		stateDate:        dateStart,
-		stateTime:        timeIgnore,
-		datestr:          dateStr,
-		loc:              loc,
-		preferMonthFirst: true,
+		stateDate:                  dateStart,
+		stateTime:                  timeIgnore,
+		datestr:                    dateStr,
+		loc:                        loc,
+		preferMonthFirst:           true,
+		retryAmbiguousDateWithSwap: false,
 	}
 	p.format = []byte(dateStr)
 
