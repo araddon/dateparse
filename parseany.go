@@ -209,7 +209,7 @@ func ParseStrict(datestr string) (time.Time, error) {
 	return p.parse()
 }
 
-func parseTime(datestr string, loc *time.Location, opts ...Option) (*parser, error) {
+func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (*parser, error) {
 
 	p := newParser(datestr, loc, opts...)
 	i := 0
@@ -1711,17 +1711,17 @@ type parser struct {
 	t                *time.Time
 }
 
-type Option func(*parser) error
+type ParserOption func(*parser) error
 
 // PreferMonthFirst is an option that allows preferMonthFirst to be changed from its default
-func PreferMonthFirst(preferMonthFirst bool) Option {
+func PreferMonthFirst(preferMonthFirst bool) ParserOption {
 	return func(p *parser) error {
 		p.preferMonthFirst = preferMonthFirst
 		return nil
 	}
 }
 
-func newParser(dateStr string, loc *time.Location, opts ...Option) *parser {
+func newParser(dateStr string, loc *time.Location, opts ...ParserOption) *parser {
 	p := &parser{
 		stateDate:        dateStart,
 		stateTime:        timeIgnore,
