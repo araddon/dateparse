@@ -120,8 +120,8 @@ func unknownErr(datestr string) error {
 // ParseAny parse an unknown date format, detect the layout.
 // Normal parse.  Equivalent Timezone rules as time.Parse().
 // NOTE:  please see readme on mmdd vs ddmm ambiguous dates.
-func ParseAny(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, nil)
+func ParseAny(datestr string, opts ...ParserOption) (time.Time, error) {
+	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -133,8 +133,8 @@ func ParseAny(datestr string) (time.Time, error) {
 // datestring, it uses the given location rules for any zone interpretation.
 // That is, MST means one thing when using America/Denver and something else
 // in other locations.
-func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
-	p, err := parseTime(datestr, loc)
+func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Time, error) {
+	p, err := parseTime(datestr, loc, opts...)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -156,8 +156,8 @@ func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 //
 //     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 //
-func ParseLocal(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, time.Local)
+func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
+	p, err := parseTime(datestr, time.Local, opts...)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -166,8 +166,8 @@ func ParseLocal(datestr string) (time.Time, error) {
 
 // MustParse  parse a date, and panic if it can't be parsed.  Used for testing.
 // Not recommended for most use-cases.
-func MustParse(datestr string) time.Time {
-	p, err := parseTime(datestr, nil)
+func MustParse(datestr string, opts ...ParserOption) time.Time {
+	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -184,8 +184,8 @@ func MustParse(datestr string) time.Time {
 //     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
 //     // layout = "2006-01-02 15:04:05"
 //
-func ParseFormat(datestr string) (string, error) {
-	p, err := parseTime(datestr, nil)
+func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
+	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -198,8 +198,8 @@ func ParseFormat(datestr string) (string, error) {
 
 // ParseStrict parse an unknown date format.  IF the date is ambigous
 // mm/dd vs dd/mm then return an error. These return errors:   3.3.2014 , 8/8/71 etc
-func ParseStrict(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, nil)
+func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
+	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
 		return time.Time{}, err
 	}
