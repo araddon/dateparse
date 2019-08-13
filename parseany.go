@@ -217,14 +217,20 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
 		// by retrying in this case, we can fix a common situation with no assumptions
 		defer func() {
-			if err != nil && strings.Contains(err.Error(), "month out of range") {
-				// create the option to reverse the preference
-				preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
-				// turn off the retry to avoid endless recursion
-				retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
-				modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
-				p, err = parseTime(datestr, time.Local, modifiedOpts...)
+			if p.ambiguousMD {
+				// if it errors out with the following error, swap before we
+				// get out of this function to reduce scope it needs to be applied on
+				_, err := p.parse()
+				if err != nil && strings.Contains(err.Error(), "month out of range") {
+					// create the option to reverse the preference
+					preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
+					// turn off the retry to avoid endless recursion
+					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
+					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
+					p, err = parseTime(datestr, time.Local, modifiedOpts...)
+				}
 			}
+
 		}()
 	}
 

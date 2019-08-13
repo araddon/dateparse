@@ -669,3 +669,38 @@ func TestInLocation(t *testing.T) {
 	assert.Equal(t, zeroTime, ts.Unix())
 	assert.NotEqual(t, nil, err)
 }
+
+func TestPreferMonthFirst(t *testing.T) {
+	// default case is true
+	ts, err := ParseAny("04/02/2014 04:08:09 +0000 UTC")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	preferMonthFirstTrue := PreferMonthFirst(true)
+	ts, err = ParseAny("04/02/2014 04:08:09 +0000 UTC", preferMonthFirstTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	// allows the day to be preferred before the month, when completely ambiguous
+	preferMonthFirstFalse := PreferMonthFirst(false)
+	ts, err = ParseAny("04/02/2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+}
+
+func TestRetryAmbiguousDateWithSwap(t *testing.T) {
+	// default is false
+	_, err := ParseAny("13/02/2014 04:08:09 +0000 UTC")
+	assert.NotEqual(t, nil, err)
+
+	// will fail error if the month preference cannot work due to the value being larger than 12
+	retryAmbiguousDateWithSwapFalse := RetryAmbiguousDateWithSwap(false)
+	_, err = ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapFalse)
+	assert.NotEqual(t, nil, err)
+
+	// will retry with the other month preference if this error is detected
+	retryAmbiguousDateWithSwapTrue := RetryAmbiguousDateWithSwap(true)
+	ts, err := ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+}
