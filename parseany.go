@@ -1734,6 +1734,8 @@ type parser struct {
 	t                          *time.Time
 }
 
+// ParserOption defines a function signature implemented by options
+// Options defined like this accept the parser and operate on the data within
 type ParserOption func(*parser) error
 
 // PreferMonthFirst is an option that allows preferMonthFirst to be changed from its default
