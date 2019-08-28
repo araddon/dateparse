@@ -54,9 +54,10 @@ const (
 	dateDigitWs // 15
 	dateDigitWsMoYear
 	dateDigitWsMolong
+	dateDigitWsOffset
 	dateAlpha
 	dateAlphaWs
-	dateAlphaWsDigit // 20
+	dateAlphaWsDigit
 	dateAlphaWsDigitMore
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
@@ -297,9 +298,15 @@ iterRunes:
 				// 02 Jan 2018 23:59:34
 				// 12 Feb 2006, 19:17
 				// 12 Feb 2006, 19:17:22
-				p.stateDate = dateDigitWs
-				p.dayi = 0
-				p.daylen = i
+				// 1112911993 -0700
+				if i <= 2 {
+					p.stateDate = dateDigitWs
+					p.dayi = 0
+					p.daylen = i
+				} else {
+					// Timestamp with offset, such as: 1112911993 -0700
+					p.stateDate = dateDigitWsOffset
+				}
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
@@ -1470,7 +1477,7 @@ iterRunes:
 	}
 
 	switch p.stateDate {
-	case dateDigit:
+	case dateDigit, dateDigitWsOffset:
 		// unixy timestamps ish
 		//  example              ct type
 		//  1499979655583057426  19 nanoseconds
@@ -1480,44 +1487,88 @@ iterRunes:
 		//  1332151919           10 seconds
 		//  20140601             8  yyyymmdd
 		//  2014                 4  yyyy
+		//  1112911993 +0000
 		t := time.Time{}
-		if len(datestr) == len("1499979655583057426") { // 19
+		dateItems := strings.Split(datestr, " ")
+		if len(dateItems[0]) == len("1499979655583057426") { // 19
 			// nano-seconds
-			if nanoSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+			if nanoSecs, err := strconv.ParseInt(dateItems[0], 10, 64); err == nil {
 				t = time.Unix(0, nanoSecs)
 			}
-		} else if len(datestr) == len("1499979795437000") { // 16
+		} else if len(dateItems[0]) == len("1499979795437000") { // 16
 			// micro-seconds
-			if microSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+			if microSecs, err := strconv.ParseInt(dateItems[0], 10, 64); err == nil {
 				t = time.Unix(0, microSecs*1000)
 			}
-		} else if len(datestr) == len("yyyyMMddhhmmss") { // 14
+		} else if len(dateItems[0]) == len("yyyyMMddhhmmss") { // 14
 			// yyyyMMddhhmmss
 			p.format = []byte("20060102150405")
 			return p, nil
-		} else if len(datestr) == len("1332151919000") { // 13
-			if miliSecs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+		} else if len(dateItems[0]) == len("1332151919000") { // 13
+			if miliSecs, err := strconv.ParseInt(dateItems[0], 10, 64); err == nil {
 				t = time.Unix(0, miliSecs*1000*1000)
 			}
-		} else if len(datestr) == len("1332151919") { //10
-			if secs, err := strconv.ParseInt(datestr, 10, 64); err == nil {
+		} else if len(dateItems[0]) == len("1332151919") { //10
+			if secs, err := strconv.ParseInt(dateItems[0], 10, 64); err == nil {
 				t = time.Unix(secs, 0)
 			}
-		} else if len(datestr) == len("20140601") {
+		} else if len(dateItems[0]) == len("20140601") {
 			p.format = []byte("20060102")
 			return p, nil
-		} else if len(datestr) == len("2014") {
+		} else if len(dateItems[0]) == len("2014") {
 			p.format = []byte("2006")
 			return p, nil
-		} else if len(datestr) < 4 {
-			return nil, fmt.Errorf("unrecognized format, too short %v", datestr)
+		} else if len(dateItems[0]) < 4 {
+			return nil, fmt.Errorf("unrecognized format, too short %v", dateItems[0])
 		}
 		if !t.IsZero() {
-			if loc == nil {
-				p.t = &t
-				return p, nil
+			if loc == nil &&
+				len(dateItems) == 2 &&
+				len(dateItems[1]) > 0 &&
+				(dateItems[1][0] == '-' || dateItems[1][0] == '+') {
+				var (
+					h, m   int64
+					err    error
+					tzName string
+				)
+				tzName = "UTC" + string(dateItems[1][0])
+				switch len(dateItems[1]) - 1 {
+				case 2:
+					h, err = strconv.ParseInt(dateItems[1][1:3], 10, 64)
+				case 4:
+					if h, err = strconv.ParseInt(dateItems[1][1:3], 10, 64); err == nil {
+						m, err = strconv.ParseInt(dateItems[1][3:5], 10, 64)
+					}
+				case 5:
+					if dateItems[1][3] == ':' {
+						if h, err = strconv.ParseInt(dateItems[1][1:3], 10, 64); err == nil {
+							m, err = strconv.ParseInt(dateItems[1][4:6], 10, 64)
+						}
+					}
+				default:
+					err = fmt.Errorf("bad digit number")
+				}
+				if err != nil {
+					return nil, fmt.Errorf("bad time zone offset %s: %s", dateItems[1], err)
+				}
+				if h == 0 && m == 0 {
+					tzName = "UTC"
+				} else {
+					tzName = "UTC" + string(dateItems[1][0])
+					tzName += strconv.FormatInt(h, 10)
+					if m != 0 {
+						tzName += fmt.Sprintf(":%02d", m)
+					}
+				}
+				sec := int(h*3600 + m*60)
+				if dateItems[1][0] == '-' {
+					sec = -1 * sec
+				}
+				loc = time.FixedZone(tzName, sec)
 			}
-			t = t.In(loc)
+			if loc != nil {
+				t = t.In(loc)
+			}
 			p.t = &t
 			return p, nil
 		}
