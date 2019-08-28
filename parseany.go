@@ -90,16 +90,17 @@ const (
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
 	timeWsYear // 15
+	timeWsYearOffset
 	timeOffset
 	timeOffsetColon
 	timeAlpha
 	timePeriod
-	timePeriodOffset // 20
+	timePeriodOffset
 	timePeriodOffsetColon
 	timePeriodOffsetColonWs
 	timePeriodWs
 	timePeriodWsAlpha
-	timePeriodWsOffset // 25
+	timePeriodWsOffset
 	timePeriodWsOffsetWs
 	timePeriodWsOffsetWsAlpha
 	timePeriodWsOffsetColon
@@ -547,6 +548,7 @@ iterRunes:
 			//  Mon Jan _2 15:04:05 2006
 			//  Mon Jan _2 15:04:05 MST 2006
 			//  Mon Jan 02 15:04:05 -0700 2006
+			//  Mon Jan 02 15:04:05 2006 -0700
 			//  Mon Aug 10 15:44:11 UTC+0100 2015
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			//  dateAlphaWSDigit
@@ -636,6 +638,7 @@ iterRunes:
 			//   Mon Jan _2 15:04:05 2006
 			//   Mon Jan _2 15:04:05 MST 2006
 			//   Mon Jan 02 15:04:05 -0700 2006
+			//   Mon Jan 02 15:04:05 2006 -0700
 			//   Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
 			//  dateAlphaWsDigit
@@ -708,6 +711,7 @@ iterRunes:
 		case dateAlphaWsAlpha:
 			// Mon Jan _2 15:04:05 2006
 			// Mon Jan 02 15:04:05 -0700 2006
+			// Mon Jan 02 15:04:05 2006 -0700
 			// Mon Jan _2 15:04:05 MST 2006
 			// Mon Aug 10 15:44:11 UTC+0100 2015
 			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
@@ -1075,6 +1079,8 @@ iterRunes:
 				//       00:12:00 +00:00 UTC
 				// timeWsYear
 				//     00:12:00 2008
+				//     timeWsYearOffset
+				//       00:12:00 2008 +0800
 				// timeZ
 				//   15:04:05.99Z
 				switch r {
@@ -1099,6 +1105,17 @@ iterRunes:
 						p.stateTime = timeWsYear
 						p.yeari = i
 					}
+				}
+			case timeWsYear:
+				// timeWsYearOffset
+				//   00:12:00 2008 +0800
+				switch r {
+				case ' ':
+					p.yearlen = i - p.yeari
+					p.setYear()
+				case '+', '-':
+					p.offseti = i
+					p.stateTime = timeWsYearOffset
 				}
 			case timeWsAlpha:
 				// 06:20:00 UTC
@@ -1447,6 +1464,8 @@ iterRunes:
 			// 19:55:00+0100
 			p.set(p.offseti, "-0700")
 		case timeWsOffset:
+			p.set(p.offseti, "-0700")
+		case timeWsYearOffset:
 			p.set(p.offseti, "-0700")
 		case timeWsOffsetWs:
 			// 17:57:51 -0700 2009
