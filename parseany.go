@@ -299,6 +299,20 @@ iterRunes:
 					p.set(0, "2006")
 				} else {
 					p.stateDate = dateDigitDash
+					p.ambiguousMD = true
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
+					}
 				}
 			case '/':
 				// 03/31/2005
@@ -336,10 +350,19 @@ iterRunes:
 					p.setYear()
 				} else {
 					p.ambiguousMD = true
-					p.moi = 0
-					p.molen = i
-					p.setMonth()
-					p.dayi = i + 1
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
+					}
 				}
 
 			case ' ':
@@ -416,8 +439,40 @@ iterRunes:
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
 			} else {
-				return nil, unknownErr(datestr)
-			}
+				switch r {
+				case ' ':
+					p.stateTime = timeStart
+					if p.yearlen == 0 {
+						p.yearlen = i - p.yeari
+						p.setYear()
+					} else if p.daylen == 0 {
+						p.daylen = i - p.dayi
+						p.setDay()
+					}
+					break iterRunes
+				case '-':
+					if p.yearlen > 0 {
+						// 2014-07-10 06:55:38.156283
+						if p.molen == 0 {
+							p.molen = i - p.moi
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else if p.preferMonthFirst {
+						if p.daylen == 0 {
+							p.daylen = i - p.dayi
+							p.setDay()
+							p.yeari = i + 1
+						}
+					} else {
+						if p.molen == 0 {
+							p.molen = i - p.moi
+							p.setMonth()
+							p.yeari = i + 1
+						}
+					}
+				}
+                        }
 		case dateDigitDashAlpha:
 			// 13-Feb-03
 			// 28-Feb-03
@@ -967,6 +1022,7 @@ iterRunes:
 			break iterRunes
 		}
 	}
+
 	p.coalesceDate(i)
 	if p.stateTime == timeStart {
 		// increment first one, since the i++ occurs at end of loop
@@ -1690,6 +1746,9 @@ iterRunes:
 		return p, nil
 
 	case dateAlphaWsAlphaYearmaybe:
+		return p, nil
+
+	case dateDigitDash:
 		return p, nil
 
 	case dateDigitSlash:
