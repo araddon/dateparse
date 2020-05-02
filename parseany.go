@@ -120,12 +120,24 @@ func unknownErr(datestr string) error {
 // ParseAny parse an unknown date format, detect the layout.
 // Normal parse.  Equivalent Timezone rules as time.Parse().
 // NOTE:  please see readme on mmdd vs ddmm ambiguous dates.
-func ParseAny(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, nil)
+func ParseAny(datestr string, preferMonthFirst bool) (time.Time, error) {
+	p, err := parseTime(datestr, nil, preferMonthFirst)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+
+	t, err := p.parse()
+
+	if err != nil && strings.Contains(err.Error(), "month out of range") {
+		p, err = parseTime(datestr, nil, !preferMonthFirst)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		t, err = p.parse()
+	}
+
+	return t, err
 }
 
 // ParseIn with Location, equivalent to time.ParseInLocation() timezone/offset
@@ -133,12 +145,24 @@ func ParseAny(datestr string) (time.Time, error) {
 // datestring, it uses the given location rules for any zone interpretation.
 // That is, MST means one thing when using America/Denver and something else
 // in other locations.
-func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
-	p, err := parseTime(datestr, loc)
+func ParseIn(datestr string, loc *time.Location, preferMonthFirst bool) (time.Time, error) {
+	p, err := parseTime(datestr, loc, preferMonthFirst)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+
+	t, err := p.parse()
+
+	if err != nil && strings.Contains(err.Error(), "month out of range") {
+		p, err = parseTime(datestr, loc, !preferMonthFirst)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		t, err = p.parse()
+	}
+
+	return t, err
 }
 
 // ParseLocal Given an unknown date format, detect the layout,
@@ -156,20 +180,31 @@ func ParseIn(datestr string, loc *time.Location) (time.Time, error) {
 //
 //     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 //
-func ParseLocal(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, time.Local)
+func ParseLocal(datestr string, preferMonthFirst bool) (time.Time, error) {
+	p, err := parseTime(datestr, time.Local, preferMonthFirst)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+
+	t, err := p.parse()
+
+	if err != nil && strings.Contains(err.Error(), "month out of range") {
+		p, err = parseTime(datestr, time.Local, !preferMonthFirst)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		t, err = p.parse()
+	}
+
+	return t, err
 }
 
 // MustParse  parse a date, and panic if it can't be parsed.  Used for testing.
 // Not recommended for most use-cases.
-func MustParse(datestr string) time.Time {
-	p, err := parseTime(datestr, nil)
+func MustParse(datestr string, preferMonthFirst bool) time.Time {
+	p, err := parseTime(datestr, nil, preferMonthFirst)
 	if err != nil {
-		panic(err.Error())
 	}
 	t, err := p.parse()
 	if err != nil {
@@ -184,22 +219,34 @@ func MustParse(datestr string) time.Time {
 //     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
 //     // layout = "2006-01-02 15:04:05"
 //
-func ParseFormat(datestr string) (string, error) {
-	p, err := parseTime(datestr, nil)
+func ParseFormat(datestr string, preferMonthFirst bool) (string, error) {
+	p, err := parseTime(datestr, nil, preferMonthFirst)
 	if err != nil {
 		return "", err
 	}
 	_, err = p.parse()
 	if err != nil {
-		return "", err
+		if strings.Contains(err.Error(), "month out of range") {
+			p, err := parseTime(datestr, nil, !preferMonthFirst)
+			if err != nil {
+				return "", err
+			}
+			_, err = p.parse()
+			if err != nil {
+				return "", err
+			}
+			return string(p.format), nil
+		} else {
+			return "", err
+		}
 	}
 	return string(p.format), nil
 }
 
 // ParseStrict parse an unknown date format.  IF the date is ambigous
 // mm/dd vs dd/mm then return an error. These return errors:   3.3.2014 , 8/8/71 etc
-func ParseStrict(datestr string) (time.Time, error) {
-	p, err := parseTime(datestr, nil)
+func ParseStrict(datestr string, preferMonthFirst bool) (time.Time, error) {
+	p, err := parseTime(datestr, nil, preferMonthFirst)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -209,9 +256,9 @@ func ParseStrict(datestr string) (time.Time, error) {
 	return p.parse()
 }
 
-func parseTime(datestr string, loc *time.Location) (*parser, error) {
+func parseTime(datestr string, loc *time.Location, preferMonthFirst bool) (*parser, error) {
 
-	p := newParser(datestr, loc)
+	p := newParser(datestr, loc, preferMonthFirst)
 	i := 0
 
 	// General strategy is to read rune by rune through the date looking for
@@ -252,6 +299,20 @@ iterRunes:
 					p.set(0, "2006")
 				} else {
 					p.stateDate = dateDigitDash
+					p.ambiguousMD = true
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
+					}
 				}
 			case '/':
 				// 03/31/2005
@@ -269,6 +330,12 @@ iterRunes:
 							p.setMonth()
 							p.dayi = i + 1
 						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
 					}
 				}
 
@@ -283,10 +350,19 @@ iterRunes:
 					p.setYear()
 				} else {
 					p.ambiguousMD = true
-					p.moi = 0
-					p.molen = i
-					p.setMonth()
-					p.dayi = i + 1
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
+					}
 				}
 
 			case ' ':
@@ -363,8 +439,40 @@ iterRunes:
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
 			} else {
-				return nil, unknownErr(datestr)
-			}
+				switch r {
+				case ' ':
+					p.stateTime = timeStart
+					if p.yearlen == 0 {
+						p.yearlen = i - p.yeari
+						p.setYear()
+					} else if p.daylen == 0 {
+						p.daylen = i - p.dayi
+						p.setDay()
+					}
+					break iterRunes
+				case '-':
+					if p.yearlen > 0 {
+						// 2014-07-10 06:55:38.156283
+						if p.molen == 0 {
+							p.molen = i - p.moi
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else if p.preferMonthFirst {
+						if p.daylen == 0 {
+							p.daylen = i - p.dayi
+							p.setDay()
+							p.yeari = i + 1
+						}
+					} else {
+						if p.molen == 0 {
+							p.molen = i - p.moi
+							p.setMonth()
+							p.yeari = i + 1
+						}
+					}
+				}
+                        }
 		case dateDigitDashAlpha:
 			// 13-Feb-03
 			// 28-Feb-03
@@ -444,6 +552,12 @@ iterRunes:
 					if p.daylen == 0 {
 						p.daylen = i - p.dayi
 						p.setDay()
+						p.yeari = i + 1
+					}
+				} else {
+					if p.molen == 0 {
+						p.molen = i - p.moi
+						p.setMonth()
 						p.yeari = i + 1
 					}
 				}
@@ -618,7 +732,7 @@ iterRunes:
 				} else if i == 4 {
 					// gross
 					datestr = datestr[0:i-1] + datestr[i:]
-					return parseTime(datestr, loc)
+					return parseTime(datestr, loc, preferMonthFirst)
 				} else {
 					return nil, unknownErr(datestr)
 				}
@@ -783,25 +897,25 @@ iterRunes:
 			case 't', 'T':
 				if p.nextIs(i, 'h') || p.nextIs(i, 'H') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, preferMonthFirst)
 					}
 				}
 			case 'n', 'N':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, preferMonthFirst)
 					}
 				}
 			case 's', 'S':
 				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, preferMonthFirst)
 					}
 				}
 			case 'r', 'R':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc)
+						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, preferMonthFirst)
 					}
 				}
 			}
@@ -908,6 +1022,7 @@ iterRunes:
 			break iterRunes
 		}
 	}
+
 	p.coalesceDate(i)
 	if p.stateTime == timeStart {
 		// increment first one, since the i++ occurs at end of loop
@@ -975,7 +1090,7 @@ iterRunes:
 					// 2014-05-11 08:20:13,787
 					ds := []byte(p.datestr)
 					ds[i] = '.'
-					return parseTime(string(ds), loc)
+					return parseTime(string(ds), loc, preferMonthFirst)
 				case '-', '+':
 					//   03:21:51+00:00
 					p.stateTime = timeOffset
@@ -1633,6 +1748,9 @@ iterRunes:
 	case dateAlphaWsAlphaYearmaybe:
 		return p, nil
 
+	case dateDigitDash:
+		return p, nil
+
 	case dateDigitSlash:
 		// 3/1/2014
 		// 10/13/2014
@@ -1699,13 +1817,13 @@ type parser struct {
 	t                *time.Time
 }
 
-func newParser(dateStr string, loc *time.Location) *parser {
+func newParser(dateStr string, loc *time.Location, preferMonthFirst bool) *parser {
 	p := parser{
 		stateDate:        dateStart,
 		stateTime:        timeIgnore,
 		datestr:          dateStr,
 		loc:              loc,
-		preferMonthFirst: true,
+		preferMonthFirst: preferMonthFirst,
 	}
 	p.format = []byte(dateStr)
 	return &p
