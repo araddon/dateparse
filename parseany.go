@@ -49,23 +49,24 @@ const (
 	dateDigitDot // 10
 	dateDigitDotDot
 	dateDigitSlash
+	dateDigitColon
 	dateDigitChineseYear
-	dateDigitChineseYearWs
-	dateDigitWs // 15
+	dateDigitChineseYearWs // 15
+	dateDigitWs
 	dateDigitWsMoYear
 	dateDigitWsMolong
 	dateAlpha
-	dateAlphaWs
-	dateAlphaWsDigit // 20
+	dateAlphaWs // 20
+	dateAlphaWsDigit
 	dateAlphaWsDigitMore
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
-	dateAlphaWsMonth
+	dateAlphaWsMonth // 25
 	dateAlphaWsMonthMore
 	dateAlphaWsMonthSuffix
 	dateAlphaWsMore
 	dateAlphaWsAtTime
-	dateAlphaWsAlpha
+	dateAlphaWsAlpha // 30
 	dateAlphaWsAlphaYearmaybe
 	dateAlphaPeriodWsDigit
 	dateWeekdayComma
@@ -272,6 +273,25 @@ iterRunes:
 					}
 				}
 
+			case ':':
+				// 03/31/2005
+				// 2014/02/24
+				p.stateDate = dateDigitColon
+				if i == 4 {
+					p.yearlen = i
+					p.moi = i + 1
+					p.setYear()
+				} else {
+					p.ambiguousMD = true
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					}
+				}
+
 			case '.':
 				// 3.31.2014
 				// 08.21.71
@@ -435,6 +455,45 @@ iterRunes:
 			case '/':
 				if p.yearlen > 0 {
 					// 2014/07/10 06:55:38.156283
+					if p.molen == 0 {
+						p.molen = i - p.moi
+						p.setMonth()
+						p.dayi = i + 1
+					}
+				} else if p.preferMonthFirst {
+					if p.daylen == 0 {
+						p.daylen = i - p.dayi
+						p.setDay()
+						p.yeari = i + 1
+					}
+				}
+			}
+
+		case dateDigitColon:
+			// 2014:07:10 06:55:38.156283
+			// 03:19:2012 10:11:59
+			// 04:2:2014 03:00:37
+			// 3:1:2012 10:11:59
+			// 4:8:2014 22:05
+			// 3:1:2014
+			// 10:13:2014
+			// 01:02:2006
+			// 1:2:06
+
+			switch r {
+			case ' ':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
+				} else if p.daylen == 0 {
+					p.daylen = i - p.dayi
+					p.setDay()
+				}
+				break iterRunes
+			case ':':
+				if p.yearlen > 0 {
+					// 2014:07:10 06:55:38.156283
 					if p.molen == 0 {
 						p.molen = i - p.moi
 						p.setMonth()
@@ -1638,6 +1697,13 @@ iterRunes:
 		// 10/13/2014
 		// 01/02/2006
 		// 2014/10/13
+		return p, nil
+
+	case dateDigitColon:
+		// 3:1:2014
+		// 10:13:2014
+		// 01:02:2006
+		// 2014:10:13
 		return p, nil
 
 	case dateDigitChineseYear:
