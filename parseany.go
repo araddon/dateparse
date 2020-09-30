@@ -84,7 +84,6 @@ const (
 	dateAlphaWsMore
 	dateAlphaWsAtTime
 	dateAlphaWsAlpha
-	dateAlphaWsAlphaYearmaybe
 	dateAlphaPeriodWsDigit
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
@@ -751,42 +750,6 @@ iterRunes:
 				p.yearlen = i - p.yeari
 				p.setYear()
 				p.stateTime = timeStart
-				break iterRunes
-			}
-
-		case dateAlphaWsAlpha:
-			// Mon Jan _2 15:04:05 2006
-			// Mon Jan 02 15:04:05 -0700 2006
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if r == ' ' {
-				if p.dayi > 0 {
-					p.daylen = i - p.dayi
-					p.setDay()
-					p.yeari = i + 1
-					p.stateDate = dateAlphaWsAlphaYearmaybe
-					p.stateTime = timeStart
-				}
-			} else if unicode.IsDigit(r) {
-				if p.dayi == 0 {
-					p.dayi = i
-				}
-			}
-
-		case dateAlphaWsAlphaYearmaybe:
-			//            x
-			// Mon Jan _2 15:04:05 2006
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if r == ':' {
-				i = i - 3
-				p.stateDate = dateAlphaWsAlpha
-				p.yeari = 0
-				break iterRunes
-			} else if r == ' ' {
-				// must be year format, not 15:04
-				p.yearlen = i - p.yeari
-				p.setYear()
 				break iterRunes
 			}
 
@@ -1692,9 +1655,6 @@ iterRunes:
 		return p, nil
 
 	case dateAlphaWsDigitYearmaybe:
-		return p, nil
-
-	case dateAlphaWsAlphaYearmaybe:
 		return p, nil
 
 	case dateDigitSlash:
