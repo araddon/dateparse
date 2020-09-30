@@ -17,6 +17,23 @@ import (
 // 	gou.SetColorOutput()
 // }
 
+var days = []string{
+	"mon",
+	"tue",
+	"wed",
+	"thu",
+	"fri",
+	"sat",
+	"sun",
+	"monday",
+	"tuesday",
+	"wednesday",
+	"thursday",
+	"friday",
+	"saturday",
+	"sunday",
+}
+
 var months = []string{
 	"january",
 	"february",
@@ -61,12 +78,18 @@ const (
 	dateAlphaWsDigitMore
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
+	dateAlphaWs // 20
+	dateAlphaWsDigit
+	dateAlphaWsDigitMore
+	dateAlphaWsDigitMoreWs
+	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth // 25
+	dateAlphaWsDigitYearmaybe
 	dateAlphaWsMonthMore
 	dateAlphaWsMonthSuffix
 	dateAlphaWsMore
-	dateAlphaWsAtTime
-	dateAlphaWsAlpha // 30
+	dateAlphaWsAtTime // 30
+	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe
 	dateAlphaPeriodWsDigit
 	dateWeekdayComma
@@ -646,9 +669,21 @@ iterRunes:
 				} else {
 					// This is possibly ambiguous?  May will parse as either though.
 					// So, it could return in-correct format.
-					// May 05, 2005, 05:05:05
-					// May 05 2005, 05:05:05
-					// Jul 05, 2005, 05:05:05
+					// dateAlphaWs
+					//   May 05, 2005, 05:05:05
+					//   May 05 2005, 05:05:05
+					//   Jul 05, 2005, 05:05:05
+					//   May 8 17:57:51 2009
+					//   May  8 17:57:51 2009
+					// skip & return to dateStart
+					//   Tue 05 May 2020, 05:05:05
+					//   Mon Jan  2 15:04:05 2006
+
+					maybeDay := strings.ToLower(datestr[0:i])
+					if isDay(maybeDay) {
+						// using skip throws off indices used by other code; saner to restart
+						return parseTime(datestr[i+1:], loc)
+					}
 					p.stateDate = dateAlphaWs
 				}
 
@@ -690,11 +725,14 @@ iterRunes:
 			//   Mon Jan 02 15:04:05 -0700 2006
 			//   Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
-			//  dateAlphaWsDigit
-			//    May 8, 2009 5:57:51 PM
-			//    May 8 2009 5:57:51 PM
-			//    oct 1, 1970
-			//    oct 7, '70
+			// dateAlphaWsDigit
+			//   May 8, 2009 5:57:51 PM
+			//   May 8 2009 5:57:51 PM
+			//   May 8 17:57:51 2009
+			//   May  8 17:57:51 2009
+			//   May 08 17:57:51 2009
+			//   oct 1, 1970
+			//   oct 7, '70
 			switch {
 			case unicode.IsLetter(r):
 				p.set(0, "Mon")
@@ -712,6 +750,9 @@ iterRunes:
 			// oct 1, 1970
 			// oct 7, '70
 			// oct. 7, 1970
+			// May 8 17:57:51 2009
+			// May  8 17:57:51 2009
+			// May 08 17:57:51 2009
 			if r == ',' {
 				p.daylen = i - p.dayi
 				p.setDay()
@@ -720,10 +761,30 @@ iterRunes:
 				p.daylen = i - p.dayi
 				p.setDay()
 				p.yeari = i + 1
-				p.stateDate = dateAlphaWsDigitMoreWs
+				p.stateDate = dateAlphaWsDigitYearmaybe
+				p.stateTime = timeStart
 			} else if unicode.IsLetter(r) {
 				p.stateDate = dateAlphaWsMonthSuffix
 				i--
+			}
+		case dateAlphaWsDigitYearmaybe:
+			//       x
+			// May 8 2009 5:57:51 PM
+			// May 8 17:57:51 2009
+			// May  8 17:57:51 2009
+			// May 08 17:57:51 2009
+			// Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			if r == ':' {
+				// Guessed wrong; was not a year
+				i = i - 3
+				p.stateDate = dateAlphaWsDigit
+				p.yeari = 0
+				break iterRunes
+			} else if r == ' ' {
+				// must be year format, not 15:04
+				p.yearlen = i - p.yeari
+				p.setYear()
+				break iterRunes
 			}
 		case dateAlphaWsDigitMore:
 			//       x
@@ -754,42 +815,6 @@ iterRunes:
 				p.yearlen = i - p.yeari
 				p.setYear()
 				p.stateTime = timeStart
-				break iterRunes
-			}
-
-		case dateAlphaWsAlpha:
-			// Mon Jan _2 15:04:05 2006
-			// Mon Jan 02 15:04:05 -0700 2006
-			// Mon Jan _2 15:04:05 MST 2006
-			// Mon Aug 10 15:44:11 UTC+0100 2015
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if r == ' ' {
-				if p.dayi > 0 {
-					p.daylen = i - p.dayi
-					p.setDay()
-					p.yeari = i + 1
-					p.stateDate = dateAlphaWsAlphaYearmaybe
-					p.stateTime = timeStart
-				}
-			} else if unicode.IsDigit(r) {
-				if p.dayi == 0 {
-					p.dayi = i
-				}
-			}
-
-		case dateAlphaWsAlphaYearmaybe:
-			//            x
-			// Mon Jan _2 15:04:05 2006
-			// Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			if r == ':' {
-				i = i - 3
-				p.stateDate = dateAlphaWsAlpha
-				p.yeari = 0
-				break iterRunes
-			} else if r == ' ' {
-				// must be year format, not 15:04
-				p.yearlen = i - p.yeari
-				p.setYear()
 				break iterRunes
 			}
 
@@ -1198,7 +1223,9 @@ iterRunes:
 				switch r {
 				case ' ':
 					p.set(p.offseti, "-0700")
-					p.yeari = i + 1
+					if p.yeari == 0 {
+						p.yeari = i + 1
+					}
 					p.stateTime = timeWsAlphaZoneOffsetWs
 				}
 			case timeWsAlphaZoneOffsetWs:
@@ -1689,7 +1716,10 @@ iterRunes:
 	case dateAlphaWsAlpha:
 		return p, nil
 
-	case dateAlphaWsAlphaYearmaybe:
+	case dateAlphaWsDigit:
+		return p, nil
+
+	case dateAlphaWsDigitYearmaybe:
 		return p, nil
 
 	case dateDigitSlash:
@@ -1919,6 +1949,14 @@ func (p *parser) parse() (time.Time, error) {
 		return time.Parse(string(p.format), p.datestr)
 	}
 	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
+}
+func isDay(alpha string) bool {
+	for _, day := range days {
+		if alpha == day {
+			return true
+		}
+	}
+	return false
 }
 func isMonthFull(alpha string) bool {
 	for _, month := range months {
