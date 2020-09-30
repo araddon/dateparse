@@ -42,6 +42,8 @@ var testInputs = []dateTest{
 	{in: "7 September 1970", out: "1970-09-07 00:00:00 +0000 UTC"},
 	//   ANSIC       = "Mon Jan _2 15:04:05 2006"
 	{in: "Mon Jan  2 15:04:05 2006", out: "2006-01-02 15:04:05 +0000 UTC"},
+	//   ANSIC_GLIBC = "Mon 02 Jan 2006 03:04:05 PM UTC"
+	{in: "Mon 02 Jan 2006 03:04:05 PM UTC", out: "2006-01-02 15:04:05 +0000 UTC"},
 	{in: "Thu May 8 17:57:51 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	{in: "Thu May  8 17:57:51 2009", out: "2009-05-08 17:57:51 +0000 UTC"},
 	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
