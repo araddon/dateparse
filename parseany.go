@@ -78,11 +78,6 @@ const (
 	dateAlphaWsDigitMore
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
-	dateAlphaWs // 20
-	dateAlphaWsDigit
-	dateAlphaWsDigitMore
-	dateAlphaWsDigitMoreWs
-	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth // 25
 	dateAlphaWsDigitYearmaybe
 	dateAlphaWsMonthMore
