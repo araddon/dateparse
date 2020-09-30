@@ -1110,6 +1110,8 @@ iterRunes:
 					} else {
 						p.seclen = i - p.seci
 					}
+					// (Z)ulu time
+					p.loc = time.UTC
 				case 'a', 'A':
 					if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 						//                    x
