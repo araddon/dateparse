@@ -10,12 +10,14 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/araddon/gou"
 )
 
-// func init() {
-// 	gou.SetupLogging("debug")
-// 	gou.SetColorOutput()
-// }
+func init() {
+	gou.SetupLogging("debug")
+	gou.SetColorOutput()
+}
 
 var days = []string{
 	"mon",
@@ -204,13 +206,26 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 //     // layout = "2006-01-02 15:04:05"
 //
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
-	p, err := parseTime(datestr, nil, opts...)
+	return parseFormatOptions(datestr, nil, opts...)
+}
+func parseFormatOptions(datestr string, loc *time.Location, opts ...ParserOption) (string, error) {
+	p, err := parseTime(datestr, loc, opts...)
 	if err != nil {
 		return "", err
 	}
-	_, err = p.parse()
+	t, err := p.parse()
+	gou.Debugf("%s returned %v IsZero()=%v nano=%v second=%v error %v", datestr, t, t.IsZero(), t.UnixNano(), t.Unix(), err)
 	if err != nil {
 		return "", err
+	}
+
+	// Because the above parse essentially punts by sending to underlying
+	// go time.Parse() which can easily return a 0000-01-01 00:00:00 +0000 UTC
+	// we count that as an error.
+	//
+	// However, this is definitely not failproof.
+	if t.IsZero() {
+		return "", fmt.Errorf("%s returned a IsZero() time so must be invalid", datestr)
 	}
 	return string(p.format), nil
 }
@@ -2002,7 +2017,6 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
-	//gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}

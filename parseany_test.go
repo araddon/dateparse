@@ -527,11 +527,19 @@ var testParseFormat = []dateTest{
 	{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+	// others
+	{in: "31.jpg", err: true},
+	//{in: "1.jpg", err: true},  This SHOULD error but doesn't, our validating tests are really
+	// just passing down to underlying go error which this doesn't catch.
 }
 
-func TestParseLayout(t *testing.T) {
+func TestParseFormat(t *testing.T) {
+	_, err := parseFormatOptions("3.jpg", time.UTC)
+	assert.NotEqual(t, nil, err)
+	_, err = ParseFormat(`{"hello"}`)
+	assert.NotEqual(t, nil, err)
 	for _, th := range testParseFormat {
-		l, err := ParseFormat(th.in)
+		l, err := parseFormatOptions(th.in, time.UTC)
 		if th.err {
 			assert.NotEqual(t, nil, err)
 		} else {
