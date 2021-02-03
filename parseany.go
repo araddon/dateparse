@@ -5,6 +5,7 @@ package dateparse
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +48,33 @@ var months = []string{
 	"october",
 	"november",
 	"december",
+}
+
+var datePattern = []struct {
+	desc    string
+	pattern string
+	goFmt   string
+}{
+	{
+		desc:    "nginx log datetime, 02/Jan/2006:15:04:05 -0700",
+		pattern: `\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2} \+\d{4}`,
+		goFmt:   "02/Jan/2006:15:04:05 -0700",
+	},
+	{
+		desc:    "redis log datetime, 14 May 2019 19:11:40.164",
+		pattern: `\d{2} \w+ \d{4} \d{2}:\d{2}:\d{2}.\d{3}`,
+		goFmt:   "02 Jan 2006 15:04:05.000",
+	},
+	{
+		desc:    "redis log datetime, 14 May 19:11:40.164",
+		pattern: `\d{2} \w+ \d{2}:\d{2}:\d{2}.\d{3}`,
+		goFmt:   "02 Jan 15:04:05.000",
+	},
+	{
+		desc:    "mysql, 171113 14:14:20",
+		pattern: `\d{6} \d{2}:\d{2}:\d{2}`,
+		goFmt:   "060102 15:04:05",
+	},
 }
 
 type dateState uint8
@@ -1788,6 +1816,15 @@ iterRunes:
 		// Mon, 02 Jan 2006 15:04:05 MST
 		return p, nil
 
+	}
+
+	for _, d := range datePattern {
+		if match, err := regexp.MatchString(d.pattern, datestr); err != nil {
+			return nil, err
+		} else if match {
+			p.format = []byte(d.goFmt)
+			return p, nil
+		}
 	}
 
 	return nil, unknownErr(datestr)
