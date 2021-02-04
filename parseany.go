@@ -296,6 +296,7 @@ iterRunes:
 					p.stateDate = dateDigitDash
 				}
 			case '/':
+				// 08/May/2005
 				// 03/31/2005
 				// 2014/02/24
 				p.stateDate = dateDigitSlash
@@ -383,7 +384,7 @@ iterRunes:
 
 		case dateDigitSt:
 			p.set(0, "060102")
-			i = i -1
+			i = i - 1
 			p.stateTime = timeStart
 			break iterRunes
 		case dateYearDash:
@@ -451,6 +452,12 @@ iterRunes:
 				p.set(p.moi, "Jan")
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
+			case '/':
+				p.set(0, "02")
+				p.molen = i - p.moi
+				p.set(p.moi, "Jan")
+				p.yeari = i + 1
+				p.stateDate = dateDigitSlash
 			}
 
 		case dateDigitDashAlphaDash:
@@ -538,6 +545,11 @@ iterRunes:
 						p.setMonth()
 						p.yeari = i + 1
 					}
+				}
+			default:
+				if unicode.IsLetter(r) {
+					p.moi = i
+					p.stateDate = dateDigitDashAlpha
 				}
 			}
 
