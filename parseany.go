@@ -55,6 +55,7 @@ type timeState uint8
 const (
 	dateStart dateState = iota // 0
 	dateDigit
+	dateDigitSt
 	dateYearDash
 	dateYearDashAlphaDash
 	dateYearDashDash
@@ -295,6 +296,7 @@ iterRunes:
 					p.stateDate = dateDigitDash
 				}
 			case '/':
+				// 08/May/2005
 				// 03/31/2005
 				// 2014/02/24
 				p.stateDate = dateDigitSlash
@@ -363,9 +365,13 @@ iterRunes:
 				// 02 Jan 2018 23:59:34
 				// 12 Feb 2006, 19:17
 				// 12 Feb 2006, 19:17:22
-				p.stateDate = dateDigitWs
-				p.dayi = 0
-				p.daylen = i
+				if i == 6 {
+					p.stateDate = dateDigitSt
+				} else {
+					p.stateDate = dateDigitWs
+					p.dayi = 0
+					p.daylen = i
+				}
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
@@ -376,6 +382,11 @@ iterRunes:
 			}
 			p.part1Len = i
 
+		case dateDigitSt:
+			p.set(0, "060102")
+			i = i - 1
+			p.stateTime = timeStart
+			break iterRunes
 		case dateYearDash:
 			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
@@ -441,6 +452,12 @@ iterRunes:
 				p.set(p.moi, "Jan")
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
+			case '/':
+				p.set(0, "02")
+				p.molen = i - p.moi
+				p.set(p.moi, "Jan")
+				p.yeari = i + 1
+				p.stateDate = dateDigitSlash
 			}
 
 		case dateDigitDashAlphaDash:
@@ -498,6 +515,16 @@ iterRunes:
 					p.setDay()
 				}
 				break iterRunes
+			case ':':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
+				} else if p.daylen == 0 {
+					p.daylen = i - p.dayi
+					p.setDay()
+				}
+				break iterRunes
 			case '/':
 				if p.yearlen > 0 {
 					// 2014/07/10 06:55:38.156283
@@ -518,6 +545,11 @@ iterRunes:
 						p.setMonth()
 						p.yeari = i + 1
 					}
+				}
+			default:
+				if unicode.IsLetter(r) {
+					p.moi = i
+					p.stateDate = dateDigitDashAlpha
 				}
 			}
 
@@ -1638,6 +1670,9 @@ iterRunes:
 			p.t = &t
 			return p, nil
 		}
+	case dateDigitSt:
+		// 171113 14:14:20
+		return p, nil
 
 	case dateYearDash:
 		// 2006-01
@@ -2002,6 +2037,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
+
 	//gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
