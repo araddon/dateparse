@@ -5,7 +5,6 @@ package dateparse
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -50,39 +49,13 @@ var months = []string{
 	"december",
 }
 
-var datePattern = []struct {
-	desc    string
-	pattern string
-	goFmt   string
-}{
-	{
-		desc:    "nginx log datetime, 02/Jan/2006:15:04:05 -0700",
-		pattern: `\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2} \+\d{4}`,
-		goFmt:   "02/Jan/2006:15:04:05 -0700",
-	},
-	{
-		desc:    "redis log datetime, 14 May 2019 19:11:40.164",
-		pattern: `\d{2} \w+ \d{4} \d{2}:\d{2}:\d{2}.\d{3}`,
-		goFmt:   "02 Jan 2006 15:04:05.000",
-	},
-	{
-		desc:    "redis log datetime, 14 May 19:11:40.164",
-		pattern: `\d{2} \w+ \d{2}:\d{2}:\d{2}.\d{3}`,
-		goFmt:   "02 Jan 15:04:05.000",
-	},
-	{
-		desc:    "mysql, 171113 14:14:20",
-		pattern: `\d{6} \d{2}:\d{2}:\d{2}`,
-		goFmt:   "060102 15:04:05",
-	},
-}
-
 type dateState uint8
 type timeState uint8
 
 const (
 	dateStart dateState = iota // 0
 	dateDigit
+	dateDigitSt
 	dateYearDash
 	dateYearDashAlphaDash
 	dateYearDashDash
@@ -391,9 +364,13 @@ iterRunes:
 				// 02 Jan 2018 23:59:34
 				// 12 Feb 2006, 19:17
 				// 12 Feb 2006, 19:17:22
-				p.stateDate = dateDigitWs
-				p.dayi = 0
-				p.daylen = i
+				if i == 6 {
+					p.stateDate = dateDigitSt
+				} else {
+					p.stateDate = dateDigitWs
+					p.dayi = 0
+					p.daylen = i
+				}
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
@@ -404,6 +381,11 @@ iterRunes:
 			}
 			p.part1Len = i
 
+		case dateDigitSt:
+			p.set(0, "060102")
+			i = i -1
+			p.stateTime = timeStart
+			break iterRunes
 		case dateYearDash:
 			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
@@ -517,6 +499,16 @@ iterRunes:
 
 			switch r {
 			case ' ':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
+				} else if p.daylen == 0 {
+					p.daylen = i - p.dayi
+					p.setDay()
+				}
+				break iterRunes
+			case ':':
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -1666,6 +1658,9 @@ iterRunes:
 			p.t = &t
 			return p, nil
 		}
+	case dateDigitSt:
+		// 171113 14:14:20
+		return p, nil
 
 	case dateYearDash:
 		// 2006-01
@@ -1816,15 +1811,6 @@ iterRunes:
 		// Mon, 02 Jan 2006 15:04:05 MST
 		return p, nil
 
-	}
-
-	for _, d := range datePattern {
-		if match, err := regexp.MatchString(d.pattern, datestr); err != nil {
-			return nil, err
-		} else if match {
-			p.format = []byte(d.goFmt)
-			return p, nil
-		}
 	}
 
 	return nil, unknownErr(datestr)
@@ -2039,6 +2025,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.format = p.format[p.skip:]
 		p.datestr = p.datestr[p.skip:]
 	}
+
 	//gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
