@@ -67,27 +67,29 @@ const (
 	dateDigitDot // 10
 	dateDigitDotDot
 	dateDigitSlash
-	dateDigitColon
+	dateDigitYearSlash
+	dateDigitSlashAlpha
+	dateDigitColon // 15
 	dateDigitChineseYear
-	dateDigitChineseYearWs // 15
+	dateDigitChineseYearWs
 	dateDigitWs
 	dateDigitWsMoYear
-	dateDigitWsMolong
+	dateDigitWsMolong // 20
 	dateAlpha
-	dateAlphaWs // 20
+	dateAlphaWs
 	dateAlphaWsDigit
 	dateAlphaWsDigitMore
-	dateAlphaWsDigitMoreWs
+	dateAlphaWsDigitMoreWs // 25
 	dateAlphaWsDigitMoreWsYear
-	dateAlphaWsMonth // 25
+	dateAlphaWsMonth
 	dateAlphaWsDigitYearmaybe
 	dateAlphaWsMonthMore
-	dateAlphaWsMonthSuffix
+	dateAlphaWsMonthSuffix // 30
 	dateAlphaWsMore
-	dateAlphaWsAtTime // 30
+	dateAlphaWsAtTime
 	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe
-	dateAlphaPeriodWsDigit
+	dateAlphaPeriodWsDigit // 35
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
 )
@@ -268,7 +270,7 @@ iterRunes:
 			i += (bytesConsumed - 1)
 		}
 
-		//gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
+		// gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
 		switch p.stateDate {
 		case dateStart:
 			if unicode.IsDigit(r) {
@@ -301,13 +303,32 @@ iterRunes:
 				// 2014/02/24
 				p.stateDate = dateDigitSlash
 				if i == 4 {
-					p.yearlen = i
+					// 2014/02/24  -  Year first /
+					p.yearlen = i // since it was start of datestr, i=len
 					p.moi = i + 1
 					p.setYear()
+					p.stateDate = dateDigitYearSlash
 				} else {
+					// Either Ambiguous dd/mm vs mm/dd  OR dd/month/yy
+					// 08/May/2005
+					// 03/31/2005
+					// 31/03/2005
+					if i+2 < len(p.datestr) && unicode.IsLetter(rune(datestr[i+1])) {
+						// 08/May/2005
+						p.stateDate = dateDigitSlashAlpha
+						p.moi = i + 1
+						p.daylen = 2
+						p.dayi = 0
+						p.setDay()
+						continue
+					}
+					// Ambiguous dd/mm vs mm/dd the bane of date-parsing
+					// 03/31/2005
+					// 31/03/2005
 					p.ambiguousMD = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
+							// 03/31/2005
 							p.molen = i
 							p.setMonth()
 							p.dayi = i + 1
@@ -319,6 +340,7 @@ iterRunes:
 							p.moi = i + 1
 						}
 					}
+
 				}
 
 			case ':':
@@ -452,18 +474,12 @@ iterRunes:
 				p.set(p.moi, "Jan")
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
-			case '/':
-				p.set(0, "02")
-				p.molen = i - p.moi
-				p.set(p.moi, "Jan")
-				p.yeari = i + 1
-				p.stateDate = dateDigitSlash
 			}
 
 		case dateDigitDashAlphaDash:
 			// 13-Feb-03   ambiguous
 			// 28-Feb-03   ambiguous
-			// 29-Jun-2016
+			// 29-Jun-2016  dd-month(alpha)-yyyy
 			switch r {
 			case ' ':
 				// we need to find if this was 4 digits, aka year
@@ -493,8 +509,49 @@ iterRunes:
 				break iterRunes
 			}
 
-		case dateDigitSlash:
+		case dateDigitYearSlash:
 			// 2014/07/10 06:55:38.156283
+			// I honestly don't know if this format ever shows up as yyyy/
+
+			switch r {
+			case ' ', ':':
+				p.stateTime = timeStart
+				if p.daylen == 0 {
+					p.daylen = i - p.dayi
+					p.setDay()
+				}
+				break iterRunes
+			case '/':
+				if p.molen == 0 {
+					p.molen = i - p.moi
+					p.setMonth()
+					p.dayi = i + 1
+				}
+			}
+
+		case dateDigitSlashAlpha:
+			// 06/May/2008
+
+			switch r {
+			case '/':
+				//       |
+				// 06/May/2008
+				if p.molen == 0 {
+					p.set(p.moi, "Jan")
+					p.yeari = i + 1
+				}
+				// We aren't breaking because we are going to re-use this case
+				// to find where the date starts, and possible time begins
+			case ' ', ':':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
+				}
+				break iterRunes
+			}
+
+		case dateDigitSlash:
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
 			// 3/1/2012 10:11:59
@@ -505,35 +562,9 @@ iterRunes:
 			// 1/2/06
 
 			switch r {
-			case ' ':
-				p.stateTime = timeStart
-				if p.yearlen == 0 {
-					p.yearlen = i - p.yeari
-					p.setYear()
-				} else if p.daylen == 0 {
-					p.daylen = i - p.dayi
-					p.setDay()
-				}
-				break iterRunes
-			case ':':
-				p.stateTime = timeStart
-				if p.yearlen == 0 {
-					p.yearlen = i - p.yeari
-					p.setYear()
-				} else if p.daylen == 0 {
-					p.daylen = i - p.dayi
-					p.setDay()
-				}
-				break iterRunes
 			case '/':
-				if p.yearlen > 0 {
-					// 2014/07/10 06:55:38.156283
-					if p.molen == 0 {
-						p.molen = i - p.moi
-						p.setMonth()
-						p.dayi = i + 1
-					}
-				} else if p.preferMonthFirst {
+				// This is the 2nd / so now we should know start pts of all of the dd, mm, yy
+				if p.preferMonthFirst {
 					if p.daylen == 0 {
 						p.daylen = i - p.dayi
 						p.setDay()
@@ -546,11 +577,15 @@ iterRunes:
 						p.yeari = i + 1
 					}
 				}
-			default:
-				if unicode.IsLetter(r) {
-					p.moi = i
-					p.stateDate = dateDigitDashAlpha
+				// Note no break, we are going to pass by and re-enter this dateDigitSlash
+				// and look for ending (space) or not (just date)
+			case ' ':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
 				}
+				break iterRunes
 			}
 
 		case dateDigitColon:
@@ -1792,6 +1827,13 @@ iterRunes:
 		// 3/1/2014
 		// 10/13/2014
 		// 01/02/2006
+		return p, nil
+
+	case dateDigitSlashAlpha:
+		// 03/Jun/2014
+		return p, nil
+
+	case dateDigitYearSlash:
 		// 2014/10/13
 		return p, nil
 
