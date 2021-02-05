@@ -785,8 +785,7 @@ iterRunes:
 
 			case r == ',':
 				// Mon, 02 Jan 2006
-				// p.moi = 0
-				// p.molen = i
+
 				if i == 3 {
 					p.stateDate = dateWeekdayAbbrevComma
 					p.set(0, "Mon")
@@ -1106,7 +1105,7 @@ iterRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
 
-			//gou.Debugf("%d %s %d iterTimeRunes  %s %s", i, string(r), p.stateTime, p.ds(), p.ts())
+			// gou.Debugf("%d %s %d iterTimeRunes  %s %s", i, string(r), p.stateTime, p.ds(), p.ts())
 
 			switch p.stateTime {
 			case timeStart:
@@ -1400,7 +1399,7 @@ iterRunes:
 						p.trimExtra()
 						break
 					}
-				case '+', '-':
+				case '+', '-', '(':
 					// This really doesn't seem valid, but for some reason when round-tripping a go date
 					// their is an extra +03 printed out.  seems like go bug to me, but, parsing anyway.
 					// 00:00:00 +0300 +03

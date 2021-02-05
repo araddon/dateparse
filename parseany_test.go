@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("06/May/2008 15:04:05 -0700")
-	assert.Equal(t, "2008-05-06 22:04:05 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Sun, 3 Jan 2021 00:12:23 +0800 (GMT+08:00)")
+	assert.Equal(t, "2021-01-02 16:12:23 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -131,6 +131,8 @@ var testInputs = []dateTest{
 	{in: "Fri, 3-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03-Jul-15 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03-Jul-15 8:8:8 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
+	// day, dd-Mon-yy hh:mm:zz TZ (text) https://github.com/araddon/dateparse/issues/116
+	{in: "Sun, 3 Jan 2021 00:12:23 +0800 (GMT+08:00)", out: "2021-01-02 16:12:23 +0000 UTC"},
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
 	{in: "Wednesday, 07-May-09 08:00:43 MST", out: "2009-05-07 08:00:43 +0000 UTC"},
 	{in: "Wednesday, 28-Feb-18 09:01:00 MST", out: "2018-02-28 09:01:00 +0000 UTC"},
@@ -222,7 +224,8 @@ var testInputs = []dateTest{
 	{in: "2014/4/2 04:08:09 AM", out: "2014-04-02 04:08:09 +0000 UTC"},
 	{in: "2014/04/02 04:08:09.123 AM", out: "2014-04-02 04:08:09.123 +0000 UTC"},
 	{in: "2014/04/02 04:08:09.123 PM", out: "2014-04-02 16:08:09.123 +0000 UTC"},
-	// dd/mon/yyyy:hh:mm:ss tz  redis log?
+	// dd/mon/yyyy:hh:mm:ss tz  nginx-log?    https://github.com/araddon/dateparse/issues/118
+	// 112.195.209.90 - - [20/Feb/2018:12:12:14 +0800] "GET / HTTP/1.1" 200 190 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Mobile Safari/537.36" "-"
 	{in: "06/May/2008:08:11:17 -0700", out: "2008-05-06 15:11:17 +0000 UTC"},
 	{in: "30/May/2008:08:11:17 -0700", out: "2008-05-30 15:11:17 +0000 UTC"},
 	// dd/mon/yyy hh:mm:ss tz
