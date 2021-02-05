@@ -412,6 +412,7 @@ iterRunes:
 		case dateYearDash:
 			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
+			//  2020-08-17T17:00:00:000+0100
 			// dateYearDashDashWs
 			//  2013-04-01 22:43:22
 			// dateYearDashAlphaDash
@@ -447,6 +448,12 @@ iterRunes:
 				p.setDay()
 				break iterRunes
 			}
+
+		case dateYearDashDashT:
+			// dateYearDashDashT
+			//  2006-01-02T15:04:05Z07:00
+			//  2020-08-17T17:00:00:000+0100
+
 		case dateYearDashAlphaDash:
 			// 2013-Feb-03
 			switch r {
@@ -1105,7 +1112,7 @@ iterRunes:
 		for ; i < len(datestr); i++ {
 			r := rune(datestr[i])
 
-			// gou.Debugf("%d %s %d iterTimeRunes  %s %s", i, string(r), p.stateTime, p.ds(), p.ts())
+			// gou.Debugf("i=%d r=%s state=%d iterTimeRunes  %s %s", i, string(r), p.stateTime, p.ds(), p.ts())
 
 			switch p.stateTime {
 			case timeStart:
@@ -1162,7 +1169,12 @@ iterRunes:
 						// 22:18+0530
 						p.minlen = i - p.mini
 					} else {
-						p.seclen = i - p.seci
+						if p.seclen == 0 {
+							p.seclen = i - p.seci
+						}
+						if p.msi > 0 && p.mslen == 0 {
+							p.mslen = i - p.msi
+						}
 					}
 					p.offseti = i
 				case '.':
@@ -1220,6 +1232,19 @@ iterRunes:
 					} else if p.seci == 0 {
 						p.seci = i + 1
 						p.minlen = i - p.mini
+					} else if p.seci > 0 {
+						// 18:31:59:257    ms uses colon, wtf
+						p.seclen = i - p.seci
+						p.set(p.seci, "05")
+						p.msi = i + 1
+
+						// gross, gross, gross.   manipulating the datestr is horrible.
+						// https://github.com/araddon/dateparse/issues/117
+						// Could not get the parsing to work using golang time.Parse() without
+						// replacing that colon with period.
+						p.set(i, ".")
+						datestr = datestr[0:i] + "." + datestr[i+1:]
+						p.datestr = datestr
 					}
 				}
 			case timeOffset:
@@ -2079,7 +2104,7 @@ func (p *parser) parse() (time.Time, error) {
 		p.datestr = p.datestr[p.skip:]
 	}
 
-	//gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
+	// gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
 		return time.Parse(string(p.format), p.datestr)
 	}

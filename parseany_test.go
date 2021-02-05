@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("Sun, 3 Jan 2021 00:12:23 +0800 (GMT+08:00)")
-	assert.Equal(t, "2021-01-02 16:12:23 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2020-08-17T17:00:00:987+0100")
+	assert.Equal(t, "2020-08-17 16:00:00.987 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -376,6 +376,8 @@ var testInputs = []dateTest{
 	{in: "2016-06-21T19:55:00.799+0100", out: "2016-06-21 18:55:00.799 +0000 UTC"},
 	{in: "2016-06-21T19:55+0100", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55+0130", out: "2016-06-21 18:25:00 +0000 UTC"},
+	//   yyyy-mm-ddThh:mm:ss:000+0000
+	{in: "2012-08-17T18:31:59.257+0100", out: "2012-08-17 17:31:59.257 +0000 UTC"}, // https://github.com/araddon/dateparse/issues/117
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2009-08-12 22:15:00 +0000 UTC"},
 	{in: "2009-08-12T22:15:09Z", out: "2009-08-12 22:15:09 +0000 UTC"},
