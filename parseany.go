@@ -1292,7 +1292,6 @@ iterRunes:
 						// 17:57:51 MST 2009
 						p.tzi = i
 						p.stateTime = timeWsAlpha
-						//break iterTimeRunes
 					} else if unicode.IsDigit(r) {
 						// 00:12:00 2008
 						p.stateTime = timeWsYear
@@ -1322,6 +1321,7 @@ iterRunes:
 					p.offseti = i
 				case ' ':
 					// 17:57:51 MST 2009
+					// 17:57:51 MST
 					p.tzlen = i - p.tzi
 					if p.tzlen == 4 {
 						p.set(p.tzi, " MST")
@@ -1441,6 +1441,7 @@ iterRunes:
 							p.setYear()
 						}
 					case unicode.IsLetter(r):
+						// 15:04:05 -0700 MST
 						if p.tzi == 0 {
 							p.tzi = i
 						}
@@ -1626,6 +1627,17 @@ iterRunes:
 		}
 
 		switch p.stateTime {
+		case timeWsAlpha:
+			switch len(p.datestr) - p.tzi {
+			case 3:
+				// 13:31:51.999 +01:00 CET
+				p.set(p.tzi, "MST")
+			case 4:
+				p.set(p.tzi, "MST")
+				p.extra = len(p.datestr) - 1
+				p.trimExtra()
+			}
+
 		case timeWsAlphaWs:
 			p.yearlen = i - p.yeari
 			p.setYear()
@@ -1662,6 +1674,17 @@ iterRunes:
 		case timeWsOffsetWs:
 			// 17:57:51 -0700 2009
 			// 00:12:00 +0000 UTC
+			if p.tzi > 0 {
+				switch len(p.datestr) - p.tzi {
+				case 3:
+					// 13:31:51.999 +01:00 CET
+					p.set(p.tzi, "MST")
+				case 4:
+					// 13:31:51.999 +01:00 CEST
+					p.set(p.tzi, "MST ")
+				}
+
+			}
 		case timeWsOffsetColon:
 			// 17:57:51 -07:00
 			p.set(p.offseti, "-07:00")
@@ -2115,7 +2138,7 @@ func (p *parser) parse() (time.Time, error) {
 	}
 
 	if p.loc == nil {
-		//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.Parse(%q, %q)", string(p.format), p.datestr, string(p.format), p.datestr)
+		// gou.Debugf("parse layout=%q input=%q   \ntx, err := time.Parse(%q, %q)", string(p.format), p.datestr, string(p.format), p.datestr)
 		return time.Parse(string(p.format), p.datestr)
 	}
 	//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.ParseInLocation(%q, %q, %v)", string(p.format), p.datestr, string(p.format), p.datestr, p.loc)

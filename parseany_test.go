@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("2019-05-29T08:41-04")
-	assert.Equal(t, "2019-05-29 12:41:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("Thu, 17 Dec 2020 15:39:13 GMT")
+	assert.Equal(t, "2020-12-17 15:39:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -107,9 +107,10 @@ var testInputs = []dateTest{
 	{in: "June 2nd 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
 	{in: "June 22nd, 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
 	{in: "June 22nd 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
-	// ?
+	// RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
-	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	//{in: "Fri, 03 Jul 2015 08:08:08 CET", out: "2015-07-03 08:08:08 +0000 UTC"},
+	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
 	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 3 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03 Jul 2015 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
@@ -126,7 +127,7 @@ var testInputs = []dateTest{
 	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", loc: "Europe/Berlin"},
 	// day, dd-Mon-yy hh:mm:zz TZ
 	{in: "Fri, 03-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
-	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
 	{in: "Fri, 03-Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 3-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03-Jul-15 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
@@ -326,7 +327,7 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.1 UTC", out: "2014-04-26 17:24:37.1 +0000 UTC"},
 	// This one is pretty special, it is TIMEZONE based but starts with P to emulate collions with PM
 	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 05:24:37 +0000 UTC"},
-	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 12:24:37 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 13:24:37 +0000 UTC", loc: "America/Los_Angeles"},
 	//   yyyy-mm-dd hh:mm:ss+00:00
 	{in: "2012-08-03 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
 	{in: "2017-07-19 03:21:51+00:00", out: "2017-07-19 03:21:51 +0000 UTC"},
@@ -520,6 +521,8 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestParseLayout(t *testing.T) {
+
+	time.Local = time.UTC
 	// These tests are verifying that the layout returned by ParseFormat
 	// are correct.   Above tests correct parsing, this tests correct
 	// re-usable formatting string
@@ -546,10 +549,11 @@ func TestParseLayout(t *testing.T) {
 		//   yyyy-mm-dd hh:mm:ss +00:00
 		{in: "2012-08-03 18:31:59 +00:00", out: "2006-01-02 15:04:05 -07:00"},
 		//   yyyy-mm-dd hh:mm:ss +0000 TZ
-		// Golang Native Format
-		{in: "2012-08-03 18:31:59 +0000 UTC", out: "2006-01-02 15:04:05 -0700 UTC"},
+		// Golang Native Format = "2006-01-02 15:04:05.999999999 -0700 MST"
+		{in: "2012-08-03 18:31:59 +0000 UTC", out: "2006-01-02 15:04:05 -0700 MST"},
 		//   yyyy-mm-dd hh:mm:ss TZ
-		{in: "2012-08-03 18:31:59 UTC", out: "2006-01-02 15:04:05 UTC"},
+		{in: "2012-08-03 18:31:59 UTC", out: "2006-01-02 15:04:05 MST"},
+		{in: "2012-08-03 18:31:59 CEST", out: "2006-01-02 15:04:05 MST"},
 		//   yyyy-mm-ddThh:mm:ss-07:00
 		{in: "2009-08-12T22:15:09-07:00", out: "2006-01-02T15:04:05-07:00"},
 		//   yyyy-mm-ddThh:mm:ss-0700
