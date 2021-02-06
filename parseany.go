@@ -1645,8 +1645,18 @@ iterRunes:
 		case timePeriod:
 			p.mslen = i - p.msi
 		case timeOffset:
-			// 19:55:00+0100
-			p.set(p.offseti, "-0700")
+
+			switch len(p.datestr) - p.offseti {
+			case 0, 1, 2, 4:
+				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, string(datestr[p.offseti:]))
+			case 3:
+				// 19:55:00+01
+				p.set(p.offseti, "-07")
+			case 5:
+				// 19:55:00+0100
+				p.set(p.offseti, "-0700")
+			}
+
 		case timeWsOffset:
 			p.set(p.offseti, "-0700")
 		case timeWsOffsetWs:
@@ -2104,10 +2114,11 @@ func (p *parser) parse() (time.Time, error) {
 		p.datestr = p.datestr[p.skip:]
 	}
 
-	// gou.Debugf("parse %q   AS   %q", p.datestr, string(p.format))
 	if p.loc == nil {
+		//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.Parse(%q, %q)", string(p.format), p.datestr, string(p.format), p.datestr)
 		return time.Parse(string(p.format), p.datestr)
 	}
+	//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.ParseInLocation(%q, %q, %v)", string(p.format), p.datestr, string(p.format), p.datestr, p.loc)
 	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
 }
 func isDay(alpha string) bool {

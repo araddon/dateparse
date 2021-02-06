@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("2020-08-17T17:00:00:987+0100")
-	assert.Equal(t, "2020-08-17 16:00:00.987 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2019-05-29T08:41-04")
+	assert.Equal(t, "2019-05-29 12:41:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -364,6 +364,8 @@ var testInputs = []dateTest{
 	{in: "2009-08-12T22:15:09.123-07:00", out: "2009-08-13 05:15:09.123 +0000 UTC"},
 	{in: "2016-06-21T19:55:00+01:00", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55:00.799+01:00", out: "2016-06-21 18:55:00.799 +0000 UTC"},
+	//   yyyy-mm-ddThh:mm:ss-07   TZ truncated to 2 digits instead of 4
+	{in: "2019-05-29T08:41-04", out: "2019-05-29 12:41:00 +0000 UTC"},
 	//   yyyy-mm-ddThh:mm:ss-0700
 	{in: "2009-08-12T22:15:09-0700", out: "2009-08-13 05:15:09 +0000 UTC"},
 	{in: "2009-08-12T22:15:09-0300", out: "2009-08-13 01:15:09 +0000 UTC"},
@@ -376,8 +378,9 @@ var testInputs = []dateTest{
 	{in: "2016-06-21T19:55:00.799+0100", out: "2016-06-21 18:55:00.799 +0000 UTC"},
 	{in: "2016-06-21T19:55+0100", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55+0130", out: "2016-06-21 18:25:00 +0000 UTC"},
-	//   yyyy-mm-ddThh:mm:ss:000+0000
-	{in: "2012-08-17T18:31:59.257+0100", out: "2012-08-17 17:31:59.257 +0000 UTC"}, // https://github.com/araddon/dateparse/issues/117
+	//   yyyy-mm-ddThh:mm:ss:000+0000    - weird format with additional colon in front of milliseconds
+	{in: "2012-08-17T18:31:59:257+0100", out: "2012-08-17 17:31:59.257 +0000 UTC"}, // https://github.com/araddon/dateparse/issues/117
+
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2009-08-12 22:15:00 +0000 UTC"},
 	{in: "2009-08-12T22:15:09Z", out: "2009-08-12 22:15:09 +0000 UTC"},
@@ -526,6 +529,8 @@ func TestParseLayout(t *testing.T) {
 		{in: `{"hello"}`, err: true},
 		{in: "2009-15-12T22:15Z", err: true},
 		{in: "5,000-9,999", err: true},
+		// This 3 digit TZ offset (should be 2 or 4?  is 3 a thing?)
+		{in: "2019-05-29T08:41-047", err: true},
 		//
 		{in: "06/May/2008 15:04:05 -0700", out: "02/Jan/2006 15:04:05 -0700"},
 		{in: "06/May/2008:15:04:05 -0700", out: "02/Jan/2006:15:04:05 -0700"},
