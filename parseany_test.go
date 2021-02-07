@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("Thu, 17 Dec 2020 15:39:13 GMT")
-	assert.Equal(t, "2020-12-17 15:39:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2020-07-20+08:00")
+	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -236,6 +236,9 @@ var testInputs = []dateTest{
 	{in: "2014-04-02", out: "2014-04-02 00:00:00 +0000 UTC"},
 	{in: "2014-03-31", out: "2014-03-31 00:00:00 +0000 UTC"},
 	{in: "2014-4-2", out: "2014-04-02 00:00:00 +0000 UTC"},
+	//   yyyy-mm-dd-07:00
+	{in: "2020-07-20+08:00", out: "2020-07-19 16:00:00 +0000 UTC"},
+	{in: "2020-07-20+0800", out: "2020-07-19 16:00:00 +0000 UTC"},
 	//   dd-mmm-yy
 	{in: "28-Feb-02", out: "2002-02-28 00:00:00 +0000 UTC"},
 	{in: "15-Jan-18", out: "2018-01-15 00:00:00 +0000 UTC"},

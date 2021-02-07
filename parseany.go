@@ -61,35 +61,36 @@ const (
 	dateYearDashDash
 	dateYearDashDashWs // 5
 	dateYearDashDashT
+	dateYearDashDashOffset
 	dateDigitDash
 	dateDigitDashAlpha
-	dateDigitDashAlphaDash
-	dateDigitDot // 10
+	dateDigitDashAlphaDash // 10
+	dateDigitDot
 	dateDigitDotDot
 	dateDigitSlash
 	dateDigitYearSlash
-	dateDigitSlashAlpha
-	dateDigitColon // 15
+	dateDigitSlashAlpha // 15
+	dateDigitColon
 	dateDigitChineseYear
 	dateDigitChineseYearWs
 	dateDigitWs
-	dateDigitWsMoYear
-	dateDigitWsMolong // 20
+	dateDigitWsMoYear // 20
+	dateDigitWsMolong
 	dateAlpha
 	dateAlphaWs
 	dateAlphaWsDigit
-	dateAlphaWsDigitMore
-	dateAlphaWsDigitMoreWs // 25
+	dateAlphaWsDigitMore // 25
+	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth
 	dateAlphaWsDigitYearmaybe
 	dateAlphaWsMonthMore
-	dateAlphaWsMonthSuffix // 30
+	dateAlphaWsMonthSuffix
 	dateAlphaWsMore
 	dateAlphaWsAtTime
 	dateAlphaWsAlpha
-	dateAlphaWsAlphaYearmaybe
-	dateAlphaPeriodWsDigit // 35
+	dateAlphaWsAlphaYearmaybe // 35
+	dateAlphaPeriodWsDigit
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
 )
@@ -434,7 +435,14 @@ iterRunes:
 			//  2006-01-02T15:04:05Z07:00
 			// dateYearDashDashWs
 			//  2013-04-01 22:43:22
+			// dateYearDashDashOffset
+			//  2020-07-20+00:00
 			switch r {
+			case '+', '-':
+				p.offseti = i
+				p.daylen = i - p.dayi
+				p.stateDate = dateYearDashDashOffset
+				p.setDay()
 			case ' ':
 				p.daylen = i - p.dayi
 				p.stateDate = dateYearDashDashWs
@@ -453,6 +461,15 @@ iterRunes:
 			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
 			//  2020-08-17T17:00:00:000+0100
+
+		case dateYearDashDashOffset:
+			//  2020-07-20+00:00
+			switch r {
+			case ':':
+				p.set(p.offseti, "-07:00")
+				// case ' ':
+				// 	return nil, unknownErr(datestr)
+			}
 
 		case dateYearDashAlphaDash:
 			// 2013-Feb-03
@@ -1775,6 +1792,16 @@ iterRunes:
 		// 2006-1-02
 		// 2006-1-2
 		// 2006-01-2
+		return p, nil
+
+	case dateYearDashDashOffset:
+		///  2020-07-20+00:00
+		switch len(p.datestr) - p.offseti {
+		case 5:
+			p.set(p.offseti, "-0700")
+		case 6:
+			p.set(p.offseti, "-07:00")
+		}
 		return p, nil
 
 	case dateYearDashAlphaDash:
