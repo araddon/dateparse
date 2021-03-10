@@ -491,6 +491,35 @@ iterRunes:
 				}
 				p.stateTime = timeStart
 				break iterRunes
+			case ':':
+				p.link++
+				if p.link == 2 {
+					// we need to find if this was 4 digits, aka year
+					// or 2 digits which makes it ambiguous year/day
+					length := i - (p.moi + p.molen + 2)
+					if length == 4 {
+						p.yearlen = 4
+						p.set(p.yeari, "2006")
+						// We now also know that part1 was the day
+						p.dayi = 0
+						p.daylen = p.part1Len
+						p.setDay()
+					} else if length == 2 {
+						// We have no idea if this is
+						// yy-mon-dd   OR  dd-mon-yy
+						//
+						// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+						p.ambiguousMD = true
+						p.yearlen = 2
+						p.set(p.yeari, "06")
+						// We now also know that part1 was the day
+						p.dayi = 0
+						p.daylen = p.part1Len
+						p.setDay()
+					}
+					p.stateTime = timeStart
+					break iterRunes
+				}
 			}
 
 		case dateDigitSlash:
@@ -1839,6 +1868,7 @@ type parser struct {
 	datestr                    string
 	fullMonth                  string
 	skip                       int
+	link                       int
 	extra                      int
 	part1Len                   int
 	yeari                      int

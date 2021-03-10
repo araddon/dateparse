@@ -532,6 +532,8 @@ var testParseFormat = []dateTest{
 	{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+
+	{in: "8-Mar-2018::14:09:27", out: "2-Jan-2006::15:04:05"},
 }
 
 func TestParseLayout(t *testing.T) {
