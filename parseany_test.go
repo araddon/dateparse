@@ -11,8 +11,8 @@ import (
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
 	var ts time.Time
-	ts = MustParse("Mon 30 Sep 2018 09:09:09 PM UTC")
-	assert.Equal(t, "2018-09-30 21:09:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts = MustParse("2020-07-20+08:00")
+	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 type dateTest struct {
@@ -107,9 +107,10 @@ var testInputs = []dateTest{
 	{in: "June 2nd 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
 	{in: "June 22nd, 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
 	{in: "June 22nd 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
-	// ?
+	// RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
-	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	//{in: "Fri, 03 Jul 2015 08:08:08 CET", out: "2015-07-03 08:08:08 +0000 UTC"},
+	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
 	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 3 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03 Jul 2015 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
@@ -126,11 +127,13 @@ var testInputs = []dateTest{
 	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", loc: "Europe/Berlin"},
 	// day, dd-Mon-yy hh:mm:zz TZ
 	{in: "Fri, 03-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
-	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 15:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
 	{in: "Fri, 03-Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 3-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03-Jul-15 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
 	{in: "Fri, 03-Jul-15 8:8:8 MST", out: "2015-07-03 08:08:08 +0000 UTC"},
+	// day, dd-Mon-yy hh:mm:zz TZ (text) https://github.com/araddon/dateparse/issues/116
+	{in: "Sun, 3 Jan 2021 00:12:23 +0800 (GMT+08:00)", out: "2021-01-02 16:12:23 +0000 UTC"},
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
 	{in: "Wednesday, 07-May-09 08:00:43 MST", out: "2009-05-07 08:00:43 +0000 UTC"},
 	{in: "Wednesday, 28-Feb-18 09:01:00 MST", out: "2018-02-28 09:01:00 +0000 UTC"},
@@ -222,10 +225,20 @@ var testInputs = []dateTest{
 	{in: "2014/4/2 04:08:09 AM", out: "2014-04-02 04:08:09 +0000 UTC"},
 	{in: "2014/04/02 04:08:09.123 AM", out: "2014-04-02 04:08:09.123 +0000 UTC"},
 	{in: "2014/04/02 04:08:09.123 PM", out: "2014-04-02 16:08:09.123 +0000 UTC"},
+	// dd/mon/yyyy:hh:mm:ss tz  nginx-log?    https://github.com/araddon/dateparse/issues/118
+	// 112.195.209.90 - - [20/Feb/2018:12:12:14 +0800] "GET / HTTP/1.1" 200 190 "-" "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Mobile Safari/537.36" "-"
+	{in: "06/May/2008:08:11:17 -0700", out: "2008-05-06 15:11:17 +0000 UTC"},
+	{in: "30/May/2008:08:11:17 -0700", out: "2008-05-30 15:11:17 +0000 UTC"},
+	// dd/mon/yyy hh:mm:ss tz
+	{in: "06/May/2008:08:11:17 -0700", out: "2008-05-06 15:11:17 +0000 UTC"},
+	{in: "30/May/2008:08:11:17 -0700", out: "2008-05-30 15:11:17 +0000 UTC"},
 	//   yyyy-mm-dd
 	{in: "2014-04-02", out: "2014-04-02 00:00:00 +0000 UTC"},
 	{in: "2014-03-31", out: "2014-03-31 00:00:00 +0000 UTC"},
 	{in: "2014-4-2", out: "2014-04-02 00:00:00 +0000 UTC"},
+	//   yyyy-mm-dd-07:00
+	{in: "2020-07-20+08:00", out: "2020-07-19 16:00:00 +0000 UTC"},
+	{in: "2020-07-20+0800", out: "2020-07-19 16:00:00 +0000 UTC"},
 	//   dd-mmm-yy
 	{in: "28-Feb-02", out: "2002-02-28 00:00:00 +0000 UTC"},
 	{in: "15-Jan-18", out: "2018-01-15 00:00:00 +0000 UTC"},
@@ -317,7 +330,7 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.1 UTC", out: "2014-04-26 17:24:37.1 +0000 UTC"},
 	// This one is pretty special, it is TIMEZONE based but starts with P to emulate collions with PM
 	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 05:24:37 +0000 UTC"},
-	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 12:24:37 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 13:24:37 +0000 UTC", loc: "America/Los_Angeles"},
 	//   yyyy-mm-dd hh:mm:ss+00:00
 	{in: "2012-08-03 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
 	{in: "2017-07-19 03:21:51+00:00", out: "2017-07-19 03:21:51 +0000 UTC"},
@@ -355,6 +368,8 @@ var testInputs = []dateTest{
 	{in: "2009-08-12T22:15:09.123-07:00", out: "2009-08-13 05:15:09.123 +0000 UTC"},
 	{in: "2016-06-21T19:55:00+01:00", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55:00.799+01:00", out: "2016-06-21 18:55:00.799 +0000 UTC"},
+	//   yyyy-mm-ddThh:mm:ss-07   TZ truncated to 2 digits instead of 4
+	{in: "2019-05-29T08:41-04", out: "2019-05-29 12:41:00 +0000 UTC"},
 	//   yyyy-mm-ddThh:mm:ss-0700
 	{in: "2009-08-12T22:15:09-0700", out: "2009-08-13 05:15:09 +0000 UTC"},
 	{in: "2009-08-12T22:15:09-0300", out: "2009-08-13 01:15:09 +0000 UTC"},
@@ -367,6 +382,9 @@ var testInputs = []dateTest{
 	{in: "2016-06-21T19:55:00.799+0100", out: "2016-06-21 18:55:00.799 +0000 UTC"},
 	{in: "2016-06-21T19:55+0100", out: "2016-06-21 18:55:00 +0000 UTC"},
 	{in: "2016-06-21T19:55+0130", out: "2016-06-21 18:25:00 +0000 UTC"},
+	//   yyyy-mm-ddThh:mm:ss:000+0000    - weird format with additional colon in front of milliseconds
+	{in: "2012-08-17T18:31:59:257+0100", out: "2012-08-17 17:31:59.257 +0000 UTC"}, // https://github.com/araddon/dateparse/issues/117
+
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2009-08-12 22:15:00 +0000 UTC"},
 	{in: "2009-08-12T22:15:09Z", out: "2009-08-12 22:15:09 +0000 UTC"},
@@ -388,6 +406,10 @@ var testInputs = []dateTest{
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
 	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC"},
+	// yymmdd hh:mm:yy  mysql log  https://github.com/araddon/dateparse/issues/119
+	// 080313 05:21:55 mysqld started
+	// 080313 5:21:55 InnoDB: Started; log sequence number 0 43655
+	{in: "171113 14:14:20", out: "2017-11-13 14:14:20 +0000 UTC"},
 
 	// all digits:  unix secs, ms etc
 	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC"},
@@ -537,6 +559,47 @@ var testParseFormat = []dateTest{
 }
 
 func TestParseLayout(t *testing.T) {
+
+	time.Local = time.UTC
+	// These tests are verifying that the layout returned by ParseFormat
+	// are correct.   Above tests correct parsing, this tests correct
+	// re-usable formatting string
+	var testParseFormat = []dateTest{
+		// errors
+		{in: "3", err: true},
+		{in: `{"hello"}`, err: true},
+		{in: "2009-15-12T22:15Z", err: true},
+		{in: "5,000-9,999", err: true},
+		// This 3 digit TZ offset (should be 2 or 4?  is 3 a thing?)
+		{in: "2019-05-29T08:41-047", err: true},
+		//
+		{in: "06/May/2008 15:04:05 -0700", out: "02/Jan/2006 15:04:05 -0700"},
+		{in: "06/May/2008:15:04:05 -0700", out: "02/Jan/2006:15:04:05 -0700"},
+		{in: "14 May 2019 19:11:40.164", out: "02 Jan 2006 15:04:05.000"},
+		{in: "171113 14:14:20", out: "060102 15:04:05"},
+
+		{in: "oct 7, 1970", out: "Jan 2, 2006"},
+		{in: "sept. 7, 1970", out: "Jan. 2, 2006"},
+		{in: "May 05, 2015, 05:05:07", out: "Jan 02, 2006, 15:04:05"},
+		// 03 February 2013
+		{in: "03 February 2013", out: "02 January 2006"},
+		// 13:31:51.999 -07:00 MST
+		//   yyyy-mm-dd hh:mm:ss +00:00
+		{in: "2012-08-03 18:31:59 +00:00", out: "2006-01-02 15:04:05 -07:00"},
+		//   yyyy-mm-dd hh:mm:ss +0000 TZ
+		// Golang Native Format = "2006-01-02 15:04:05.999999999 -0700 MST"
+		{in: "2012-08-03 18:31:59 +0000 UTC", out: "2006-01-02 15:04:05 -0700 MST"},
+		//   yyyy-mm-dd hh:mm:ss TZ
+		{in: "2012-08-03 18:31:59 UTC", out: "2006-01-02 15:04:05 MST"},
+		{in: "2012-08-03 18:31:59 CEST", out: "2006-01-02 15:04:05 MST"},
+		//   yyyy-mm-ddThh:mm:ss-07:00
+		{in: "2009-08-12T22:15:09-07:00", out: "2006-01-02T15:04:05-07:00"},
+		//   yyyy-mm-ddThh:mm:ss-0700
+		{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
+		//   yyyy-mm-ddThh:mm:ssZ
+		{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+	}
+
 	for _, th := range testParseFormat {
 		l, err := ParseFormat(th.in)
 		if th.err {
