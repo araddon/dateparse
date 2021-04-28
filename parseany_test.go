@@ -520,6 +520,9 @@ func TestParseErrors(t *testing.T) {
 	for _, th := range testParseErrors {
 		v, err := ParseAny(th.in)
 		assert.NotEqual(t, nil, err, "%v for %v", v, th.in)
+
+		v, err = ParseAny(th.in, RetryAmbiguousDateWithSwap(true))
+		assert.NotEqual(t, nil, err, "%v for %v", v, th.in)
 	}
 }
 
