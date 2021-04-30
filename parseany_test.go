@@ -526,6 +526,41 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+var testParseFormat = []dateTest{
+	// errors
+	{in: "3", err: true},
+	{in: `{"hello"}`, err: true},
+	{in: "2009-15-12T22:15Z", err: true},
+	{in: "5,000-9,999", err: true},
+	//
+	{in: "06/May/2008 15:04:05 -0700", out: "02/Jan/2006 15:04:05 -0700"},
+	{in: "06/May/2008:15:04:05 -0700", out: "02/Jan/2006:15:04:05 -0700"},
+	{in: "14 May 2019 19:11:40.164", out: "02 Jan 2006 15:04:05.000"},
+	{in: "171113 14:14:20", out: "060102 15:04:05"},
+
+	{in: "oct 7, 1970", out: "Jan 2, 2006"},
+	{in: "sept. 7, 1970", out: "Jan. 2, 2006"},
+	{in: "May 05, 2015, 05:05:07", out: "Jan 02, 2006, 15:04:05"},
+	// 03 February 2013
+	{in: "03 February 2013", out: "02 January 2006"},
+	// 13:31:51.999 -07:00 MST
+	//   yyyy-mm-dd hh:mm:ss +00:00
+	{in: "2012-08-03 18:31:59 +00:00", out: "2006-01-02 15:04:05 -07:00"},
+	//   yyyy-mm-dd hh:mm:ss +0000 TZ
+	// Golang Native Format
+	{in: "2012-08-03 18:31:59 +0000 UTC", out: "2006-01-02 15:04:05 -0700 UTC"},
+	//   yyyy-mm-dd hh:mm:ss TZ
+	{in: "2012-08-03 18:31:59 UTC", out: "2006-01-02 15:04:05 UTC"},
+	//   yyyy-mm-ddThh:mm:ss-07:00
+	{in: "2009-08-12T22:15:09-07:00", out: "2006-01-02T15:04:05-07:00"},
+	//   yyyy-mm-ddThh:mm:ss-0700
+	{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
+	//   yyyy-mm-ddThh:mm:ssZ
+	{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+
+	{in: "8-Mar-2018::14:09:27", out: "2-Jan-2006::15:04:05"},
+}
+
 func TestParseLayout(t *testing.T) {
 
 	time.Local = time.UTC
