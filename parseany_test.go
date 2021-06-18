@@ -417,6 +417,14 @@ var testInputs = []dateTest{
 	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC"},
 	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC"},
 	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
+
+	// dd[th,nd,st,rd] Month yyyy
+	{in: "1st September 2012", out: "2012-09-01 00:00:00 +0000 UTC"},
+	{in: "2nd September 2012", out: "2012-09-02 00:00:00 +0000 UTC"},
+	{in: "3rd September 2012", out: "2012-09-03 00:00:00 +0000 UTC"},
+	{in: "4th September 2012", out: "2012-09-04 00:00:00 +0000 UTC"},
+	{in: "2nd January 2018", out: "2018-01-02 00:00:00 +0000 UTC"},
+	{in: "3nd Feb 2018 13:58:24", out: "2018-02-03 13:58:24 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
