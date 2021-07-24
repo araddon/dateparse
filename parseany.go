@@ -1503,6 +1503,8 @@ iterRunes:
 				//       22:18:00.001 +0000 UTC m=+0.000000001
 				//     timePeriodWsAlpha
 				//       06:20:00.000 UTC
+				//   timeZ
+				//     15:09:23.099Z
 				switch r {
 				case ' ':
 					p.mslen = i - p.msi
@@ -1512,6 +1514,11 @@ iterRunes:
 					p.mslen = i - p.msi
 					p.offseti = i
 					p.stateTime = timePeriodOffset
+				case 'Z':
+					p.mslen = i - p.msi
+					// (Z)ulu time
+					p.loc = time.UTC
+					p.stateTime = timeZ
 				default:
 					if unicode.IsLetter(r) {
 						// 06:20:00.000 UTC
