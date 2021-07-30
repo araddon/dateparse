@@ -397,6 +397,9 @@ iterRunes:
 				}
 			case '年':
 				// Chinese Year
+				p.yearlen = i - 2
+				p.moi = i + 1
+				p.setYear()
 				p.stateDate = dateDigitChineseYear
 			case ',':
 				return nil, unknownErr(datestr)
@@ -709,9 +712,20 @@ iterRunes:
 			//   2014年04月08日
 			//               weekday  %Y年%m月%e日 %A %I:%M %p
 			// 2013年07月18日 星期四 10:27 上午
-			if r == ' ' {
+			switch r {
+			case '月':
+				// month
+				p.molen = i - p.moi - 2
+				p.dayi = i + 1
+				p.setMonth()
+			case '日':
+				// day
+				p.daylen = i - p.dayi - 2
+				p.houri = i + 1
+				p.setDay()
+			case ' ':
 				p.stateDate = dateDigitChineseYearWs
-				break
+				break iterRunes
 			}
 		case dateDigitDot:
 			// This is the 2nd period
@@ -1929,13 +1943,19 @@ iterRunes:
 		return p, nil
 
 	case dateDigitChineseYear:
-		// dateDigitChineseYear
-		//   2014年04月08日
-		p.format = []byte("2006年01月02日")
+		// 2014年04月08日
 		return p, nil
 
 	case dateDigitChineseYearWs:
-		p.format = []byte("2006年01月02日 15:04:05")
+		index := p.houri
+		for _, b := range []byte(" 15:04:05") {
+			if index >= len(p.format) {
+				break
+			}
+			p.format[index] = b
+			index++
+		}
+		// p.format = []byte("2006年01月02日 15:04:05")
 		return p, nil
 
 	case dateWeekdayComma:
