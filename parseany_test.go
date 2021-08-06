@@ -402,6 +402,9 @@ var testInputs = []dateTest{
 	{in: "03.31.2014", out: "2014-03-31 00:00:00 +0000 UTC"},
 	//   mm.dd.yy
 	{in: "08.21.71", out: "1971-08-21 00:00:00 +0000 UTC"},
+	//   dd.mm.yyyy
+	{in: "23.07.1938", out: "1938-07-23 00:00:00 +0000 UTC"},
+	{in: "23/07/1938", out: "1938-07-23 00:00:00 +0000 UTC"},
 	//  yyyymmdd and similar
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
@@ -450,7 +453,7 @@ func TestParse(t *testing.T) {
 				panic("whoops")
 			}
 		} else {
-			ts = MustParse(th.in)
+			ts = MustParse(th.in, RetryAmbiguousDateWithSwap(true))
 			got := fmt.Sprintf("%v", ts.In(time.UTC))
 			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
 			if th.out != got {
