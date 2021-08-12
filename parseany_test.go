@@ -417,6 +417,14 @@ var testInputs = []dateTest{
 	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC"},
 	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC"},
 	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
+
+	// Potential bugs
+	{in: "2014.02.13", out: "2014-02-13 00:00:00 +0000 UTC"},              // OK: baseline for comparison
+	{in: "2014-02-13 00:00:00", out: "2014-02-13 00:00:00 +0000 UTC"},     // OK: parsed as expected
+	{in: "2014-02-13 00:00:00 utc", out: "2014-02-13 00:00:00 +0000 UTC"}, // BUG?: Looks like lowercase timezones are not supported (cannot parse "utc" as "MST")
+	{in: "2014.02.13 00:00:00", out: "2014-02-13 00:00:00 +0000 UTC"},     // BUG?: cannot be parsed (error is "month out of range")
+	{in: "2014-02-13t00:00:00.0z", out: "2014-02-13 00:00:00 +0000 UTC"},  // BUG?: cannot be parsed (error is "month out of range")
+
 }
 
 func TestParse(t *testing.T) {
