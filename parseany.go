@@ -93,6 +93,8 @@ const (
 	dateAlphaPeriodWsDigit
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
+	dateDigitDashDigit
+	dateDigitDashDigitDash
 )
 const (
 	// Time state
@@ -485,6 +487,9 @@ iterRunes:
 			if unicode.IsLetter(r) {
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
+			} else if unicode.IsDigit(r) {
+				p.stateDate = dateDigitDashDigit
+				p.moi = i
 			} else {
 				return nil, unknownErr(datestr)
 			}
@@ -499,11 +504,49 @@ iterRunes:
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
 			}
-
+		case dateDigitDashDigit:
+			// 29-06-2026
+			switch r {
+			case '-':
+				p.molen = i - p.moi
+				p.set(p.moi, "01")
+				p.yeari = i + 1
+				p.stateDate = dateDigitDashDigitDash
+			}
 		case dateDigitDashAlphaDash:
 			// 13-Feb-03   ambiguous
 			// 28-Feb-03   ambiguous
 			// 29-Jun-2016  dd-month(alpha)-yyyy
+			switch r {
+			case ' ':
+				// we need to find if this was 4 digits, aka year
+				// or 2 digits which makes it ambiguous year/day
+				length := i - (p.moi + p.molen + 1)
+				if length == 4 {
+					p.yearlen = 4
+					p.set(p.yeari, "2006")
+					// We now also know that part1 was the day
+					p.dayi = 0
+					p.daylen = p.part1Len
+					p.setDay()
+				} else if length == 2 {
+					// We have no idea if this is
+					// yy-mon-dd   OR  dd-mon-yy
+					//
+					// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+					p.ambiguousMD = true
+					p.yearlen = 2
+					p.set(p.yeari, "06")
+					// We now also know that part1 was the day
+					p.dayi = 0
+					p.daylen = p.part1Len
+					p.setDay()
+				}
+				p.stateTime = timeStart
+				break iterRunes
+			}
+		case dateDigitDashDigitDash:
+			// 29-06-2026
 			switch r {
 			case ' ':
 				// we need to find if this was 4 digits, aka year
@@ -1822,6 +1865,33 @@ iterRunes:
 		// 13-Feb-03   ambiguous
 		// 28-Feb-03   ambiguous
 		// 29-Jun-2016
+		length := len(datestr) - (p.moi + p.molen + 1)
+		if length == 4 {
+			p.yearlen = 4
+			p.set(p.yeari, "2006")
+			// We now also know that part1 was the day
+			p.dayi = 0
+			p.daylen = p.part1Len
+			p.setDay()
+		} else if length == 2 {
+			// We have no idea if this is
+			// yy-mon-dd   OR  dd-mon-yy
+			//
+			// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+			p.ambiguousMD = true
+			p.yearlen = 2
+			p.set(p.yeari, "06")
+			// We now also know that part1 was the day
+			p.dayi = 0
+			p.daylen = p.part1Len
+			p.setDay()
+		}
+
+		return p, nil
+	case dateDigitDashDigitDash:
+		// 13-02-03   ambiguous
+		// 28-02-03   ambiguous
+		// 29-06-2016
 		length := len(datestr) - (p.moi + p.molen + 1)
 		if length == 4 {
 			p.yearlen = 4
