@@ -154,6 +154,8 @@ var testInputs = []dateTest{
 	{in: "07 Feb 2004 09:07", out: "2004-02-07 09:07:00 +0000 UTC"},
 	{in: "7 Feb 2004 9:7:8", out: "2004-02-07 09:07:08 +0000 UTC"},
 	{in: "07 Feb 2004 09:07:08.123", out: "2004-02-07 09:07:08.123 +0000 UTC"},
+	/// yyyy mmm dd https://github.com/araddon/dateparse/issues/141
+	{in: "2013 May 02 11:37:55", out: "2013-05-02 11:37:55 +0000 UTC"},
 	//  dd-mon-yyyy  12 Feb 2006, 19:17:08 GMT
 	{in: "07 Feb 2004, 09:07:07 GMT", out: "2004-02-07 09:07:07 +0000 UTC"},
 	//  dd-mon-yyyy  12 Feb 2006, 19:17:08 +0100
