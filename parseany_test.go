@@ -239,10 +239,15 @@ var testInputs = []dateTest{
 	//   yyyy-mm-dd-07:00
 	{in: "2020-07-20+08:00", out: "2020-07-19 16:00:00 +0000 UTC"},
 	{in: "2020-07-20+0800", out: "2020-07-19 16:00:00 +0000 UTC"},
-	//   dd-mmm-yy
+	//   dd-mmm-yy (alpha month)
 	{in: "28-Feb-02", out: "2002-02-28 00:00:00 +0000 UTC"},
 	{in: "15-Jan-18", out: "2018-01-15 00:00:00 +0000 UTC"},
 	{in: "15-Jan-2017", out: "2017-01-15 00:00:00 +0000 UTC"},
+	//   dd-mmm-yy (digit month)
+	{in: "28-02-02", out: "2002-02-28 00:00:00 +0000 UTC"}, https: //github.com/araddon/dateparse/issues/139
+	{in: "15-01-18", out: "2018-01-15 00:00:00 +0000 UTC"},
+	{in: "15-01-2017", out: "2017-01-15 00:00:00 +0000 UTC"},
+
 	// yyyy-mm
 	{in: "2014-04", out: "2014-04-01 00:00:00 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss AM
