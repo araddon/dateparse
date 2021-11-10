@@ -1173,8 +1173,10 @@ iterRunes:
 				}
 				switch r {
 				case ',':
-					// hm, lets just swap out comma for period.  for some reason go
-					// won't parse it.
+					// swap out comma for period.
+					// Newer versions of Go support comma as a separator, but colon is still unsupported
+					// https://go-review.googlesource.com/c/go/+/300996
+					//
 					// 2014-05-11 08:20:13,787
 					ds := []byte(p.datestr)
 					ds[i] = '.'
@@ -1250,18 +1252,11 @@ iterRunes:
 						p.seci = i + 1
 						p.minlen = i - p.mini
 					} else if p.seci > 0 {
-						// 18:31:59:257    ms uses colon, wtf
-						p.seclen = i - p.seci
-						p.set(p.seci, "05")
-						p.msi = i + 1
-
-						// gross, gross, gross.   manipulating the datestr is horrible.
-						// https://github.com/araddon/dateparse/issues/117
-						// Could not get the parsing to work using golang time.Parse() without
-						// replacing that colon with period.
-						p.set(i, ".")
-						datestr = datestr[0:i] + "." + datestr[i+1:]
-						p.datestr = datestr
+						// 18:31:59:257    ms is separated with a colon
+						// swap out the colon for a period and re-parse
+						ds := []byte(p.datestr)
+						ds[i] = '.'
+						return parseTime(string(ds), loc, opts...)
 					}
 				}
 			case timeOffset:

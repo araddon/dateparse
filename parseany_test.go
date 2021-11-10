@@ -384,6 +384,7 @@ var testInputs = []dateTest{
 	{in: "2016-06-21T19:55+0130", out: "2016-06-21 18:25:00 +0000 UTC"},
 	//   yyyy-mm-ddThh:mm:ss:000+0000    - weird format with additional colon in front of milliseconds
 	{in: "2012-08-17T18:31:59:257+0100", out: "2012-08-17 17:31:59.257 +0000 UTC"}, // https://github.com/araddon/dateparse/issues/117
+	{in: "2012-08-17T18:31:59:257", out: "2012-08-17 18:31:59.257 +0000 UTC"},      // https://github.com/araddon/dateparse/issues/137
 
 	//   yyyy-mm-ddThh:mm:ssZ
 	{in: "2009-08-12T22:15Z", out: "2009-08-12 22:15:00 +0000 UTC"},
