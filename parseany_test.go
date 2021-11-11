@@ -406,6 +406,7 @@ var testInputs = []dateTest{
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
 	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC"},
+	{in: "20140722105203.364", out: "2014-07-22 10:52:03.364 +0000 UTC"},
 	// yymmdd hh:mm:yy  mysql log  https://github.com/araddon/dateparse/issues/119
 	// 080313 05:21:55 mysqld started
 	// 080313 5:21:55 InnoDB: Started; log sequence number 0 43655
