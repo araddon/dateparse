@@ -372,13 +372,15 @@ iterRunes:
 					p.yearlen = i
 					p.moi = i + 1
 					p.setYear()
-				} else {
+				} else if i <= 2 {
 					p.ambiguousMD = true
 					p.moi = 0
 					p.molen = i
 					p.setMonth()
 					p.dayi = i + 1
 				}
+				// else this might be a unixy combined datetime of the form:
+				// yyyyMMddhhmmss.SSS
 
 			case ' ':
 				// 18 January 2018
@@ -1847,10 +1849,15 @@ iterRunes:
 		return p, nil
 
 	case dateDigitDot:
-		// 2014.05
-		p.molen = i - p.moi
-		p.setMonth()
-		return p, nil
+		if len(datestr) == len("yyyyMMddhhmmss.SSS") { // 18
+			p.format = []byte("20060102150405.000")
+			return p, nil
+		} else {
+			// 2014.05
+			p.molen = i - p.moi
+			p.setMonth()
+			return p, nil
+		}
 
 	case dateDigitDotDot:
 		// 03.31.1981
