@@ -368,7 +368,10 @@ iterRunes:
 				// 08.21.71
 				// 2014.05
 				p.stateDate = dateDigitDot
-				if i == 4 {
+				if i == 10 && len(datestr) <= 14 {
+					p.stateDate = dateDigit
+					datestr = datestr[:10] + datestr[11:] + "000"[:14 - len(datestr)]		
+				} else if i == 4 {
 					p.yearlen = i
 					p.moi = i + 1
 					p.setYear()
