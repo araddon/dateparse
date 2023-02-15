@@ -1985,7 +1985,6 @@ type parser struct {
 	msi                        int
 	mslen                      int
 	offseti                    int
-	offsetlen                  int
 	tzi                        int
 	tzlen                      int
 	t                          *time.Time
