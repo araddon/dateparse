@@ -468,8 +468,6 @@ iterRunes:
 			switch r {
 			case ':':
 				p.set(p.offseti, "-07:00")
-				// case ' ':
-				// 	return nil, unknownErr(datestr)
 			}
 
 		case dateYearDashAlphaDash:
