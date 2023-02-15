@@ -133,11 +133,12 @@ const (
 var (
 	// ErrAmbiguousMMDD for date formats such as 04/02/2014 the mm/dd vs dd/mm are
 	// ambiguous, so it is an error for strict parse rules.
-	ErrAmbiguousMMDD = fmt.Errorf("this date has ambiguous mm/dd vs dd/mm type format")
+	ErrAmbiguousMMDD     = fmt.Errorf("this date has ambiguous mm/dd vs dd/mm type format")
+	ErrCouldntFindFormat = fmt.Errorf("could not find format for")
 )
 
 func unknownErr(datestr string) error {
-	return fmt.Errorf("Could not find format for %q", datestr)
+	return fmt.Errorf("%w %q", ErrCouldntFindFormat, datestr)
 }
 
 // ParseAny parse an unknown date format, detect the layout.
