@@ -1442,7 +1442,6 @@ iterRunes:
 					if datestr[i-1] == 'm' {
 						p.extra = i - 2
 						p.trimExtra()
-						break
 					}
 				case '+', '-', '(':
 					// This really doesn't seem valid, but for some reason when round-tripping a go date
@@ -1452,7 +1451,6 @@ iterRunes:
 					p.extra = i - 1
 					p.stateTime = timeWsOffset
 					p.trimExtra()
-					break
 				default:
 					switch {
 					case unicode.IsDigit(r):
