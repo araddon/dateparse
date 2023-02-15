@@ -28,7 +28,7 @@ func BenchmarkShotgunParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, dateStr := range testDates {
 			// This is the non dateparse traditional approach
-			parseShotgunStyle(dateStr)
+			_ = parseShotgunStyle(dateStr)
 		}
 	}
 }
@@ -37,7 +37,7 @@ func BenchmarkParseAny(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		for _, dateStr := range testDates {
-			ParseAny(dateStr)
+			_ = ParseAny(dateStr)
 		}
 	}
 }

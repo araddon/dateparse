@@ -234,7 +234,10 @@ func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
 
 func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *parser, err error) {
 
-	p = newParser(datestr, loc, opts...)
+	p, err = newParser(datestr, loc, opts...)
+	if err != nil {
+		return
+	}
 	if p.retryAmbiguousDateWithSwap {
 		// month out of range signifies that a day/month swap is the correct solution to an ambiguous date
 		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
@@ -2008,7 +2011,7 @@ func RetryAmbiguousDateWithSwap(retryAmbiguousDateWithSwap bool) ParserOption {
 	}
 }
 
-func newParser(dateStr string, loc *time.Location, opts ...ParserOption) *parser {
+func newParser(dateStr string, loc *time.Location, opts ...ParserOption) (*parser, error) {
 	p := &parser{
 		stateDate:                  dateStart,
 		stateTime:                  timeIgnore,
@@ -2021,7 +2024,9 @@ func newParser(dateStr string, loc *time.Location, opts ...ParserOption) *parser
 
 	// allow the options to mutate the parser fields from their defaults
 	for _, option := range opts {
-		option(p)
+		if err := option(p); err != nil {
+			return nil, fmt.Sprintf("option error: %w", err)
+		}
 	}
 	return p
 }
