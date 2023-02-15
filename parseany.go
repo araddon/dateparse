@@ -1595,7 +1595,6 @@ iterRunes:
 					// 00:00:00.000 +0300 +0300
 					p.extra = i - 1
 					p.trimExtra()
-					break
 				default:
 					if unicode.IsLetter(r) {
 						// 00:07:31.945167 +0000 UTC
