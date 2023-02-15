@@ -488,7 +488,10 @@ func TestPStruct(t *testing.T) {
 	denverLoc, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
 
-	p := newParser("08.21.71", denverLoc)
+	p, err := newParser("08.21.71", denverLoc)
+	if err != nil {
+		t.Fatalf("Parser build error: %s", err)
+	}
 
 	p.setMonth()
 	assert.Equal(t, 0, p.moi)
