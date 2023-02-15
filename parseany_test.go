@@ -10,8 +10,7 @@ import (
 
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
-	var ts time.Time
-	ts = MustParse("2020-07-20+08:00")
+	var ts time.Time = MustParse("2020-07-20+08:00")
 	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
