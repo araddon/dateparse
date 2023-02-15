@@ -1345,7 +1345,12 @@ iterRunes:
 				//     15:44:11 UTC+0100 2015
 				switch r {
 				case '+', '-':
-					p.tzlen = i - p.tzi
+					if datestr[p.tzi:i] == "GMT" {
+						p.tzi = 0
+						p.tzlen = 0
+					} else {
+						p.tzlen = i - p.tzi
+					}
 					if p.tzlen == 4 {
 						p.set(p.tzi, " MST")
 					} else if p.tzlen == 3 {
@@ -1679,10 +1684,13 @@ iterRunes:
 			p.trimExtra()
 		case timeWsAlphaZoneOffset:
 			// 06:20:00 UTC-05
-			if i-p.offseti < 4 {
+			switch i - p.offseti {
+			case 2, 3, 4:
 				p.set(p.offseti, "-07")
-			} else {
+			case 5:
 				p.set(p.offseti, "-0700")
+			case 6:
+				p.set(p.offseti, "-07:00")
 			}
 
 		case timePeriod:

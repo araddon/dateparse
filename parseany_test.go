@@ -419,6 +419,7 @@ var testInputs = []dateTest{
 
 	{in: "Wed,  8 Feb 2023 19:00:46 +1100 (AEDT)", out: "2023-02-08 08:00:46 +0000 UTC"},
 	{in: "FRI, 16 AUG 2013  9:39:51 +1000", out: "2013-08-15 23:39:51 +0000 UTC"},
+	{in: "Mon, 1 Dec 2008 14:48:22 GMT-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
