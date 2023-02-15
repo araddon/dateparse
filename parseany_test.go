@@ -427,17 +427,20 @@ func TestParse(t *testing.T) {
 	time.Local = time.UTC
 
 	zeroTime := time.Time{}.Unix()
-	ts, err := ParseAny("INVALID")
-	assert.Equal(t, zeroTime, ts.Unix())
-	assert.NotEqual(t, nil, err)
+	t.Run("Invalid", func(t *testing.T) {
+		ts, err := ParseAny("INVALID")
+		assert.Equal(t, zeroTime, ts.Unix())
+		assert.NotEqual(t, nil, err)
 
-	assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
-	// https://github.com/golang/go/issues/5294
-	_, err = ParseAny(time.RFC3339)
-	assert.NotEqual(t, nil, err)
+		assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
+		// https://github.com/golang/go/issues/5294
+		_, err = ParseAny(time.RFC3339)
+		assert.NotEqual(t, nil, err)
+	})
 
 	for _, th := range testInputs {
 		t.Run(th.in, func(t *testing.T) {
+			var ts time.Time
 			defer func() {
 				if r := recover(); r != nil {
 					t.Fatalf("error: %s", r)
@@ -470,16 +473,24 @@ func TestParse(t *testing.T) {
 
 	// some errors
 
-	assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
+	t.Run("", func(t *testing.T) {
+		assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
+	})
 
-	_, err = ParseAny("138421636711122233311111") // too many digits
-	assert.NotEqual(t, nil, err)
+	t.Run("too many digits", func(t *testing.T) {
+		_, err := ParseAny("138421636711122233311111") // too many digits
+		assert.NotEqual(t, nil, err)
+	})
 
-	_, err = ParseAny("-1314")
-	assert.NotEqual(t, nil, err)
+	t.Run("negative number", func(t *testing.T) {
+		_, err := ParseAny("-1314")
+		assert.NotEqual(t, nil, err)
+	})
 
-	_, err = ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
-	assert.NotEqual(t, nil, err)
+	t.Run("month doesn't exist", func(t *testing.T) {
+		_, err := ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
+		assert.NotEqual(t, nil, err)
+	})
 }
 
 func testDidPanic(datestr string) (paniced bool) {

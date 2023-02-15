@@ -1097,10 +1097,12 @@ iterRunes:
 			// Thu, 4 Jan 2018 17:53:36 +0000
 			// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			// Mon, 02-Jan-06 15:04:05 MST
+			var offset int
 			switch r {
 			case ' ':
 				for i+1 < len(datestr) && datestr[i+1] == ' ' {
 					i++
+					offset++
 				}
 				fallthrough
 			case '-':
@@ -1111,11 +1113,11 @@ iterRunes:
 					p.setDay()
 					p.moi = i + 1
 				} else if p.yeari == 0 {
-					p.molen = i - p.moi
+					p.molen = i - p.moi - offset
 					p.set(p.moi, "Jan")
 					p.yeari = i + 1
 				} else {
-					p.yearlen = i - p.yeari
+					p.yearlen = i - p.yeari - offset
 					p.setYear()
 					p.stateTime = timeStart
 					break iterRunes
