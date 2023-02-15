@@ -2156,17 +2156,6 @@ func (p *parser) trimExtra() {
 	}
 }
 
-// func (p *parser) remove(i, length int) {
-// 	if len(p.format) > i+length {
-// 		//append(a[:i], a[j:]...)
-// 		p.format = append(p.format[0:i], p.format[i+length:]...)
-// 	}
-// 	if len(p.datestr) > i+length {
-// 		//append(a[:i], a[j:]...)
-// 		p.datestr = fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+length:])
-// 	}
-// }
-
 func (p *parser) parse() (time.Time, error) {
 	if p.t != nil {
 		return *p.t, nil
