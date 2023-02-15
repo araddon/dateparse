@@ -269,7 +269,7 @@ iterRunes:
 		//r := rune(datestr[i])
 		r, bytesConsumed := utf8.DecodeRuneInString(datestr[i:])
 		if bytesConsumed > 1 {
-			i += (bytesConsumed - 1)
+			i += bytesConsumed - 1
 		}
 
 		// gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, datestr)
