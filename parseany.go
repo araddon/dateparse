@@ -383,6 +383,9 @@ iterRunes:
 				}
 
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				// 18 January 2018
 				// 8 January 2018
 				// 8 jan 2018
@@ -446,6 +449,9 @@ iterRunes:
 				p.stateDate = dateYearDashDashOffset
 				p.setDay()
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.daylen = i - p.dayi
 				p.stateDate = dateYearDashDashWs
 				p.stateTime = timeStart
@@ -506,6 +512,9 @@ iterRunes:
 			// 29-Jun-2016  dd-month(alpha)-yyyy
 			switch r {
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				// we need to find if this was 4 digits, aka year
 				// or 2 digits which makes it ambiguous year/day
 				length := i - (p.moi + p.molen + 1)
@@ -538,7 +547,12 @@ iterRunes:
 			// I honestly don't know if this format ever shows up as yyyy/
 
 			switch r {
-			case ' ', ':':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case ':':
 				p.stateTime = timeStart
 				if p.daylen == 0 {
 					p.daylen = i - p.dayi
@@ -566,7 +580,12 @@ iterRunes:
 				}
 				// We aren't breaking because we are going to re-use this case
 				// to find where the date starts, and possible time begins
-			case ' ', ':':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case ':':
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -604,6 +623,9 @@ iterRunes:
 				// Note no break, we are going to pass by and re-enter this dateDigitSlash
 				// and look for ending (space) or not (just date)
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -625,6 +647,9 @@ iterRunes:
 
 			switch r {
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -662,6 +687,9 @@ iterRunes:
 			// 12 Feb 2006, 19:17:22
 			switch r {
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.yeari = i + 1
 				//p.yearlen = 4
 				p.dayi = 0
@@ -696,6 +724,9 @@ iterRunes:
 				i++
 				break iterRunes
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.yearlen = i - p.yeari
 				p.setYear()
 				break iterRunes
@@ -710,6 +741,9 @@ iterRunes:
 			//               weekday  %Y年%m月%e日 %A %I:%M %p
 			// 2013年07月18日 星期四 10:27 上午
 			if r == ' ' {
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.stateDate = dateDigitChineseYearWs
 				break
 			}
@@ -770,6 +804,9 @@ iterRunes:
 			case r == ' ':
 				//      X
 				// April 8, 2009
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				if i > 3 {
 					// Check to see if the alpha is name of month?  or Day?
 					month := strings.ToLower(datestr[0:i])
@@ -877,6 +914,9 @@ iterRunes:
 				p.setDay()
 				p.stateDate = dateAlphaWsDigitMore
 			} else if r == ' ' {
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.daylen = i - p.dayi
 				p.setDay()
 				p.yeari = i + 1
@@ -900,6 +940,9 @@ iterRunes:
 				p.yeari = 0
 				break iterRunes
 			} else if r == ' ' {
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				// must be year format, not 15:04
 				p.yearlen = i - p.yeari
 				p.setYear()
@@ -913,6 +956,9 @@ iterRunes:
 			// oct 1, 1970
 			// oct 7, '70
 			if r == ' ' {
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.yeari = i + 1
 				p.stateDate = dateAlphaWsDigitMoreWs
 			}
@@ -925,7 +971,12 @@ iterRunes:
 			switch r {
 			case '\'':
 				p.yeari = i + 1
-			case ' ', ',':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case ',':
 				//            x
 				// May 8, 2009 5:57:51 PM
 				//            x
@@ -941,7 +992,12 @@ iterRunes:
 			// April 8, 2009
 			// April 8 2009
 			switch r {
-			case ' ', ',':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case ',':
 				//       x
 				// June 8, 2009
 				//       x
@@ -973,6 +1029,9 @@ iterRunes:
 				i++
 				break iterRunes
 			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				p.yearlen = i - p.yeari
 				p.setYear()
 				p.stateTime = timeStart
@@ -1027,6 +1086,9 @@ iterRunes:
 				}
 
 			case r == ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				//           x
 				// January 02 2006, 15:04:05
 				p.daylen = i - p.dayi
@@ -1050,6 +1112,9 @@ iterRunes:
 			//    oct. 7, '70
 			switch {
 			case r == ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
 				// continue
 			case unicode.IsDigit(r):
 				p.stateDate = dateAlphaWsDigit
@@ -1066,7 +1131,12 @@ iterRunes:
 				p.dayi = i
 			}
 			switch r {
-			case ' ', '-':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case '-':
 				if p.moi == 0 {
 					p.moi = i + 1
 					p.daylen = i - p.dayi
@@ -1088,7 +1158,12 @@ iterRunes:
 			// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
 			// Mon, 02-Jan-06 15:04:05 MST
 			switch r {
-			case ' ', '-':
+			case ' ':
+				for i+1 < len(datestr) && datestr[i+1] == ' ' {
+					i++
+				}
+				fallthrough
+			case '-':
 				if p.dayi == 0 {
 					p.dayi = i + 1
 				} else if p.moi == 0 {
@@ -1215,7 +1290,10 @@ iterRunes:
 						if p.nextIs(i, ' ') {
 							//                      x
 							// September 17, 2012 at 5:00pm UTC-05
-							i++         // skip '
+							i++ // skip '
+							for i+1 < len(datestr) && datestr[i+1] == ' ' {
+								i++
+							}
 							p.houri = 0 // reset hour
 						}
 					} else {
@@ -1240,6 +1318,9 @@ iterRunes:
 						p.set(i, "PM")
 					}
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.coalesceTime(i)
 					p.stateTime = timeWs
 				case ':':
@@ -1337,6 +1418,9 @@ iterRunes:
 					p.stateTime = timeWsAlphaZoneOffset
 					p.offseti = i
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					// 17:57:51 MST 2009
 					// 17:57:51 MST
 					p.tzlen = i - p.tzi
@@ -1361,6 +1445,9 @@ iterRunes:
 				//     15:44:11 UTC+0100 2015
 				switch r {
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.set(p.offseti, "-0700")
 					if p.yeari == 0 {
 						p.yeari = i + 1
@@ -1423,6 +1510,9 @@ iterRunes:
 				case ':':
 					p.stateTime = timeWsOffsetColon
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.set(p.offseti, "-0700")
 					p.yeari = i + 1
 					p.stateTime = timeWsOffsetWs
@@ -1503,6 +1593,9 @@ iterRunes:
 				//       06:20:00.000 UTC
 				switch r {
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.mslen = i - p.msi
 					p.stateTime = timePeriodWs
 				case '+', '-':
@@ -1533,6 +1626,9 @@ iterRunes:
 				//     13:31:51.999 -07:00 MST
 				switch r {
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.set(p.offseti, "-07:00")
 					p.stateTime = timePeriodOffsetColonWs
 					p.tzi = i + 1
@@ -1586,6 +1682,9 @@ iterRunes:
 				case ':':
 					p.stateTime = timePeriodWsOffsetColon
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.set(p.offseti, "-0700")
 				case '+', '-':
 					// This really doesn't seem valid, but for some reason when round-tripping a go date
@@ -1615,6 +1714,9 @@ iterRunes:
 				// 13:31:51.999 -07:00 MST
 				switch r {
 				case ' ':
+					for i+1 < len(datestr) && datestr[i+1] == ' ' {
+						i++
+					}
 					p.set(p.offseti, "-07:00")
 				default:
 					if unicode.IsLetter(r) {
