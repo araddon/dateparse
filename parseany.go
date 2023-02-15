@@ -253,7 +253,7 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 					// turn off the retry to avoid endless recursion
 					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
 					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
-					p, err = parseTime(datestr, time.Local, modifiedOpts...)
+					p, _ = parseTime(datestr, time.Local, modifiedOpts...)
 				}
 			}
 
