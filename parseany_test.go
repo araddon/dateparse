@@ -21,6 +21,7 @@ type dateTest struct {
 }
 
 var testInputs = []dateTest{
+	{in: "Wed,  8 Feb 2023 19:00:46 +1100 (AEDT)", out: "2023-02-08 19:00:46 +1100 AEDT"},
 	{in: "oct 7, 1970", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
 	{in: "Oct 7, '70", out: "1970-10-07 00:00:00 +0000 UTC"},
