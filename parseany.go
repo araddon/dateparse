@@ -170,15 +170,14 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 // Set Location to time.Local.  Same as ParseIn Location but lazily uses
 // the global time.Local variable for Location argument.
 //
-//     denverLoc, _ := time.LoadLocation("America/Denver")
-//     time.Local = denverLoc
+//	denverLoc, _ := time.LoadLocation("America/Denver")
+//	time.Local = denverLoc
 //
-//     t, err := dateparse.ParseLocal("3/1/2014")
+//	t, err := dateparse.ParseLocal("3/1/2014")
 //
 // Equivalent to:
 //
-//     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
-//
+//	t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, time.Local, opts...)
 	if err != nil {
@@ -204,9 +203,8 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 // ParseFormat parse's an unknown date-time string and returns a layout
 // string that can parse this (and exact same format) other date-time strings.
 //
-//     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
-//     // layout = "2006-01-02 15:04:05"
-//
+//	layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
+//	// layout = "2006-01-02 15:04:05"
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
@@ -2022,10 +2020,10 @@ func newParser(dateStr string, loc *time.Location, opts ...ParserOption) (*parse
 	// allow the options to mutate the parser fields from their defaults
 	for _, option := range opts {
 		if err := option(p); err != nil {
-			return nil, fmt.Sprintf("option error: %w", err)
+			return nil, fmt.Errorf("option error: %w", err)
 		}
 	}
-	return p
+	return p, nil
 }
 
 func (p *parser) nextIs(i int, b byte) bool {
