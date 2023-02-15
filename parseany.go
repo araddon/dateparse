@@ -383,9 +383,6 @@ iterRunes:
 				}
 
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				// 18 January 2018
 				// 8 January 2018
 				// 8 jan 2018
@@ -449,9 +446,6 @@ iterRunes:
 				p.stateDate = dateYearDashDashOffset
 				p.setDay()
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.daylen = i - p.dayi
 				p.stateDate = dateYearDashDashWs
 				p.stateTime = timeStart
@@ -512,9 +506,6 @@ iterRunes:
 			// 29-Jun-2016  dd-month(alpha)-yyyy
 			switch r {
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				// we need to find if this was 4 digits, aka year
 				// or 2 digits which makes it ambiguous year/day
 				length := i - (p.moi + p.molen + 1)
@@ -548,9 +539,6 @@ iterRunes:
 
 			switch r {
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				fallthrough
 			case ':':
 				p.stateTime = timeStart
@@ -581,9 +569,6 @@ iterRunes:
 				// We aren't breaking because we are going to re-use this case
 				// to find where the date starts, and possible time begins
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				fallthrough
 			case ':':
 				p.stateTime = timeStart
@@ -623,9 +608,6 @@ iterRunes:
 				// Note no break, we are going to pass by and re-enter this dateDigitSlash
 				// and look for ending (space) or not (just date)
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -647,9 +629,6 @@ iterRunes:
 
 			switch r {
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
@@ -687,9 +666,6 @@ iterRunes:
 			// 12 Feb 2006, 19:17:22
 			switch r {
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.yeari = i + 1
 				//p.yearlen = 4
 				p.dayi = 0
@@ -724,9 +700,6 @@ iterRunes:
 				i++
 				break iterRunes
 			case ' ':
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.yearlen = i - p.yeari
 				p.setYear()
 				break iterRunes
@@ -741,9 +714,6 @@ iterRunes:
 			//               weekday  %Y年%m月%e日 %A %I:%M %p
 			// 2013年07月18日 星期四 10:27 上午
 			if r == ' ' {
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				p.stateDate = dateDigitChineseYearWs
 				break
 			}
@@ -804,9 +774,6 @@ iterRunes:
 			case r == ' ':
 				//      X
 				// April 8, 2009
-				for i+1 < len(datestr) && datestr[i+1] == ' ' {
-					i++
-				}
 				if i > 3 {
 					// Check to see if the alpha is name of month?  or Day?
 					month := strings.ToLower(datestr[0:i])
