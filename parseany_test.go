@@ -10,8 +10,7 @@ import (
 
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
-	var ts time.Time
-	ts = MustParse("2020-07-20+08:00")
+	var ts = MustParse("2020-07-20+08:00")
 	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
@@ -417,6 +416,10 @@ var testInputs = []dateTest{
 	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC"},
 	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC"},
 	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
+
+	{in: "Wed,  8 Feb 2023 19:00:46 +1100 (AEDT)", out: "2023-02-08 08:00:46 +0000 UTC"},
+	{in: "FRI, 16 AUG 2013  9:39:51 +1000", out: "2013-08-15 23:39:51 +0000 UTC"},
+	{in: "Mon, 1 Dec 2008 14:48:22 GMT-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
@@ -425,52 +428,70 @@ func TestParse(t *testing.T) {
 	time.Local = time.UTC
 
 	zeroTime := time.Time{}.Unix()
-	ts, err := ParseAny("INVALID")
-	assert.Equal(t, zeroTime, ts.Unix())
-	assert.NotEqual(t, nil, err)
+	t.Run("Invalid", func(t *testing.T) {
+		ts, err := ParseAny("INVALID")
+		assert.Equal(t, zeroTime, ts.Unix())
+		assert.NotEqual(t, nil, err)
 
-	assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
-	// https://github.com/golang/go/issues/5294
-	_, err = ParseAny(time.RFC3339)
-	assert.NotEqual(t, nil, err)
+		assert.Equal(t, true, testDidPanic("NOT GONNA HAPPEN"))
+		// https://github.com/golang/go/issues/5294
+		_, err = ParseAny(time.RFC3339)
+		assert.NotEqual(t, nil, err)
+	})
 
 	for _, th := range testInputs {
-		if len(th.loc) > 0 {
-			loc, err := time.LoadLocation(th.loc)
-			if err != nil {
-				t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+		t.Run(th.in, func(t *testing.T) {
+			var ts time.Time
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("error: %s", r)
+				}
+			}()
+			if len(th.loc) > 0 {
+				loc, err := time.LoadLocation(th.loc)
+				if err != nil {
+					t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+				}
+				ts, err = ParseIn(th.in, loc)
+				if err != nil {
+					t.Fatalf("expected to parse %q but got %v", th.in, err)
+				}
+				got := fmt.Sprintf("%v", ts.In(time.UTC))
+				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+				if th.out != got {
+					t.Fatalf("whoops, got %s, expected %s", got, th.out)
+				}
+			} else {
+				ts = MustParse(th.in)
+				got := fmt.Sprintf("%v", ts.In(time.UTC))
+				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+				if th.out != got {
+					t.Fatalf("whoops, got %s, expected %s", got, th.out)
+				}
 			}
-			ts, err = ParseIn(th.in, loc)
-			if err != nil {
-				t.Fatalf("expected to parse %q but got %v", th.in, err)
-			}
-			got := fmt.Sprintf("%v", ts.In(time.UTC))
-			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-			if th.out != got {
-				panic("whoops")
-			}
-		} else {
-			ts = MustParse(th.in)
-			got := fmt.Sprintf("%v", ts.In(time.UTC))
-			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-			if th.out != got {
-				panic("whoops")
-			}
-		}
+		})
 	}
 
 	// some errors
 
-	assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
+	t.Run("", func(t *testing.T) {
+		assert.Equal(t, true, testDidPanic(`{"ts":"now"}`))
+	})
 
-	_, err = ParseAny("138421636711122233311111") // too many digits
-	assert.NotEqual(t, nil, err)
+	t.Run("too many digits", func(t *testing.T) {
+		_, err := ParseAny("138421636711122233311111") // too many digits
+		assert.NotEqual(t, nil, err)
+	})
 
-	_, err = ParseAny("-1314")
-	assert.NotEqual(t, nil, err)
+	t.Run("negative number", func(t *testing.T) {
+		_, err := ParseAny("-1314")
+		assert.NotEqual(t, nil, err)
+	})
 
-	_, err = ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
-	assert.NotEqual(t, nil, err)
+	t.Run("month doesn't exist", func(t *testing.T) {
+		_, err := ParseAny("2014-13-13 08:20:13,787") // month 13 doesn't exist so error
+		assert.NotEqual(t, nil, err)
+	})
 }
 
 func testDidPanic(datestr string) (paniced bool) {
@@ -488,7 +509,10 @@ func TestPStruct(t *testing.T) {
 	denverLoc, err := time.LoadLocation("America/Denver")
 	assert.Equal(t, nil, err)
 
-	p := newParser("08.21.71", denverLoc)
+	p, err := newParser("08.21.71", denverLoc)
+	if err != nil {
+		t.Fatalf("Parser build error: %s", err)
+	}
 
 	p.setMonth()
 	assert.Equal(t, 0, p.moi)
