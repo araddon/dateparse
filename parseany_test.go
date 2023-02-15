@@ -10,7 +10,7 @@ import (
 
 func TestOne(t *testing.T) {
 	time.Local = time.UTC
-	var ts time.Time = MustParse("2020-07-20+08:00")
+	var ts = MustParse("2020-07-20+08:00")
 	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
@@ -435,28 +435,35 @@ func TestParse(t *testing.T) {
 	assert.NotEqual(t, nil, err)
 
 	for _, th := range testInputs {
-		if len(th.loc) > 0 {
-			loc, err := time.LoadLocation(th.loc)
-			if err != nil {
-				t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+		t.Run(th.in, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("error: %s", r)
+				}
+			}()
+			if len(th.loc) > 0 {
+				loc, err := time.LoadLocation(th.loc)
+				if err != nil {
+					t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+				}
+				ts, err = ParseIn(th.in, loc)
+				if err != nil {
+					t.Fatalf("expected to parse %q but got %v", th.in, err)
+				}
+				got := fmt.Sprintf("%v", ts.In(time.UTC))
+				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+				if th.out != got {
+					t.Fatalf("whoops, got %s, expected %s", got, th.out)
+				}
+			} else {
+				ts = MustParse(th.in)
+				got := fmt.Sprintf("%v", ts.In(time.UTC))
+				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+				if th.out != got {
+					t.Fatalf("whoops, got %s, expected %s", got, th.out)
+				}
 			}
-			ts, err = ParseIn(th.in, loc)
-			if err != nil {
-				t.Fatalf("expected to parse %q but got %v", th.in, err)
-			}
-			got := fmt.Sprintf("%v", ts.In(time.UTC))
-			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-			if th.out != got {
-				panic("whoops")
-			}
-		} else {
-			ts = MustParse(th.in)
-			got := fmt.Sprintf("%v", ts.In(time.UTC))
-			assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-			if th.out != got {
-				panic("whoops")
-			}
-		}
+		})
 	}
 
 	// some errors
