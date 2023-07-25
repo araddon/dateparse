@@ -232,6 +232,10 @@ var testInputs = []dateTest{
 	// dd/mon/yyy hh:mm:ss tz
 	{in: "06/May/2008:08:11:17 -0700", out: "2008-05-06 15:11:17 +0000 UTC"},
 	{in: "30/May/2008:08:11:17 -0700", out: "2008-05-30 15:11:17 +0000 UTC"},
+	//   mm-dd-yyyy
+	{in: "04-02-2014", out: "2014-04-02 00:00:00 +0000 UTC"},
+	{in: "03-31-2014", out: "2014-03-31 00:00:00 +0000 UTC"},
+	{in: "4-2-2014", out: "2014-04-02 00:00:00 +0000 UTC"},
 	//   yyyy-mm-dd
 	{in: "2014-04-02", out: "2014-04-02 00:00:00 +0000 UTC"},
 	{in: "2014-03-31", out: "2014-03-31 00:00:00 +0000 UTC"},
@@ -511,7 +515,7 @@ var testParseErrors = []dateTest{
 	{in: "oct.-7-1970", err: true},
 	{in: "septe. 7, 1970", err: true},
 	{in: "SeptemberRR 7th, 1970", err: true},
-	{in: "29-06-2016", err: true},
+	// {in: "29-06-2016", err: true},
 	// this is just testing the empty space up front
 	{in: " 2018-01-02 17:08:09 -07:00", err: true},
 }

@@ -296,7 +296,38 @@ iterRunes:
 					p.moi = i + 1
 					p.set(0, "2006")
 				} else {
+					// Either Ambiguous dd/mm vs mm/dd  OR dd/month/yy
+					// 08-May-2005
+					// 03-31-2005
+					// 31-03-2005
+					if i+2 < len(p.datestr) && unicode.IsLetter(rune(datestr[i+1])) {
+						// 08-May-2005
+						p.stateDate = dateDigitDashAlpha
+						p.moi = i + 1
+						p.daylen = 2
+						p.dayi = 0
+						p.setDay()
+						continue
+					}
 					p.stateDate = dateDigitDash
+					// Ambiguous dd-mm vs mm-dd the bane of date-parsing
+					// 03-31-2005
+					// 31-03-2005
+					p.ambiguousMD = true
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							// 03-31-2005
+							p.molen = i
+							p.setMonth()
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							p.setDay()
+							p.moi = i + 1
+						}
+					}
 				}
 			case '/':
 				// 08/May/2005
@@ -456,7 +487,6 @@ iterRunes:
 				p.setDay()
 				break iterRunes
 			}
-
 		case dateYearDashDashT:
 			// dateYearDashDashT
 			//  2006-01-02T15:04:05Z07:00
@@ -479,6 +509,7 @@ iterRunes:
 				p.set(p.moi, "Jan")
 				p.dayi = i + 1
 			}
+
 		case dateDigitDash:
 			// 13-Feb-03
 			// 29-Jun-2016
@@ -486,8 +517,43 @@ iterRunes:
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
 			} else {
-				return nil, unknownErr(datestr)
+				// 03-19-2012 10:11:59
+				// 04-2-2014 03:00:37
+				// 3-1-2012 10:11:59
+				// 4-8-2014 22:05
+				// 3-1-2014
+				// 10-13-2014
+				// 01-02-2006
+				// 1-2-06
+				switch r {
+				case '-':
+					// This is the 2nd / so now we should know start pts of all of the dd, mm, yy
+					if p.preferMonthFirst {
+						if p.daylen == 0 {
+							p.daylen = i - p.dayi
+							p.setDay()
+							p.yeari = i + 1
+						}
+					} else {
+						if p.molen == 0 {
+							p.molen = i - p.moi
+							p.setMonth()
+							p.yeari = i + 1
+						}
+					}
+					// Note no break, we are going to pass by and re-enter this dateDigitSlash
+					// and look for ending (space) or not (just date)
+				case ' ':
+					p.stateTime = timeStart
+					if p.yearlen == 0 {
+						p.yearlen = i - p.yeari
+						p.setYear()
+					}
+					break iterRunes
+				}
+				//return nil, unknownErr(datestr)
 			}
+
 		case dateDigitDashAlpha:
 			// 13-Feb-03
 			// 28-Feb-03
@@ -1845,7 +1911,6 @@ iterRunes:
 		}
 
 		return p, nil
-
 	case dateDigitDot:
 		// 2014.05
 		p.molen = i - p.moi
@@ -1907,6 +1972,11 @@ iterRunes:
 	case dateAlphaWsDigitYearmaybe:
 		return p, nil
 
+	case dateDigitDash:
+		// 3/1/2014
+		// 10/13/2014
+		// 01/02/2006
+		return p, nil
 	case dateDigitSlash:
 		// 3/1/2014
 		// 10/13/2014
