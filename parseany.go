@@ -133,11 +133,11 @@ const (
 var (
 	// ErrAmbiguousMMDD for date formats such as 04/02/2014 the mm/dd vs dd/mm are
 	// ambiguous, so it is an error for strict parse rules.
-	ErrAmbiguousMMDD = fmt.Errorf("This date has ambiguous mm/dd vs dd/mm type format")
+	ErrAmbiguousMMDD = fmt.Errorf("this date has ambiguous mm/dd vs dd/mm type format")
 )
 
 func unknownErr(datestr string) error {
-	return fmt.Errorf("Could not find format for %q", datestr)
+	return fmt.Errorf("could not find format for %q", datestr)
 }
 
 // ParseAny parse an unknown date format, detect the layout.
@@ -170,15 +170,14 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 // Set Location to time.Local.  Same as ParseIn Location but lazily uses
 // the global time.Local variable for Location argument.
 //
-//     denverLoc, _ := time.LoadLocation("America/Denver")
-//     time.Local = denverLoc
+//	denverLoc, _ := time.LoadLocation("America/Denver")
+//	time.Local = denverLoc
 //
-//     t, err := dateparse.ParseLocal("3/1/2014")
+//	t, err := dateparse.ParseLocal("3/1/2014")
 //
 // Equivalent to:
 //
-//     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
-//
+//	t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, time.Local, opts...)
 	if err != nil {
@@ -204,9 +203,8 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 // ParseFormat parse's an unknown date-time string and returns a layout
 // string that can parse this (and exact same format) other date-time strings.
 //
-//     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
-//     // layout = "2006-01-02 15:04:05"
-//
+//	layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
+//	// layout = "2006-01-02 15:04:05"
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
@@ -243,14 +241,14 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 			if p != nil && p.ambiguousMD {
 				// if it errors out with the following error, swap before we
 				// get out of this function to reduce scope it needs to be applied on
-				_, err := p.parse()
+				_, err = p.parse()
 				if err != nil && strings.Contains(err.Error(), "month out of range") {
 					// create the option to reverse the preference
 					preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
 					// turn off the retry to avoid endless recursion
 					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
 					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
-					p, err = parseTime(datestr, time.Local, modifiedOpts...)
+					_, err = parseTime(datestr, time.Local, modifiedOpts...)
 				}
 			}
 
@@ -578,6 +576,7 @@ iterRunes:
 		case dateDigitSlash:
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
+			// 04/2/2014, 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			// 3/1/2014
@@ -607,6 +606,14 @@ iterRunes:
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
+					p.setYear()
+				}
+				break iterRunes
+			case ',':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					i++
 					p.setYear()
 				}
 				break iterRunes
@@ -711,7 +718,6 @@ iterRunes:
 			// 2013年07月18日 星期四 10:27 上午
 			if r == ' ' {
 				p.stateDate = dateDigitChineseYearWs
-				break
 			}
 		case dateDigitDot:
 			// This is the 2nd period
@@ -1449,7 +1455,6 @@ iterRunes:
 					p.extra = i - 1
 					p.stateTime = timeWsOffset
 					p.trimExtra()
-					break
 				default:
 					switch {
 					case unicode.IsDigit(r):
@@ -1596,7 +1601,6 @@ iterRunes:
 					// 00:00:00.000 +0300 +0300
 					p.extra = i - 1
 					p.trimExtra()
-					break
 				default:
 					if unicode.IsLetter(r) {
 						// 00:07:31.945167 +0000 UTC
@@ -1611,7 +1615,6 @@ iterRunes:
 				if r == '=' && datestr[i-1] == 'm' {
 					p.extra = i - 2
 					p.trimExtra()
-					break
 				}
 
 			case timePeriodWsOffsetColon:
@@ -1982,7 +1985,6 @@ type parser struct {
 	msi                        int
 	mslen                      int
 	offseti                    int
-	offsetlen                  int
 	tzi                        int
 	tzlen                      int
 	t                          *time.Time
