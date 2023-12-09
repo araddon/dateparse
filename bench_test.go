@@ -68,7 +68,7 @@ var (
 		"2014-04-26",
 	}
 
-	ErrDateFormat = fmt.Errorf("Invalid Date Format")
+	ErrDateFormat = fmt.Errorf("invalid date format")
 
 	timeFormats = []string{
 		// ISO 8601ish formats

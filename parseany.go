@@ -715,7 +715,7 @@ iterRunes:
 			// 2013年07月18日 星期四 10:27 上午
 			if r == ' ' {
 				p.stateDate = dateDigitChineseYearWs
-				break
+				break iterRunes
 			}
 		case dateDigitDot:
 			// This is the 2nd period
@@ -1630,7 +1630,7 @@ iterRunes:
 				if r == '=' && datestr[i-1] == 'm' {
 					p.extra = i - 2
 					p.trimExtra()
-					break
+					break iterTimeRunes
 				}
 
 			case timePeriodWsOffsetColon:
