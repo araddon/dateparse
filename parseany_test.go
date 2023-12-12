@@ -17,6 +17,8 @@ func TestOne(t *testing.T) {
 type dateTest struct {
 	in, out, loc, zname string
 	err                 bool
+	preferDayFirst      bool
+	retryAmbiguous      bool
 }
 
 var testInputs = []dateTest{
@@ -525,6 +527,32 @@ var testInputs = []dateTest{
 	{in: "03.31.2014", out: "2014-03-31 00:00:00 +0000 UTC"},
 	//   mm.dd.yy
 	{in: "08.21.71", out: "1971-08-21 00:00:00 +0000 UTC"},
+	//   dd.mm.yyyy (see https://github.com/araddon/dateparse/issues/129 and https://github.com/araddon/dateparse/issues/28 and https://github.com/araddon/dateparse/pull/133)
+	{in: "23.07.1938", out: "1938-07-23 00:00:00 +0000 UTC", retryAmbiguous: true},
+	{in: "23.07.1938", out: "1938-07-23 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "23/07/1938", out: "1938-07-23 00:00:00 +0000 UTC", retryAmbiguous: true},
+	{in: "23/07/1938", out: "1938-07-23 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "31/3/2014", out: "2014-03-31 00:00:00 +0000 UTC", retryAmbiguous: true},
+	{in: "31/3/2014", out: "2014-03-31 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "31/03/2014", out: "2014-03-31 00:00:00 +0000 UTC", retryAmbiguous: true},
+	{in: "31/03/2014", out: "2014-03-31 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "21/08/71", out: "1971-08-21 00:00:00 +0000 UTC", retryAmbiguous: true},
+	{in: "21/08/71", out: "1971-08-21 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "1/8/71", out: "1971-01-08 00:00:00 +0000 UTC", preferDayFirst: false},
+	{in: "1/8/71", out: "1971-08-01 00:00:00 +0000 UTC", preferDayFirst: true},
+	{in: "8/4/2014 22:05", out: "2014-08-04 22:05:00 +0000 UTC", preferDayFirst: false},
+	{in: "8/4/2014 22:05", out: "2014-04-08 22:05:00 +0000 UTC", preferDayFirst: true},
+	{in: "08/04/2014 22:05", out: "2014-08-04 22:05:00 +0000 UTC", preferDayFirst: false},
+	{in: "08/04/2014 22:05", out: "2014-04-08 22:05:00 +0000 UTC", preferDayFirst: true},
+	{in: "2/04/2014 03:00:51", out: "2014-02-04 03:00:51 +0000 UTC", preferDayFirst: false},
+	{in: "2/04/2014 03:00:51", out: "2014-04-02 03:00:51 +0000 UTC", preferDayFirst: true},
+	{in: "19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", retryAmbiguous: true},
+	{in: "19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", preferDayFirst: true},
+	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", retryAmbiguous: true},
+	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", preferDayFirst: true},
+	// https://github.com/araddon/dateparse/issues/105
+	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", retryAmbiguous: true},
+	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", preferDayFirst: true},
 	//  yyyymmdd and similar
 	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
 	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
@@ -573,12 +601,13 @@ func TestParse(t *testing.T) {
 					t.Fatalf("error: %s", r)
 				}
 			}()
+			parserOptions := []ParserOption{PreferMonthFirst(!th.preferDayFirst), RetryAmbiguousDateWithSwap(th.retryAmbiguous)}
 			if len(th.loc) > 0 {
 				loc, err := time.LoadLocation(th.loc)
 				if err != nil {
 					t.Fatalf("Expected to load location %q but got %v", th.loc, err)
 				}
-				ts, err = ParseIn(th.in, loc)
+				ts, err = ParseIn(th.in, loc, parserOptions...)
 				if err != nil {
 					t.Fatalf("expected to parse %q but got %v", th.in, err)
 				}
@@ -592,7 +621,7 @@ func TestParse(t *testing.T) {
 					assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
 				}
 			} else {
-				ts = MustParse(th.in)
+				ts = MustParse(th.in, parserOptions...)
 				got := fmt.Sprintf("%v", ts.In(time.UTC))
 				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
 				if th.out != got {

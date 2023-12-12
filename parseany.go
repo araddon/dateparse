@@ -396,12 +396,24 @@ iterRunes:
 					}
 				} else {
 					p.ambiguousMD = true
-					p.moi = 0
-					p.molen = i
-					if !p.setMonth() {
-						return p, unknownErr(datestr)
+					if p.preferMonthFirst {
+						if p.molen == 0 {
+							// 03.31.2005
+							p.molen = i
+							if !p.setMonth() {
+								return p, unknownErr(datestr)
+							}
+							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							if !p.setDay() {
+								return p, unknownErr(datestr)
+							}
+							p.moi = i + 1
+						}
 					}
-					p.dayi = i + 1
 				}
 
 			case ' ':
@@ -799,9 +811,17 @@ iterRunes:
 						return p, unknownErr(datestr)
 					}
 					p.stateDate = dateDigitDotDot
+				} else if p.dayi == 0 && p.yearlen == 0 {
+					// 23.07.2002
+					p.molen = i - p.moi
+					p.yeari = i + 1
+					if !p.setMonth() {
+						return p, unknownErr(datestr)
+					}
+					p.stateDate = dateDigitDotDot
 				} else {
 					// 2018.09.30
-					//p.molen = 2
+					// p.molen = 2
 					p.molen = i - p.moi
 					p.dayi = i + 1
 					if !p.setMonth() {
@@ -2267,20 +2287,20 @@ func (p *parser) coalesceTime(end int) {
 	}
 }
 func (p *parser) setFullMonth(month string) {
-		oldLen := len(p.format)
-		const fullMonth = "January"
+	oldLen := len(p.format)
+	const fullMonth = "January"
 	p.format = []byte(fmt.Sprintf("%s%s%s", p.format[0:p.moi], fullMonth, p.format[p.moi+len(month):]))
-		newLen := len(p.format)
+	newLen := len(p.format)
 	if newLen > oldLen && p.formatSetLen >= p.moi {
-			p.formatSetLen += newLen - oldLen
+		p.formatSetLen += newLen - oldLen
 	} else if newLen < oldLen && p.formatSetLen >= p.moi {
 		p.formatSetLen -= oldLen - newLen
-		}
+	}
 
-		if p.formatSetLen > len(p.format) {
-			p.formatSetLen = len(p.format)
-		} else if p.formatSetLen < len(fullMonth) {
-			p.formatSetLen = len(fullMonth)
+	if p.formatSetLen > len(p.format) {
+		p.formatSetLen = len(p.format)
+	} else if p.formatSetLen < len(fullMonth) {
+		p.formatSetLen = len(fullMonth)
 	} else if p.formatSetLen < 0 {
 		p.formatSetLen = 0
 	}
