@@ -133,6 +133,14 @@ var testInputs = []dateTest{
 	{in: "June 2nd 2012", out: "2012-06-02 00:00:00 +0000 UTC"},
 	{in: "June 22nd, 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
 	{in: "June 22nd 2012", out: "2012-06-22 00:00:00 +0000 UTC"},
+	// Incorporate PR https://github.com/araddon/dateparse/pull/128 to fix https://github.com/araddon/dateparse/issues/127
+	// dd[th,nd,st,rd] Month yyyy
+	{in: "1st September 2012", out: "2012-09-01 00:00:00 +0000 UTC"},
+	{in: "2nd September 2012", out: "2012-09-02 00:00:00 +0000 UTC"},
+	{in: "3rd September 2012", out: "2012-09-03 00:00:00 +0000 UTC"},
+	{in: "4th September 2012", out: "2012-09-04 00:00:00 +0000 UTC"},
+	{in: "2nd January 2018", out: "2018-01-02 00:00:00 +0000 UTC"},
+	{in: "3nd Feb 2018 13:58:24", out: "2018-02-03 13:58:24 +0000 UTC"},
 	// RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 03 Jul 2015 08:08:08 CET", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CET"},

@@ -435,6 +435,12 @@ iterRunes:
 				p.stateDate = dateDigitChineseYear
 			case ',':
 				return p, unknownErr(datestr)
+			case 's', 'S', 'r', 'R', 't', 'T', 'n', 'N':
+				// 1st January 2018
+				// 2nd Jan 2018 23:59
+				// st, rd, nd, st
+				p.stateDate = dateAlphaWsMonthSuffix
+				i--
 			default:
 				continue
 			}
