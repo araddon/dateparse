@@ -418,6 +418,8 @@ var testInputs = []dateTest{
 	{in: "2013 May 02 11:37:55", out: "2013-05-02 11:37:55 +0000 UTC"},
 	{in: "2013 June 02 11:37:55", out: "2013-06-02 11:37:55 +0000 UTC"},
 	{in: "2013 December 02 11:37:55", out: "2013-12-02 11:37:55 +0000 UTC"},
+	// https://github.com/araddon/dateparse/issues/143
+	{in: "20140722105203.364", out: "2014-07-22 10:52:03.364 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000
