@@ -90,6 +90,9 @@ const (
 	dateAlphaWsAlpha
 	dateAlphaWsAlphaYearmaybe // 34
 	dateAlphaPeriodWsDigit
+	dateAlphaSlash
+	dateAlphaSlashDigit
+	dateAlphaSlashDigitSlash
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
 )
@@ -855,6 +858,14 @@ iterRunes:
 			//
 			//  dateAlphaPeriodWsDigit
 			//    oct. 1, 1970
+			//  dateAlphaSlash
+			//    dateAlphaSlashDigit
+			//      dateAlphaSlashDigitSlash
+			//        Oct/ 7/1970
+			//        Oct/07/1970
+			//        February/ 7/1970
+			//        February/07/1970
+			//
 			// dateWeekdayComma
 			//   Monday, 02 Jan 2006 15:04:05 MST
 			//   Monday, 02-Jan-06 15:04:05 MST
@@ -936,6 +947,30 @@ iterRunes:
 					return parseTime(newDatestr, loc, opts...)
 				} else {
 					return p, unknownErr(datestr)
+				}
+			case r == '/':
+				//    X
+				// Oct/ 7/1970
+				// Oct/07/1970
+				//         X
+				// February/ 7/1970
+				// February/07/1970
+				// Must be a valid short or long month
+				if i == 3 {
+					p.moi = 0
+					p.molen = i - p.moi
+					p.set(p.moi, "Jan")
+					p.stateDate = dateAlphaSlash
+				} else {
+					possibleFullMonth := strings.ToLower(p.datestr[:i])
+					if i > 3 && isMonthFull(possibleFullMonth) {
+						p.moi = 0
+						p.molen = i - p.moi
+						p.fullMonth = possibleFullMonth
+						p.stateDate = dateAlphaSlash
+					} else {
+						return p, unknownErr(datestr)
+					}
 				}
 			}
 
@@ -1183,6 +1218,53 @@ iterRunes:
 			default:
 				return p, unknownErr(datestr)
 			}
+
+		case dateAlphaSlash:
+			//       Oct/ 7/1970
+			//       February/07/1970
+			switch {
+			case r == ' ':
+				// continue
+			case unicode.IsDigit(r):
+				p.stateDate = dateAlphaSlashDigit
+				p.dayi = i
+			default:
+				return p, unknownErr(datestr)
+			}
+
+		case dateAlphaSlashDigit:
+			// dateAlphaSlash:
+			//   dateAlphaSlashDigit:
+			//     dateAlphaSlashDigitSlash:
+			//       Oct/ 7/1970
+			//       Oct/07/1970
+			//       February/ 7/1970
+			//       February/07/1970
+			switch {
+			case r == '/':
+				p.yeari = i + 1
+				p.daylen = i - p.dayi
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+				p.stateDate = dateAlphaSlashDigitSlash
+			case unicode.IsDigit(r):
+				// continue
+			default:
+				return p, unknownErr(datestr)
+			}
+
+		case dateAlphaSlashDigitSlash:
+			switch {
+			case unicode.IsDigit(r):
+				// continue
+			case r == ' ':
+				p.stateTime = timeStart
+				break iterRunes
+			default:
+				return p, unknownErr(datestr)
+			}
+
 		case dateWeekdayComma:
 			// Monday, 02 Jan 2006 15:04:05 MST
 			// Monday, 02 Jan 2006 15:04:05 -0700
@@ -2044,6 +2126,11 @@ iterRunes:
 		p.setEntireFormat([]byte("2006年01月02日 15:04:05"))
 		return p, nil
 
+	case dateAlphaSlashDigitSlash:
+		// Oct/ 7/1970
+		// February/07/1970
+		return p, nil
+
 	case dateWeekdayComma:
 		// Monday, 02 Jan 2006 15:04:05 -0700
 		// Monday, 02 Jan 2006 15:04:05 +0100
@@ -2381,6 +2468,9 @@ func isDay(alpha string) bool {
 	return false
 }
 func isMonthFull(alpha string) bool {
+	if len(alpha) > len("september") {
+		return false
+	}
 	for _, month := range months {
 		if alpha == month {
 			return true
