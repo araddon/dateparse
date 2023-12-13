@@ -373,6 +373,19 @@ var testInputs = []dateTest{
 	{in: "1 October 2022 23:59", out: "2022-10-01 23:59:00 +0000 UTC"},
 	{in: "1 November 2022 23:59", out: "2022-11-01 23:59:00 +0000 UTC"},
 	{in: "1 December 2022 23:59", out: "2022-12-01 23:59:00 +0000 UTC"},
+	// https://github.com/araddon/dateparse/issues/149
+	{in: "2018-09-30 21:09:13 PMDT", out: "2018-09-30 21:09:13 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 08:09:13 PM PMDT", out: "2018-09-30 20:09:13 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 08:09:13pm PMDT", out: "2018-09-30 20:09:13 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 21:09:13.123 PMDT", out: "2018-09-30 21:09:13.123 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 08:09:13.123 PM PMDT", out: "2018-09-30 20:09:13.123 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 08:09:13.123pm PMDT", out: "2018-09-30 20:09:13.123 +0000 UTC", zname: "PMDT"},
+	{in: "2018-09-30 21:09:13 AMT", out: "2018-09-30 21:09:13 +0000 UTC", zname: "AMT"},
+	{in: "2018-09-30 08:09:13 AM AMT", out: "2018-09-30 08:09:13 +0000 UTC", zname: "AMT"},
+	{in: "2018-09-30 08:09:13am AMT", out: "2018-09-30 08:09:13 +0000 UTC", zname: "AMT"},
+	{in: "2018-09-30 21:09:13.123 AMT", out: "2018-09-30 21:09:13.123 +0000 UTC", zname: "AMT"},
+	{in: "2018-09-30 08:09:13.123 am AMT", out: "2018-09-30 08:09:13.123 +0000 UTC", zname: "AMT"},
+	{in: "2018-09-30 08:09:13.123am AMT", out: "2018-09-30 08:09:13.123 +0000 UTC", zname: "AMT"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000
@@ -713,6 +726,23 @@ var testParseErrors = []dateTest{
 	{in: "Wayne, Bruce", err: true},
 	{in: "Miami, Florida", err: true},
 	{in: "Doe, John", err: true},
+	// https://github.com/araddon/dateparse/issues/149
+	{in: "2018-09-30 21:09:13PMDT", err: true},
+	{in: "2018-09-30 08:09:13pm PM", err: true},
+	{in: "2018-09-30 08:09:13 PM PM", err: true},
+	{in: "2018-09-30 08:09:13 PMDT PM", err: true},
+	{in: "2018-09-30 21:09:13.123PMDT", err: true},
+	{in: "2018-09-30 08:09:13.123PM pm", err: true},
+	{in: "2018-09-30 08:09:13.123 pm PM", err: true},
+	{in: "2018-09-30 08:09:13.123 PMDT pm", err: true},
+	{in: "2018-09-30 21:09:13AMT", err: true},
+	{in: "2018-09-30 08:09:13am AM", err: true},
+	{in: "2018-09-30 08:09:13 AM AM", err: true},
+	{in: "2018-09-30 08:09:13 AMT AM", err: true},
+	{in: "2018-09-30 21:09:13.123AMT", err: true},
+	{in: "2018-09-30 08:09:13.123AM am", err: true},
+	{in: "2018-09-30 08:09:13.123 am AM", err: true},
+	{in: "2018-09-30 08:09:13.123 AMDT am", err: true},
 }
 
 func TestParseErrors(t *testing.T) {

@@ -114,7 +114,6 @@ const (
 	timeOffset
 	timeOffsetColon
 	timeOffsetColonAlpha
-	timeAlpha
 	timePeriod
 	timePeriodAMPM
 	timeZ
@@ -1350,17 +1349,22 @@ iterRunes:
 					} else {
 						// Could be AM/PM
 						isLower := r == 'a' || r == 'p'
+						isTwoLetterWord := ((i+2) == len(p.datestr) || p.nextIs(i+1, ' '))
 						switch {
-						case isLower && p.nextIs(i, 'm'):
+						case isLower && p.nextIs(i, 'm') && isTwoLetterWord && !p.parsedAMPM:
 							p.coalesceTime(i)
 							p.set(i, "pm")
+							p.parsedAMPM = true
 							// skip 'm'
 							i++
-						case !isLower && p.nextIs(i, 'M'):
+						case !isLower && p.nextIs(i, 'M') && isTwoLetterWord && !p.parsedAMPM:
 							p.coalesceTime(i)
 							p.set(i, "PM")
+							p.parsedAMPM = true
 							// skip 'M'
 							i++
+						default:
+							return p, unexpectedTail(p.datestr[i:])
 						}
 					}
 				case ' ':
@@ -1526,8 +1530,11 @@ iterRunes:
 				//   timeWsAlpha
 				//     00:12:00 PST
 				//     15:44:11 UTC+0100 2015
-				if r == 'm' || r == 'M' {
-					//return parse("2006-01-02 03:04:05 PM", p.datestr, loc)
+				isTwoLetterWord := ((i+1) == len(p.datestr) || p.nextIs(i, ' '))
+				if (r == 'm' || r == 'M') && isTwoLetterWord {
+					if p.parsedAMPM {
+						return p, unexpectedTail(p.datestr[i:])
+					}
 					// This isn't a time zone after all...
 					p.tzi = 0
 					p.stateTime = timeWsAMPM
@@ -1536,6 +1543,7 @@ iterRunes:
 					} else {
 						p.set(i-1, "PM")
 					}
+					p.parsedAMPM = true
 					if p.hourlen == 2 {
 						p.set(p.houri, "03")
 					} else if p.hourlen == 1 {
@@ -1668,21 +1676,26 @@ iterRunes:
 				case 'a', 'A', 'p', 'P':
 					// Could be AM/PM
 					isLower := r == 'a' || r == 'p'
+					isTwoLetterWord := ((i+2) == len(p.datestr) || p.nextIs(i+1, ' '))
 					switch {
-					case isLower && p.nextIs(i, 'm'):
+					case isLower && p.nextIs(i, 'm') && isTwoLetterWord && !p.parsedAMPM:
 						p.mslen = i - p.msi
 						p.coalesceTime(i)
 						p.set(i, "pm")
+						p.parsedAMPM = true
 						// skip 'm'
 						i++
 						p.stateTime = timePeriodAMPM
-					case !isLower && p.nextIs(i, 'M'):
+					case !isLower && p.nextIs(i, 'M') && isTwoLetterWord && !p.parsedAMPM:
 						p.mslen = i - p.msi
 						p.coalesceTime(i)
 						p.set(i, "PM")
+						p.parsedAMPM = true
 						// skip 'M'
 						i++
 						p.stateTime = timePeriodAMPM
+					default:
+						return p, unexpectedTail(p.datestr[i:])
 					}
 				default:
 					if !unicode.IsDigit(r) {
@@ -2053,6 +2066,7 @@ type parser struct {
 	formatSetLen               int
 	datestr                    string
 	fullMonth                  string
+	parsedAMPM                 bool
 	skip                       int
 	extra                      int
 	part1Len                   int
