@@ -19,6 +19,7 @@ type dateTest struct {
 	err                 bool
 	preferDayFirst      bool
 	retryAmbiguous      bool
+	expectAmbiguous     bool
 }
 
 var testInputs = []dateTest{
@@ -847,21 +848,30 @@ func TestParseLayout(t *testing.T) {
 
 var testParseStrict = []dateTest{
 	//   dd-mon-yy  13-Feb-03
-	{in: "03-03-14", err: true},
+	{in: "03-03-14", err: true, expectAmbiguous: true},
 	//   mm.dd.yyyy
-	{in: "3.3.2014", err: true},
+	{in: "3.3.2014", err: true, expectAmbiguous: true},
 	//   mm.dd.yy
-	{in: "08.09.71", err: true},
+	{in: "08.09.71", err: true, expectAmbiguous: true},
 	//  mm/dd/yyyy
-	{in: "3/5/2014", err: true},
+	{in: "3/5/2014", err: true, expectAmbiguous: true},
 	//  mm/dd/yy
-	{in: "08/08/71", err: true},
-	{in: "8/8/71", err: true},
+	{in: "08/08/71", err: true, expectAmbiguous: true},
+	{in: "8/8/71", err: true, expectAmbiguous: true},
 	//  mm/dd/yy hh:mm:ss
-	{in: "04/02/2014 04:08:09", err: true},
-	{in: "4/2/2014 04:08:09", err: true},
+	{in: "04/02/2014 04:08:09", err: true, expectAmbiguous: true},
+	{in: "4/2/2014 04:08:09", err: true, expectAmbiguous: true},
 	{in: `{"hello"}`, err: true},
 	{in: "2009-08-12T22:15Z"},
+	// https://github.com/araddon/dateparse/issues/91
+	{in: "3.31.2014", err: true, expectAmbiguous: true},
+	{in: "3.3.2014", err: true, expectAmbiguous: true},
+	{in: "03.31.2014", err: true, expectAmbiguous: true},
+	{in: "08.21.71", err: true, expectAmbiguous: true},
+	{in: "3/31/2014", err: true, expectAmbiguous: true},
+	{in: "3/3/2014", err: true, expectAmbiguous: true},
+	{in: "03/31/2014", err: true, expectAmbiguous: true},
+	{in: "08/21/71", err: true, expectAmbiguous: true},
 }
 
 func TestParseStrict(t *testing.T) {
@@ -871,6 +881,9 @@ func TestParseStrict(t *testing.T) {
 			_, err := ParseStrict(th.in)
 			if th.err {
 				assert.NotEqual(t, nil, err)
+				if th.expectAmbiguous {
+					assert.Contains(t, err.Error(), ErrAmbiguousMMDD.Error(), "expected ambiguous")
+				}
 			} else {
 				assert.Equal(t, nil, err)
 			}
