@@ -324,10 +324,20 @@ var testInputs = []dateTest{
 	//   yyyy-mm-dd-07:00
 	{in: "2020-07-20+08:00", out: "2020-07-19 16:00:00 +0000 UTC"},
 	{in: "2020-07-20+0800", out: "2020-07-19 16:00:00 +0000 UTC"},
-	//   dd-mmm-yy
+	//   dd-mmm-yy (alpha month)
 	{in: "28-Feb-02", out: "2002-02-28 00:00:00 +0000 UTC"},
 	{in: "15-Jan-18", out: "2018-01-15 00:00:00 +0000 UTC"},
 	{in: "15-Jan-2017", out: "2017-01-15 00:00:00 +0000 UTC"},
+	{in: "28-Feb-02 15:16:17", out: "2002-02-28 15:16:17 +0000 UTC"},
+	{in: "15-Jan-18 15:16:17", out: "2018-01-15 15:16:17 +0000 UTC"},
+	{in: "15-Jan-2017 15:16:17", out: "2017-01-15 15:16:17 +0000 UTC"},
+	//   dd-mm-yy (digit month - potentially ambiguous) - https://github.com/araddon/dateparse/issues/139
+	{in: "28-02-02", out: "2002-02-28 00:00:00 +0000 UTC"},
+	{in: "15-01-18", out: "2018-01-15 00:00:00 +0000 UTC"},
+	{in: "15-01-2017", out: "2017-01-15 00:00:00 +0000 UTC"},
+	{in: "28-02-02 15:16:17", out: "2002-02-28 15:16:17 +0000 UTC"},
+	{in: "15-01-18 15:16:17", out: "2018-01-15 15:16:17 +0000 UTC"},
+	{in: "15-01-2017 15:16:17", out: "2017-01-15 15:16:17 +0000 UTC"},
 	// yyyy-mm
 	{in: "2014-04", out: "2014-04-01 00:00:00 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss AM
@@ -733,7 +743,6 @@ var testParseErrors = []dateTest{
 	{in: "oct.-7-1970", err: true},
 	{in: "septe. 7, 1970", err: true},
 	{in: "SeptemberRR 7th, 1970", err: true},
-	{in: "29-06-2016", err: true},
 	// this is just testing the empty space up front
 	{in: " 2018-01-02 17:08:09 -07:00", err: true},
 	// a semantic version number should not be interpreted as a date

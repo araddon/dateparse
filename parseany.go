@@ -59,26 +59,28 @@ const (
 	dateYearDash
 	dateYearDashAlphaDash
 	dateYearDashDash
-	dateYearDashDashWs // 5
+	dateYearDashDashWs // 6
 	dateYearDashDashT
 	dateYearDashDashOffset
 	dateDigitDash
 	dateDigitDashAlpha
-	dateDigitDashAlphaDash // 10
+	dateDigitDashAlphaDash // 11
+	dateDigitDashDigit
+	dateDigitDashDigitDash
 	dateDigitDot
 	dateDigitDotDot
 	dateDigitSlash
 	dateDigitYearSlash
-	dateDigitSlashAlpha // 15
+	dateDigitSlashAlpha // 18
 	dateDigitColon
 	dateDigitChineseYear
 	dateDigitChineseYearWs
 	dateDigitWs
-	dateDigitWsMoYear // 20
+	dateDigitWsMoYear // 23
 	dateAlpha
 	dateAlphaWs
 	dateAlphaWsDigit
-	dateAlphaWsDigitMore // 24
+	dateAlphaWsDigitMore // 27
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth
@@ -88,7 +90,7 @@ const (
 	dateAlphaWsMore
 	dateAlphaWsAtTime
 	dateAlphaWsAlpha
-	dateAlphaWsAlphaYearmaybe // 34
+	dateAlphaWsAlphaYearmaybe // 37
 	dateAlphaPeriodWsDigit
 	dateAlphaSlash
 	dateAlphaSlashDigit
@@ -545,6 +547,9 @@ iterRunes:
 			if unicode.IsLetter(r) {
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
+			} else if unicode.IsDigit(r) {
+				p.stateDate = dateDigitDashDigit
+				p.moi = i
 			} else {
 				return p, unknownErr(datestr)
 			}
@@ -560,10 +565,29 @@ iterRunes:
 				p.stateDate = dateDigitDashAlphaDash
 			}
 
-		case dateDigitDashAlphaDash:
-			// 13-Feb-03   ambiguous
-			// 28-Feb-03   ambiguous
-			// 29-Jun-2016  dd-month(alpha)-yyyy
+		case dateDigitDashDigit:
+			// 29-06-2026
+			switch r {
+			case '-':
+				//      X
+				// 29-06-2026
+				p.molen = i - p.moi
+				if p.molen == 2 {
+					p.set(p.moi, "01")
+					p.yeari = i + 1
+					p.stateDate = dateDigitDashDigitDash
+				} else {
+					return p, unknownErr(datestr)
+				}
+			}
+
+		case dateDigitDashAlphaDash, dateDigitDashDigitDash:
+			// dateDigitDashAlphaDash:
+			//   13-Feb-03   ambiguous
+			//   28-Feb-03   ambiguous
+			//   29-Jun-2016  dd-month(alpha)-yyyy
+			// dateDigitDashDigitDash:
+			//   29-06-2026
 			switch r {
 			case ' ':
 				// we need to find if this was 4 digits, aka year
@@ -581,8 +605,11 @@ iterRunes:
 				} else if length == 2 {
 					// We have no idea if this is
 					// yy-mon-dd   OR  dd-mon-yy
+					// (or for dateDigitDashDigitDash, yy-mm-dd  OR  dd-mm-yy)
 					//
-					// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
+					// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
+					// which is a horrible assumption, but seems to be the convention for
+					// dates that are formatted in this way.
 					p.ambiguousMD = true
 					p.yearlen = 2
 					p.set(p.yeari, "06")
@@ -592,6 +619,8 @@ iterRunes:
 					if !p.setDay() {
 						return p, unknownErr(datestr)
 					}
+				} else {
+					return p, unknownErr(datestr)
 				}
 				p.stateTime = timeStart
 				break iterRunes
@@ -2055,32 +2084,43 @@ iterRunes:
 	case dateYearDashDashT:
 		return p, nil
 
-	case dateDigitDashAlphaDash:
-		// 13-Feb-03   ambiguous
-		// 28-Feb-03   ambiguous
-		// 29-Jun-2016
-		length := len(p.datestr) - (p.moi + p.molen + 1)
-		if length == 4 {
-			p.yearlen = 4
-			p.set(p.yeari, "2006")
-			// We now also know that part1 was the day
-			p.dayi = 0
-			p.daylen = p.part1Len
-			if !p.setDay() {
-				return p, unknownErr(datestr)
-			}
-		} else if length == 2 {
-			// We have no idea if this is
-			// yy-mon-dd   OR  dd-mon-yy
-			//
-			// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
-			p.ambiguousMD = true
-			p.yearlen = 2
-			p.set(p.yeari, "06")
-			// We now also know that part1 was the day
-			p.dayi = 0
-			p.daylen = p.part1Len
-			if !p.setDay() {
+	case dateDigitDashAlphaDash, dateDigitDashDigitDash:
+		// This has already been done if we parsed the time already
+		if p.stateTime == timeIgnore {
+			// dateDigitDashAlphaDash:
+			//   13-Feb-03   ambiguous
+			//   28-Feb-03   ambiguous
+			//   29-Jun-2016
+			// dateDigitDashDigitDash:
+			//   29-06-2026
+			length := len(p.datestr) - (p.moi + p.molen + 1)
+			if length == 4 {
+				p.yearlen = 4
+				p.set(p.yeari, "2006")
+				// We now also know that part1 was the day
+				p.dayi = 0
+				p.daylen = p.part1Len
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+			} else if length == 2 {
+				// We have no idea if this is
+				// yy-mon-dd   OR  dd-mon-yy
+				// (or for dateDigitDashDigitDash, yy-mm-dd  OR  dd-mm-yy)
+				//
+				// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
+				// which is a horrible assumption, but seems to be the convention for
+				// dates that are formatted in this way.
+				p.ambiguousMD = true
+				p.yearlen = 2
+				p.set(p.yeari, "06")
+				// We now also know that part1 was the day
+				p.dayi = 0
+				p.daylen = p.part1Len
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+			} else {
 				return p, unknownErr(datestr)
 			}
 		}
