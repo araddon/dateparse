@@ -95,6 +95,8 @@ const (
 	dateAlphaSlashDigitSlash
 	dateWeekdayComma
 	dateWeekdayAbbrevComma
+	dateYearWs
+	dateYearWsMonthWs
 )
 const (
 	// Time state
@@ -426,7 +428,15 @@ iterRunes:
 				// 02 Jan 2018 23:59:34
 				// 12 Feb 2006, 19:17
 				// 12 Feb 2006, 19:17:22
-				if i == 6 {
+				// 2013 Jan 06 15:04:05
+				if i == 4 {
+					p.yearlen = i
+					p.moi = i + 1
+					if !p.setYear() {
+						return p, unknownErr(datestr)
+					}
+					p.stateDate = dateYearWs
+				} else if i == 6 {
 					p.stateDate = dateDigitSt
 				} else {
 					p.stateDate = dateDigitWs
@@ -795,6 +805,45 @@ iterRunes:
 				}
 				break iterRunes
 			}
+
+		case dateYearWs:
+			// 2013 Jan 06 15:04:05
+			// 2013 January 06 15:04:05
+			if r == ' ' {
+				p.molen = i - p.moi
+				// Must be a valid short or long month
+				if p.molen == 3 {
+					p.set(p.moi, "Jan")
+					p.dayi = i + 1
+					p.stateDate = dateYearWsMonthWs
+				} else {
+					possibleFullMonth := strings.ToLower(p.datestr[p.moi:(p.moi + p.molen)])
+					if i > 3 && isMonthFull(possibleFullMonth) {
+						p.fullMonth = possibleFullMonth
+						p.dayi = i + 1
+						p.stateDate = dateYearWsMonthWs
+					} else {
+						return p, unknownErr(datestr)
+					}
+				}
+			}
+		case dateYearWsMonthWs:
+			// 2013 Jan 06 15:04:05
+			// 2013 January 06 15:04:05
+			switch r {
+			case ',':
+				p.daylen = i - p.dayi
+				p.setDay()
+				i++
+				p.stateTime = timeStart
+				break iterRunes
+			case ' ':
+				p.daylen = i - p.dayi
+				p.setDay()
+				p.stateTime = timeStart
+				break iterRunes
+			}
+
 		case dateDigitChineseYear:
 			// dateDigitChineseYear
 			//   2014年04月08日
@@ -2140,6 +2189,11 @@ iterRunes:
 	case dateWeekdayAbbrevComma:
 		// Mon, 02-Jan-06 15:04:05 MST
 		// Mon, 02 Jan 2006 15:04:05 MST
+		return p, nil
+
+	case dateYearWsMonthWs:
+		// 2013 May 02 11:37:55
+		// 2013 December 02 11:37:55
 		return p, nil
 
 	}
