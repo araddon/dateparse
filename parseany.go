@@ -106,18 +106,19 @@ const (
 	timeStart
 	timeWs
 	timeWsAlpha
+	timeWsAlphaRParen
 	timeWsAlphaWs
-	timeWsAlphaZoneOffset // 5
+	timeWsAlphaZoneOffset // 6
 	timeWsAlphaZoneOffsetWs
 	timeWsAlphaZoneOffsetWsYear
 	timeWsAlphaZoneOffsetWsExtra
 	timeWsAMPMMaybe
-	timeWsAMPM // 10
+	timeWsAMPM // 11
 	timeWsOffset
-	timeWsOffsetWs // 12
+	timeWsOffsetWs // 13
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
-	timeWsYear // 15
+	timeWsYear // 16
 	timeOffset
 	timeOffsetColon
 	timeOffsetColonAlpha
@@ -1615,6 +1616,7 @@ iterRunes:
 			case timeWsAlpha:
 				// 06:20:00 UTC
 				// 06:20:00 UTC-05
+				// 06:20:00 (EST)
 				// timeWsAlphaWs
 				//   17:57:51 MST 2009
 				// timeWsAlphaZoneOffset
@@ -1638,17 +1640,28 @@ iterRunes:
 					}
 					p.stateTime = timeWsAlphaZoneOffset
 					p.offseti = i
-				case ' ':
+				case ' ', ')':
 					// 17:57:51 MST 2009
 					// 17:57:51 MST
+					// 06:20:00 (EST)
 					p.tzlen = i - p.tzi
 					if p.tzlen == 4 {
 						p.set(p.tzi, " MST")
 					} else if p.tzlen == 3 {
 						p.set(p.tzi, "MST")
 					}
-					p.stateTime = timeWsAlphaWs
-					p.yeari = i + 1
+					if r == ' ' {
+						p.stateTime = timeWsAlphaWs
+						p.yeari = i + 1
+					} else {
+						// 06:20:00 (EST)
+						// This must be the end of the datetime or the format is unknown
+						if i+1 == len(p.datestr) {
+							p.stateTime = timeWsAlphaRParen
+						} else {
+							return p, unknownErr(datestr)
+						}
+					}
 				}
 			case timeWsAlphaWs:
 				//   17:57:51 MST 2009
@@ -1922,6 +1935,9 @@ iterRunes:
 			default:
 				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, string(p.datestr[p.tzi:]))
 			}
+
+		case timeWsAlphaRParen:
+			// continue
 
 		case timeWsAlphaWs:
 			p.yearlen = i - p.yeari

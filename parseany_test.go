@@ -60,7 +60,7 @@ var testInputs = []dateTest{
 	{in: "Thu May  8 17:57:51 PST 2009", out: "2009-05-08 17:57:51 +0000 UTC", zname: "PST"},
 	{in: "Thu May 08 17:57:51 PST 2009", out: "2009-05-08 17:57:51 +0000 UTC", zname: "PST"},
 	{in: "Thu May 08 17:57:51 CEST 2009", out: "2009-05-08 17:57:51 +0000 UTC", zname: "CEST"},
-	{in: "Thu May 08 17:57:51 CEST 2009", out: "2009-05-08 15:57:51 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "Thu May 08 17:57:51 CEST 2009", out: "2009-05-08 15:57:51 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	{in: "Thu May 08 05:05:07 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC", zname: "PST"},
 	{in: "Thu May 08 5:5:7 PST 2009", out: "2009-05-08 05:05:07 +0000 UTC", zname: "PST"},
 	// Day Month dd time
@@ -145,7 +145,7 @@ var testInputs = []dateTest{
 	// RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
 	{in: "Fri, 03 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 03 Jul 2015 08:08:08 CET", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CET"},
-	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles", zname: "PDT"},
 	{in: "Fri, 03 Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "PST"},
 	{in: "Fri, 03 Jul 2015 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	{in: "Fri, 3 Jul 2015 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
@@ -163,11 +163,11 @@ var testInputs = []dateTest{
 	//
 	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC"},
 	{in: "Tue, 5 Jul 2017 04:08:03 -0700 (MST)", out: "2017-07-05 11:08:03 +0000 UTC"},
-	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	// day, dd-Mon-yy hh:mm:zz TZ
 	{in: "Fri, 03-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 03-Jul-15 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
-	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles", zname: "PDT"},
 	{in: "Fri, 03-Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "PST"},
 	{in: "Fri, 03-Jul 2015 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	{in: "Fri, 3-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
@@ -182,7 +182,7 @@ var testInputs = []dateTest{
 	{in: "Wednesday, 07-May-09 08:00:43 MST", out: "2009-05-07 08:00:43 +0000 UTC", zname: "MST"},
 	{in: "Wednesday, 07-May-09 08:00:43 CEST", out: "2009-05-07 08:00:43 +0000 UTC", zname: "CEST"},
 	{in: "Wednesday, 28-Feb-18 09:01:00 MST", out: "2018-02-28 09:01:00 +0000 UTC", zname: "MST"},
-	{in: "Wednesday, 28-Feb-18 09:01:00 MST", out: "2018-02-28 16:01:00 +0000 UTC", loc: "America/Denver"},
+	{in: "Wednesday, 28-Feb-18 09:01:00 MST", out: "2018-02-28 16:01:00 +0000 UTC", loc: "America/Denver", zname: "MST"},
 	{in: "Wednesday, 28-Feb-18 09:01:00 CEST", out: "2018-02-28 09:01:00 +0000 UTC", zname: "CEST"},
 	// with offset then with variations on non-zero filled stuff
 	{in: "Monday, 02 Jan 2006 15:04:05 +0100", out: "2006-01-02 14:04:05 +0000 UTC"},
@@ -421,6 +421,11 @@ var testInputs = []dateTest{
 	{in: "2013 December 02 11:37:55", out: "2013-12-02 11:37:55 +0000 UTC"},
 	// https://github.com/araddon/dateparse/issues/143
 	{in: "20140722105203.364", out: "2014-07-22 10:52:03.364 +0000 UTC"},
+	// https://github.com/araddon/dateparse/issues/71 and https://github.com/araddon/dateparse/issues/72
+	{in: "2017-12-31T16:00:00Z", out: "2017-12-31 16:00:00 +0000 UTC", loc: "America/Denver", zname: "UTC"},
+	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 05:02:00 +0000 UTC", zname: "EST"},
+	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 05:02:00 +0000 UTC", loc: "US/Pacific", zname: "EST"},
+	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 10:02:00 +0000 UTC", loc: "America/New_York", zname: "EDT"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000
@@ -458,10 +463,10 @@ var testInputs = []dateTest{
 	//   yyyy-mm-dd hh:mm:ss +0000 TZ
 	// Golang Native Format
 	{in: "2012-08-03 18:31:59 +0000 UTC", out: "2012-08-03 18:31:59 +0000 UTC", zname: "UTC"},
-	{in: "2012-08-03 13:31:59 -0600 MST", out: "2012-08-03 19:31:59 +0000 UTC", loc: "America/Denver"},
+	{in: "2012-08-03 13:31:59 -0600 MST", out: "2012-08-03 19:31:59 +0000 UTC", loc: "America/Denver", zname: "MST"},
 	{in: "2015-02-18 00:12:00 +0000 UTC", out: "2015-02-18 00:12:00 +0000 UTC", zname: "UTC"},
 	{in: "2015-02-18 00:12:00 +0000 GMT", out: "2015-02-18 00:12:00 +0000 UTC", zname: "GMT"},
-	{in: "2015-02-08 03:02:00 +0200 CEST", out: "2015-02-08 01:02:00 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "2015-02-08 03:02:00 +0200 CEST", out: "2015-02-08 01:02:00 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	{in: "2015-02-08 03:02:00 +0300 MSK", out: "2015-02-08 00:02:00 +0000 UTC", zname: "MSK"},
 	{in: "2015-2-08 03:02:00 +0300 MSK", out: "2015-02-08 00:02:00 +0000 UTC", zname: "MSK"},
 	{in: "2015-02-8 03:02:00 +0300 MSK", out: "2015-02-08 00:02:00 +0000 UTC", zname: "MSK"},
@@ -473,14 +478,16 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.123456 +0000 UTC", out: "2014-04-26 17:24:37.123456 +0000 UTC", zname: "UTC"},
 	{in: "2014-04-26 17:24:37.12 +0000 UTC", out: "2014-04-26 17:24:37.12 +0000 UTC", zname: "UTC"},
 	{in: "2014-04-26 17:24:37.1 +0000 UTC", out: "2014-04-26 17:24:37.1 +0000 UTC", zname: "UTC"},
-	{in: "2015-02-08 03:02:00 +0200 CEST m=+0.000000001", out: "2015-02-08 01:02:00 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "2015-02-08 03:02:00 +0200 CEST m=+0.000000001", out: "2015-02-08 01:02:00 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	{in: "2015-02-08 03:02:00 +0300 MSK m=+0.000000001", out: "2015-02-08 00:02:00 +0000 UTC", zname: "MSK"},
 	{in: "2015-02-08 03:02:00.001 +0300 MSK m=+0.000000001", out: "2015-02-08 00:02:00.001 +0000 UTC", zname: "MSK"},
 	//   yyyy-mm-dd hh:mm:ss TZ
 	{in: "2012-08-03 18:31:59 UTC", out: "2012-08-03 18:31:59 +0000 UTC", zname: "UTC"},
 	{in: "2012-08-03 18:31:59 CEST", out: "2012-08-03 18:31:59 +0000 UTC", zname: "CEST"},
 	{in: "2014-12-16 06:20:00 GMT", out: "2014-12-16 06:20:00 +0000 UTC", zname: "GMT"},
-	{in: "2012-08-03 13:31:59 MST", out: "2012-08-03 20:31:59 +0000 UTC", loc: "America/Denver"},
+	{in: "2012-08-03 13:31:58 MST", out: "2012-08-03 13:31:58 +0000 UTC", zname: "MST"},
+	{in: "2012-08-03 13:31:59 MST", out: "2012-08-03 20:31:59 +0000 UTC", loc: "America/Denver", zname: "MDT"},
+	{in: "2012-01-03 13:31:59 MST", out: "2012-01-03 20:31:59 +0000 UTC", loc: "America/Denver", zname: "MST"},
 	{in: "2012-08-03 18:31:59.257000000 UTC", out: "2012-08-03 18:31:59.257 +0000 UTC", zname: "UTC"},
 	{in: "2012-08-03 8:1:59.257000000 UTC", out: "2012-08-03 08:01:59.257 +0000 UTC", zname: "UTC"},
 	{in: "2012-8-03 18:31:59.257000000 UTC", out: "2012-08-03 18:31:59.257 +0000 UTC", zname: "UTC"},
@@ -493,9 +500,15 @@ var testInputs = []dateTest{
 	{in: "2014-04-26 17:24:37.12 CEST", out: "2014-04-26 17:24:37.12 +0000 UTC", zname: "CEST"},
 	{in: "2014-04-26 17:24:37.1 UTC", out: "2014-04-26 17:24:37.1 +0000 UTC", zname: "UTC"},
 	{in: "2014-04-26 17:24:37.1 CEST", out: "2014-04-26 17:24:37.1 +0000 UTC", zname: "CEST"},
+	// Test the capturing of arbitrary time zone names even if we use a different specific location (offset will be zero, but name will be filled in)
+	{in: "2012-08-03 19:32:59 UTC", out: "2012-08-03 19:32:59 +0000 UTC", loc: "Europe/Berlin", zname: "UTC"},
+	{in: "2012-08-03 19:32:59 CEST", out: "2012-08-03 19:32:59 +0000 UTC", loc: "America/Denver", zname: "CEST"},
+	{in: "2014-12-16 07:22:00 GMT", out: "2014-12-16 07:22:00 +0000 UTC", loc: "America/Los_Angeles", zname: "GMT"},
+	{in: "2012-08-03 14:32:59 MST", out: "2012-08-03 14:32:59 +0000 UTC", loc: "America/Los_Angeles", zname: "MST"},
 	// This one is pretty special, it is TIMEZONE based but starts with P to emulate collions with PM
 	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 05:24:37 +0000 UTC", zname: "PST"},
-	{in: "2014-04-26 05:24:37 PST", out: "2014-04-26 13:24:37 +0000 UTC", loc: "America/Los_Angeles"},
+	{in: "2014-04-26 05:24:38 PST", out: "2014-04-26 13:24:38 +0000 UTC", loc: "America/Los_Angeles", zname: "PDT"},
+	{in: "2014-01-26 05:24:39 PST", out: "2014-01-26 13:24:39 +0000 UTC", loc: "America/Los_Angeles", zname: "PST"},
 	//   yyyy-mm-dd hh:mm:ss+00:00
 	{in: "2012-08-03 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
 	{in: "2017-07-19 03:21:51+00:00", out: "2017-07-19 03:21:51 +0000 UTC"},
@@ -504,15 +517,16 @@ var testInputs = []dateTest{
 	//   dd:mm:yyyy hh:mm:ss+00:00
 	{in: "08:03:2012 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss.000+00:00 PST
-	{in: "2012-08-03 18:31:59.000+00:00 PST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "America/Los_Angeles"},
-	{in: "2012-08-03 18:31:59.000+00:00 CEST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "2012-08-03 18:31:59.000+00:00 PST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "America/Los_Angeles", zname: "PST"},
+	{in: "2012-08-03 18:31:59.000+00:00 CEST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	//   yyyy-mm-dd hh:mm:ss +00:00 TZ
 	{in: "2012-08-03 18:31:59 +00:00 UTC", out: "2012-08-03 18:31:59 +0000 UTC", zname: "UTC"},
-	{in: "2012-08-03 13:31:51 -07:00 MST", out: "2012-08-03 20:31:51 +0000 UTC", loc: "America/Denver"},
-	{in: "2012-08-03 13:31:51 +02:00 CEST", out: "2012-08-03 11:31:51 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "2012-08-03 13:31:51 -07:00 MST", out: "2012-08-03 20:31:51 +0000 UTC", loc: "America/Denver", zname: "MST"},
+	{in: "2012-08-03 13:31:51 +02:00 CEST", out: "2012-08-03 11:31:51 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
 	{in: "2012-08-03 18:31:59.257000000 +00:00 UTC", out: "2012-08-03 18:31:59.257 +0000 UTC", zname: "UTC"},
-	{in: "2012-08-03 13:31:51.123 -08:00 PST", out: "2012-08-03 21:31:51.123 +0000 UTC", loc: "America/Los_Angeles"},
-	{in: "2012-08-03 13:31:51.123 +02:00 CEST", out: "2012-08-03 11:31:51.123 +0000 UTC", loc: "Europe/Berlin"},
+	{in: "2012-08-03 13:31:51.123 -08:00 PST", out: "2012-08-03 21:31:51.123 +0000 UTC", loc: "America/Los_Angeles", zname: "PST"},
+	{in: "2012-08-03 13:31:51.123 +02:00 CEST", out: "2012-08-03 11:31:51.123 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
+	{in: "2012-08-03 13:31:51.123 +02:00 CEST", out: "2012-08-03 11:31:51.123 +0000 UTC", loc: "America/Los_Angeles", zname: "CEST"},
 	{in: "2012-08-03 8:1:59.257000000 +00:00 UTC", out: "2012-08-03 08:01:59.257 +0000 UTC", zname: "UTC"},
 	{in: "2012-08-03 8:1:59.257000000 +00:00 CEST", out: "2012-08-03 08:01:59.257 +0000 UTC", zname: "CEST"},
 	{in: "2012-8-03 18:31:59.257000000 +00:00 UTC", out: "2012-08-03 18:31:59.257 +0000 UTC", zname: "UTC"},
@@ -613,8 +627,8 @@ var testInputs = []dateTest{
 	{in: "190910 11:51:49", out: "2019-09-10 11:51:49 +0000 UTC"},
 
 	// all digits:  unix secs, ms etc
-	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC"},
-	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver"},
+	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", zname: "UTC"},
+	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver", zname: "MDT"},
 	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC"},
 	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC"},
 	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
@@ -1039,4 +1053,8 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	ts, err := ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+}
+
+func TestDebug(t *testing.T) {
+	MustParse("Jul 9, 2012 at 5:02am (EST)")
 }
