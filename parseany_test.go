@@ -647,6 +647,16 @@ var testInputs = []dateTest{
 	// https://github.com/araddon/dateparse/issues/158
 	{in: "Mon, 1 Dec 2008 14:48:22 GMT-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
 	{in: "Mon, 1 Dec 2008 14:48:22 UTC-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
+
+	// Fixes for bugs mentioned in https://github.com/araddon/dateparse/pull/134
+	{in: "2014.02.13", out: "2014-02-13 00:00:00 +0000 UTC"},
+	{in: "2014-02-13 00:00:00", out: "2014-02-13 00:00:00 +0000 UTC"},
+	{in: "2014.02.13 00:00:00", out: "2014-02-13 00:00:00 +0000 UTC"},
+	{in: "2014.02.13 08:33:44", out: "2014-02-13 08:33:44 +0000 UTC"},
+	{in: "2014.02.13T08:33:44", out: "2014-02-13 08:33:44 +0000 UTC"},
+	{in: "2014.02.13T08:33:44.555", out: "2014-02-13 08:33:44.555 +0000 UTC"},
+	{in: "2014.02.13T08:33:44.555 PM -0700 MST", out: "2014-02-14 03:33:44.555 +0000 UTC", zname: "MST"},
+	{in: "2014.02.13-0200", out: "2014-02-13 02:00:00 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
@@ -802,6 +812,10 @@ var testParseErrors = []dateTest{
 	{in: "2018-09-30 08:09:13.123AM am", err: true},
 	{in: "2018-09-30 08:09:13.123 am AM", err: true},
 	{in: "2018-09-30 08:09:13.123 AMDT am", err: true},
+	// https://github.com/araddon/dateparse/pull/134
+	{in: "2014-02-13 00:00:00 utc", err: true}, // lowercase timezones are not valid
+	{in: "2014-02-13t00:00:00.0z", err: true},  // lowercase 't' separator is not supported
+	{in: "2014-02-13T00:00:00.0z", err: true},  // lowercase 'z' zulu timezone indicator not a valid format
 }
 
 func TestParseErrors(t *testing.T) {

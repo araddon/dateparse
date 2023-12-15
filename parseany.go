@@ -69,18 +69,21 @@ const (
 	dateDigitDashDigitDash
 	dateDigitDot
 	dateDigitDotDot
+	dateDigitDotDotWs
+	dateDigitDotDotT
+	dateDigitDotDotOffset
 	dateDigitSlash
 	dateDigitYearSlash
-	dateDigitSlashAlpha // 18
+	dateDigitSlashAlpha // 21
 	dateDigitColon
 	dateDigitChineseYear
 	dateDigitChineseYearWs
 	dateDigitWs
-	dateDigitWsMoYear // 23
+	dateDigitWsMoYear // 26
 	dateAlpha
 	dateAlphaWs
 	dateAlphaWsDigit
-	dateAlphaWsDigitMore // 27
+	dateAlphaWsDigitMore // 30
 	dateAlphaWsDigitMoreWs
 	dateAlphaWsDigitMoreWsYear
 	dateAlphaWsMonth
@@ -90,7 +93,7 @@ const (
 	dateAlphaWsMore
 	dateAlphaWsAtTime
 	dateAlphaWsAlpha
-	dateAlphaWsAlphaYearmaybe // 37
+	dateAlphaWsAlphaYearmaybe // 40
 	dateAlphaPeriodWsDigit
 	dateAlphaSlash
 	dateAlphaSlashDigit
@@ -924,8 +927,52 @@ iterRunes:
 					p.stateDate = dateDigitDotDot
 				}
 			}
+
 		case dateDigitDotDot:
-			// iterate all the way through
+			// dateYearDashDashT
+			//  2006.01.02T15:04:05Z07:00
+			// dateYearDashDashWs
+			//  2013.04.01 22:43:22
+			// dateYearDashDashOffset
+			//  2020.07.20+00:00
+			switch r {
+			case '+', '-':
+				p.offseti = i
+				p.daylen = i - p.dayi
+				p.stateDate = dateDigitDotDotOffset
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+			case ' ':
+				p.daylen = i - p.dayi
+				p.stateDate = dateDigitDotDotWs
+				p.stateTime = timeStart
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+				break iterRunes
+			case 'T':
+				p.daylen = i - p.dayi
+				p.stateDate = dateDigitDotDotT
+				p.stateTime = timeStart
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+				break iterRunes
+			}
+
+		case dateDigitDotDotT:
+			// dateYearDashDashT
+			//  2006-01-02T15:04:05Z07:00
+			//  2020-08-17T17:00:00:000+0100
+
+		case dateDigitDotDotOffset:
+			//  2020-07-20+00:00
+			switch r {
+			case ':':
+				p.set(p.offseti, "-07:00")
+			}
+
 		case dateAlpha:
 			// dateAlphaWS
 			//  Mon Jan _2 15:04:05 2006
@@ -2175,6 +2222,23 @@ iterRunes:
 		// 3.2.81
 		// 08.21.71
 		// 2018.09.30
+		return p, nil
+
+	case dateDigitDotDotWs:
+		// 2013.04.01
+		return p, nil
+
+	case dateDigitDotDotT:
+		return p, nil
+
+	case dateDigitDotDotOffset:
+		//  2020.07.20+00:00
+		switch len(p.datestr) - p.offseti {
+		case 5:
+			p.set(p.offseti, "-0700")
+		case 6:
+			p.set(p.offseti, "-07:00")
+		}
 		return p, nil
 
 	case dateDigitWsMoYear:
