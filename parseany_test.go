@@ -9,8 +9,7 @@ import (
 )
 
 func TestOne(t *testing.T) {
-	time.Local = time.UTC
-	var ts = MustParse("2020-07-20+08:00")
+	ts := MustParse("2020-07-20+08:00")
 	assert.Equal(t, "2020-07-19 16:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
@@ -431,6 +430,11 @@ var testInputs = []dateTest{
 	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 05:02:00 +0000 UTC", zname: "EST"},
 	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 05:02:00 +0000 UTC", loc: "US/Pacific", zname: "EST"},
 	{in: "Jul 9, 2012 at 5:02am (EST)", out: "2012-07-09 10:02:00 +0000 UTC", loc: "America/New_York", zname: "EDT"},
+	// https://github.com/araddon/dateparse/pull/156
+	{in: "04/02/2014, 04:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "4/2/2014, 04:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "04/02/2014, 04:08 AM", out: "2014-04-02 04:08:00 +0000 UTC"},
+	{in: "04/02/2014, 04:08 PM", out: "2014-04-02 16:08:00 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000

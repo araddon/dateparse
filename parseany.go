@@ -254,14 +254,14 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 			if p != nil && p.ambiguousMD {
 				// if it errors out with the following error, swap before we
 				// get out of this function to reduce scope it needs to be applied on
-				_, err := p.parse()
+				_, err = p.parse()
 				if err != nil && strings.Contains(err.Error(), "month out of range") {
 					// create the option to reverse the preference
 					preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
 					// turn off the retry to avoid endless recursion
 					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
 					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
-					p, _ = parseTime(datestr, time.Local, modifiedOpts...)
+					p, err = parseTime(datestr, time.Local, modifiedOpts...)
 				}
 			}
 
@@ -684,6 +684,7 @@ iterRunes:
 		case dateDigitSlash:
 			// 03/19/2012 10:11:59
 			// 04/2/2014 03:00:37
+			// 04/2/2014, 03:00:37
 			// 3/1/2012 10:11:59
 			// 4/8/2014 22:05
 			// 3/1/2014
@@ -713,10 +714,14 @@ iterRunes:
 				}
 				// Note no break, we are going to pass by and re-enter this dateDigitSlash
 				// and look for ending (space) or not (just date)
-			case ' ':
+			case ' ', ',':
 				p.stateTime = timeStart
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
+					if r == ',' {
+						// skip the comma
+						i++
+					}
 					if !p.setYear() {
 						return p, unknownErr(datestr)
 					}
