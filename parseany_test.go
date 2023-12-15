@@ -72,6 +72,8 @@ var testInputs = []dateTest{
 	// ??
 	{in: "Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 17:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 GMT+0100 (GMT Daylight Time)", out: "2015-07-03 05:04:07 +0000 UTC"},
+	{in: "Fri Jul 03 2015 18:04:07 UTC+0100 (GMT Daylight Time)", out: "2015-07-03 17:04:07 +0000 UTC"},
+	{in: "Fri Jul 3 2015 06:04:07 UTC+0100 (GMT Daylight Time)", out: "2015-07-03 05:04:07 +0000 UTC"},
 	{in: "Fri Jul 3 2015 06:04:07 PST-0700 (Pacific Daylight Time)", out: "2015-07-03 13:04:07 +0000 UTC", zname: "PST"},
 	{in: "Fri Jul 3 2015 06:04:07 CEST-0700 (Central European Summer Time)", out: "2015-07-03 13:04:07 +0000 UTC", zname: "CEST"},
 	// Month dd, yyyy at time
@@ -87,7 +89,7 @@ var testInputs = []dateTest{
 	{in: "OCTober 17, 2012 at 18:17:16", out: "2012-10-17 18:17:16 +0000 UTC"},
 	{in: "noVEMBER 17, 2012 at 18:17:16", out: "2012-11-17 18:17:16 +0000 UTC"},
 	{in: "December 17, 2012 at 18:17:16", out: "2012-12-17 18:17:16 +0000 UTC"},
-	{in: "September 17, 2012 at 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC", zname: "UTC"},
+	{in: "September 17, 2012 at 5:00pm UTC-05", out: "2012-09-17 22:00:00 +0000 UTC", zname: ""}, // empty zone name, special case of UTC+NNNN
 	{in: "September 17, 2012 at 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC", zname: "PST"},
 	{in: "September 17, 2012 at 10:09am CEST+02", out: "2012-09-17 08:09:00 +0000 UTC", zname: "CEST"},
 	{in: "September 17, 2012, 10:10:09", out: "2012-09-17 10:10:09 +0000 UTC"},
@@ -95,16 +97,16 @@ var testInputs = []dateTest{
 	{in: "May 17, 2012 AT 10:09am PST-08", out: "2012-05-17 18:09:00 +0000 UTC", zname: "PST"},
 	{in: "May 17, 2012 AT 10:09am CEST+02", out: "2012-05-17 08:09:00 +0000 UTC", zname: "CEST"},
 	// Month dd, yyyy time
-	{in: "September 17, 2012 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC", zname: "UTC"},
+	{in: "September 17, 2012 5:00pm UTC-05", out: "2012-09-17 22:00:00 +0000 UTC", zname: ""},
 	{in: "September 17, 2012 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC", zname: "PST"},
 	{in: "September 17, 2012 10:09am CEST+02", out: "2012-09-17 08:09:00 +0000 UTC", zname: "CEST"},
 	{in: "September 17, 2012 09:01:00", out: "2012-09-17 09:01:00 +0000 UTC"},
 	// Month dd yyyy time
-	{in: "September 17 2012 5:00pm UTC-05", out: "2012-09-17 17:00:00 +0000 UTC", zname: "UTC"},
-	{in: "September 17 2012 5:00pm UTC-0500", out: "2012-09-17 17:00:00 +0000 UTC", zname: "UTC"},
+	{in: "September 17 2012 5:00pm UTC-05", out: "2012-09-17 22:00:00 +0000 UTC", zname: ""},
+	{in: "September 17 2012 5:00pm UTC-0500", out: "2012-09-17 22:00:00 +0000 UTC", zname: ""},
 	{in: "September 17 2012 10:09am PST-08", out: "2012-09-17 18:09:00 +0000 UTC", zname: "PST"},
 	{in: "September 17 2012 10:09am CEST+02", out: "2012-09-17 08:09:00 +0000 UTC", zname: "CEST"},
-	{in: "September 17 2012 5:00PM UTC-05", out: "2012-09-17 17:00:00 +0000 UTC", zname: "UTC"},
+	{in: "September 17 2012 5:00PM UTC-05", out: "2012-09-17 22:00:00 +0000 UTC", zname: ""},
 	{in: "September 17 2012 10:09AM PST-08", out: "2012-09-17 18:09:00 +0000 UTC", zname: "PST"},
 	{in: "September 17 2012 10:09AM CEST+02", out: "2012-09-17 08:09:00 +0000 UTC", zname: "CEST"},
 	{in: "September 17 2012 09:01:00", out: "2012-09-17 09:01:00 +0000 UTC"},
@@ -178,6 +180,7 @@ var testInputs = []dateTest{
 	{in: "Fri, 03-Jul-15 8:8:8 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	// day, dd-Mon-yy hh:mm:zz TZ (text) https://github.com/araddon/dateparse/issues/116
 	{in: "Sun, 3 Jan 2021 00:12:23 +0800 (GMT+08:00)", out: "2021-01-02 16:12:23 +0000 UTC"},
+	{in: "Sun, 3 Jan 2021 00:12:23 +0800 (UTC+08:00)", out: "2021-01-02 16:12:23 +0000 UTC"},
 	// RFC850    = "Monday, 02-Jan-06 15:04:05 MST"
 	{in: "Wednesday, 07-May-09 08:00:43 MST", out: "2009-05-07 08:00:43 +0000 UTC", zname: "MST"},
 	{in: "Wednesday, 07-May-09 08:00:43 CEST", out: "2009-05-07 08:00:43 +0000 UTC", zname: "CEST"},
@@ -378,6 +381,8 @@ var testInputs = []dateTest{
 	// https://github.com/araddon/dateparse/issues/157
 	{in: "Thu Jan 28 2021 15:28:21 GMT+0000 (Coordinated Universal Time)", out: "2021-01-28 15:28:21 +0000 UTC"},
 	{in: "Thu Jan 28 2021 15:28:21 GMT+0100 (Coordinated Universal Time)", out: "2021-01-28 14:28:21 +0000 UTC"},
+	{in: "Thu Jan 28 2021 15:28:21 UTC+0000 (Coordinated Universal Time)", out: "2021-01-28 15:28:21 +0000 UTC"},
+	{in: "Thu Jan 28 2021 15:28:21 UTC+0100 (Coordinated Universal Time)", out: "2021-01-28 14:28:21 +0000 UTC"},
 	// https://github.com/araddon/dateparse/issues/130
 	{in: "1985-04-12T23:20:50Z", out: "1985-04-12 23:20:50 +0000 UTC"},
 	{in: "1985-04-12T23:20:50.52Z", out: "1985-04-12 23:20:50.52 +0000 UTC"},
@@ -635,7 +640,9 @@ var testInputs = []dateTest{
 
 	{in: "Wed,  8 Feb 2023 19:00:46 +1100 (AEDT)", out: "2023-02-08 08:00:46 +0000 UTC"},
 	{in: "FRI, 16 AUG 2013  9:39:51 +1000", out: "2013-08-15 23:39:51 +0000 UTC"},
+	// https://github.com/araddon/dateparse/issues/158
 	{in: "Mon, 1 Dec 2008 14:48:22 GMT-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
+	{in: "Mon, 1 Dec 2008 14:48:22 UTC-07:00", out: "2008-12-01 21:48:22 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
@@ -1055,6 +1062,7 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
+// Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
 	MustParse("Jul 9, 2012 at 5:02am (EST)")
 }
