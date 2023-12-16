@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 // func init() {
@@ -147,11 +149,22 @@ func unexpectedTail(tail string) error {
 	return fmt.Errorf("%w %q", ErrUnexpectedTail, tail)
 }
 
+// go 1.20 allows us to convert a byte slice to a string without a memory allocation.
+// See https://github.com/golang/go/issues/53003#issuecomment-1140276077.
+func bytesToString(b []byte) string {
+	if b == nil || len(b) <= 0 {
+		return ""
+	} else {
+		return unsafe.String(&b[0], len(b))
+	}
+}
+
 // ParseAny parse an unknown date format, detect the layout.
 // Normal parse.  Equivalent Timezone rules as time.Parse().
 // NOTE:  please see readme on mmdd vs ddmm ambiguous dates.
 func ParseAny(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, nil, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -165,6 +178,7 @@ func ParseAny(datestr string, opts ...ParserOption) (time.Time, error) {
 // in other locations.
 func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, loc, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -187,6 +201,7 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 //	t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, time.Local, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -197,6 +212,7 @@ func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 // Not recommended for most use-cases.
 func MustParse(datestr string, opts ...ParserOption) time.Time {
 	p, err := parseTime(datestr, nil, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -214,6 +230,7 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 //	// layout = "2006-01-02 15:04:05"
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	p, err := parseTime(datestr, nil, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		return "", err
 	}
@@ -228,6 +245,7 @@ func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 // mm/dd vs dd/mm then return an error. These return errors:   3.3.2014 , 8/8/71 etc
 func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, nil, opts...)
+	defer putBackParser(p)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -237,17 +255,13 @@ func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
 	return p.parse()
 }
 
+// Creates a new parser and parses the given datestr in the given loc with the given options.
+// The caller must call putBackParser on the returned parser when done with it.
 func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *parser, err error) {
 
 	p, err = newParser(datestr, loc, opts...)
 	if err != nil {
 		return
-	}
-
-	// if this string is impossibly long, don't even try. longest date might be something like:
-	// 'Wednesday,  8 February 2023 19:00:46.999999999 +11:00 (AEDT) m=+0.000000001'
-	if len(datestr) > 75 {
-		return p, unknownErr(datestr)
 	}
 
 	if p.retryAmbiguousDateWithSwap {
@@ -265,6 +279,7 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 					// turn off the retry to avoid endless recursion
 					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
 					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
+					putBackParser(p)
 					p, err = parseTime(datestr, time.Local, modifiedOpts...)
 				}
 			}
@@ -1105,7 +1120,9 @@ iterRunes:
 					maybeDay := strings.ToLower(p.datestr[0:i])
 					if isDay(maybeDay) {
 						// using skip throws off indices used by other code; saner to restart
-						return parseTime(p.datestr[i+1:], loc)
+						newDateStr := p.datestr[i+1:]
+						putBackParser(p)
+						return parseTime(newDateStr, loc)
 					}
 					p.stateDate = dateAlphaWs
 				}
@@ -1133,8 +1150,9 @@ iterRunes:
 					p.set(0, "Jan")
 				} else if i == 4 {
 					// gross
-					newDatestr := p.datestr[0:i-1] + p.datestr[i:]
-					return parseTime(newDatestr, loc, opts...)
+					newDateStr := p.datestr[0:i-1] + p.datestr[i:]
+					putBackParser(p)
+					return parseTime(newDateStr, loc, opts...)
 				} else {
 					return p, unknownErr(datestr)
 				}
@@ -1332,25 +1350,33 @@ iterRunes:
 			case 't', 'T':
 				if p.nextIs(i, 'h') || p.nextIs(i, 'H') {
 					if len(p.datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
+						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						putBackParser(p)
+						return parseTime(newDateStr, loc, opts...)
 					}
 				}
 			case 'n', 'N':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
+						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						putBackParser(p)
+						return parseTime(newDateStr, loc, opts...)
 					}
 				}
 			case 's', 'S':
 				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 					if len(p.datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
+						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						putBackParser(p)
+						return parseTime(newDateStr, loc, opts...)
 					}
 				}
 			case 'r', 'R':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
-						return parseTime(fmt.Sprintf("%s%s", p.datestr[0:i], p.datestr[i+2:]), loc, opts...)
+						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						putBackParser(p)
+						return parseTime(newDateStr, loc, opts...)
 					}
 				}
 			}
@@ -1575,13 +1601,6 @@ iterRunes:
 					p.houri = i
 				}
 				switch r {
-				case ',':
-					// hm, lets just swap out comma for period.  for some reason go
-					// won't parse it.
-					// 2014-05-11 08:20:13,787
-					ds := []byte(p.datestr)
-					ds[i] = '.'
-					return parseTime(string(ds), loc, opts...)
 				case '-', '+':
 					//   03:21:51+00:00
 					p.stateTime = timeOffset
@@ -1597,7 +1616,8 @@ iterRunes:
 						}
 					}
 					p.offseti = i
-				case '.':
+				case '.', ',':
+					// NOTE: go 1.20 can now parse a string that has a comma delimiter properly
 					p.stateTime = timePeriod
 					p.seclen = i - p.seci
 					p.msi = i + 1
@@ -2042,12 +2062,12 @@ iterRunes:
 				// may or may not have a space on the end
 				if offsetLen == 7 {
 					if p.datestr[p.offseti+6] != ' ' {
-						return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, string(p.datestr[p.offseti:p.offseti+offsetLen]))
+						return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:p.offseti+offsetLen])
 					}
 				}
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, string(p.datestr[p.offseti:p.offseti+offsetLen]))
+				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:p.offseti+offsetLen])
 			}
 			// process timezone
 			switch len(p.datestr) - p.tzi {
@@ -2057,7 +2077,7 @@ iterRunes:
 			case 4:
 				p.set(p.tzi, "MST ")
 			default:
-				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, string(p.datestr[p.tzi:]))
+				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
 			}
 		case timeWsAlpha:
 			switch len(p.datestr) - p.tzi {
@@ -2067,7 +2087,7 @@ iterRunes:
 			case 4:
 				p.set(p.tzi, "MST ")
 			default:
-				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, string(p.datestr[p.tzi:]))
+				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
 			}
 
 		case timeWsAlphaRParen:
@@ -2095,13 +2115,13 @@ iterRunes:
 			case 6:
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, string(p.datestr[p.offseti:i]))
+				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, p.datestr[p.offseti:i])
 			}
 
 		case timePeriod:
 			p.mslen = i - p.msi
 			if p.mslen >= 10 {
-				return p, fmt.Errorf("fractional seconds in %q too long near %q", datestr, string(p.datestr[p.msi:p.mslen]))
+				return p, fmt.Errorf("fractional seconds in %q too long near %q", datestr, p.datestr[p.msi:p.mslen])
 			}
 		case timeOffset, timeWsOffset, timeWsYearOffset:
 			switch len(p.datestr) - p.offseti {
@@ -2112,7 +2132,7 @@ iterRunes:
 				// 19:55:00+0100 (or 19:55:00 +0100)
 				p.set(p.offseti, "-0700")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, string(p.datestr[p.offseti:]))
+				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, p.datestr[p.offseti:])
 			}
 
 		case timeWsOffsetWs:
@@ -2127,7 +2147,7 @@ iterRunes:
 					// 13:31:51.999 +01:00 CEST
 					p.set(p.tzi, "MST ")
 				default:
-					return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, string(p.datestr[p.tzi:]))
+					return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
 				}
 			}
 		case timeOffsetColon, timeWsOffsetColon:
@@ -2137,7 +2157,7 @@ iterRunes:
 			case 6:
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, string(p.datestr[p.offseti:]))
+				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:])
 			}
 		}
 		p.coalesceTime(i)
@@ -2452,6 +2472,46 @@ type parser struct {
 	t                          *time.Time
 }
 
+// something like: "Wednesday,  8 February 2023 19:00:46.999999999 +11:00 (AEDT) m=+0.000000001"
+const longestPossibleDateStr = 78
+
+// the format byte slice is always a little larger, in case we need to expand it to contain a full month
+const formatExtraBufferBytes = 16
+const formatBufferCapacity = longestPossibleDateStr + formatExtraBufferBytes
+
+var parserPool = sync.Pool{
+	New: func() interface{} {
+		// allocate a max-sized fixed-capacity format byte slice
+		// that will be re-used with this parser struct
+		return &parser{
+			format: make([]byte, 0, formatBufferCapacity),
+		}
+	},
+}
+
+var emptyString = ""
+
+// Use to put a parser back into the pool in the right way
+func putBackParser(p *parser) {
+	if p == nil {
+		return
+	}
+	// we'll be reusing the backing memory for the format byte slice, put it back
+	// to maximum capacity
+	if cap(p.format) == longestPossibleDateStr {
+		p.format = p.format[:longestPossibleDateStr]
+	} else {
+		// the parsing process replaced this, get back a new one with the right cap
+		p.format = make([]byte, 0, longestPossibleDateStr)
+	}
+	// clear out pointers so we don't leak memory we don't need any longer
+	p.loc = nil
+	p.datestr = emptyString
+	p.fullMonth = emptyString
+	p.t = nil
+	parserPool.Put(p)
+}
+
 // ParserOption defines a function signature implemented by options
 // Options defined like this accept the parser and operate on the data within
 type ParserOption func(*parser) error
@@ -2482,18 +2542,29 @@ func AllowPartialStringMatch(allowPartialStringMatch bool) ParserOption {
 	}
 }
 
+// Creates a new parser. The caller must call putBackParser on the returned parser when done with it.
 func newParser(dateStr string, loc *time.Location, opts ...ParserOption) (*parser, error) {
-	p := &parser{
+	dateStrLen := len(dateStr)
+	if dateStrLen > longestPossibleDateStr {
+		return nil, unknownErr(dateStr)
+	}
+
+	// Make sure to re-use the format byte slice from the pooled parser struct
+	p := parserPool.Get().(*parser)
+	// This re-slicing is guaranteed to work because of the length check above
+	startingFormat := p.format[:dateStrLen]
+	copy(startingFormat, dateStr)
+	*p = parser{
 		stateDate:                  dateStart,
 		stateTime:                  timeIgnore,
 		datestr:                    dateStr,
 		loc:                        loc,
 		preferMonthFirst:           true,
 		retryAmbiguousDateWithSwap: false,
+		format:                     startingFormat,
+		// this tracks how much of the format string has been set, to make sure all of it is set
+		formatSetLen: 0,
 	}
-	p.format = []byte(dateStr)
-	// this tracks how much of the format string has been set, to make sure all of it is set
-	p.formatSetLen = 0
 
 	// allow the options to mutate the parser fields from their defaults
 	for _, option := range opts {
@@ -2512,7 +2583,8 @@ func (p *parser) nextIs(i int, b byte) bool {
 }
 
 func (p *parser) setEntireFormat(format []byte) {
-	p.format = format
+	// Copy so that we don't lose this pooled format byte slice
+	copy(p.format, format)
 	p.formatSetLen = len(format)
 }
 
@@ -2665,8 +2737,22 @@ func (p *parser) coalesceTime(end int) {
 func (p *parser) setFullMonth(month string) {
 	oldLen := len(p.format)
 	const fullMonth = "January"
-	p.format = []byte(fmt.Sprintf("%s%s%s", p.format[0:p.moi], fullMonth, p.format[p.moi+len(month):]))
-	newLen := len(p.format)
+	// Do an overlapping copy so we don't lose the pooled format buffer
+	part1Len := p.moi
+	part3 := p.format[p.moi+len(month):]
+	newLen := part1Len + len(fullMonth) + len(part3)
+	if newLen > oldLen {
+		// We can re-slice this, because the capacity is guaranteed to be a little longer than any possible datestr
+		p.format = p.format[:newLen]
+	}
+	// first part will not change, we need to shift the third part
+	copy(p.format[part1Len+len(fullMonth):], part3)
+	copy(p.format[part1Len:], fullMonth)
+	// shorten the format slice now if needed
+	if newLen < oldLen {
+		p.format = p.format[:newLen]
+	}
+
 	if newLen > oldLen && p.formatSetLen >= p.moi {
 		p.formatSetLen += newLen - oldLen
 	} else if newLen < oldLen && p.formatSetLen >= p.moi {
@@ -2706,14 +2792,16 @@ func (p *parser) parse() (time.Time, error) {
 	if !p.allowPartialStringMatch && p.formatSetLen < len(p.format) {
 		// We can always ignore punctuation at the end of a date/time, but do not allow
 		// any numbers or letters in the format string.
-		validFormatTo := findProperEnd(string(p.format), p.formatSetLen, len(p.format), false, false, true)
+		validFormatTo := findProperEnd(bytesToString(p.format), p.formatSetLen, len(p.format), false, false, true)
 		if validFormatTo < len(p.format) {
-			return time.Time{}, unexpectedTail(string(p.format[p.formatSetLen:]))
+			return time.Time{}, unexpectedTail(p.datestr[p.formatSetLen:])
 		}
 	}
 
 	if p.skip > 0 && len(p.format) > p.skip {
-		p.format = p.format[p.skip:]
+		// copy and then re-slice to shorten to avoid losing the header of the pooled format string
+		copy(p.format, p.format[p.skip:])
+		p.format = p.format[:len(p.format)-p.skip]
 		p.formatSetLen -= p.skip
 		if p.formatSetLen < 0 {
 			p.formatSetLen = 0
@@ -2723,10 +2811,10 @@ func (p *parser) parse() (time.Time, error) {
 
 	if p.loc == nil {
 		// gou.Debugf("parse layout=%q input=%q   \ntx, err := time.Parse(%q, %q)", string(p.format), p.datestr, string(p.format), p.datestr)
-		return time.Parse(string(p.format), p.datestr)
+		return time.Parse(bytesToString(p.format), p.datestr)
 	}
 	//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.ParseInLocation(%q, %q, %v)", string(p.format), p.datestr, string(p.format), p.datestr, p.loc)
-	return time.ParseInLocation(string(p.format), p.datestr, p.loc)
+	return time.ParseInLocation(bytesToString(p.format), p.datestr, p.loc)
 }
 func isDay(alpha string) bool {
 	for _, day := range days {

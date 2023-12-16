@@ -1,6 +1,6 @@
 module github.com/araddon/dateparse
 
-go 1.19
+go 1.20
 
 require (
 	github.com/scylladb/termtables v0.0.0-20191203121021-c4c0b6d42ff4
