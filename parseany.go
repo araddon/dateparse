@@ -168,7 +168,7 @@ func ParseAny(datestr string, opts ...ParserOption) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+	return p.parse(nil, opts...)
 }
 
 // ParseIn with Location, equivalent to time.ParseInLocation() timezone/offset
@@ -182,7 +182,7 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+	return p.parse(loc, opts...)
 }
 
 // ParseLocal Given an unknown date format, detect the layout,
@@ -205,7 +205,7 @@ func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	return p.parse()
+	return p.parse(time.Local, opts...)
 }
 
 // MustParse  parse a date, and panic if it can't be parsed.  Used for testing.
@@ -216,7 +216,7 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 	if err != nil {
 		panic(err.Error())
 	}
-	t, err := p.parse()
+	t, err := p.parse(nil, opts...)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -234,7 +234,7 @@ func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, err = p.parse()
+	_, err = p.parse(nil, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -252,7 +252,7 @@ func ParseStrict(datestr string, opts ...ParserOption) (time.Time, error) {
 	if p.ambiguousMD {
 		return time.Time{}, ErrAmbiguousMMDD
 	}
-	return p.parse()
+	return p.parse(nil, opts...)
 }
 
 // Creates a new parser and parses the given datestr in the given loc with the given options.
@@ -262,29 +262,6 @@ func parseTime(datestr string, loc *time.Location, opts ...ParserOption) (p *par
 	p, err = newParser(datestr, loc, opts...)
 	if err != nil {
 		return
-	}
-
-	if p.retryAmbiguousDateWithSwap {
-		// month out of range signifies that a day/month swap is the correct solution to an ambiguous date
-		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
-		// by retrying in this case, we can fix a common situation with no assumptions
-		defer func() {
-			if p != nil && p.ambiguousMD {
-				// if it errors out with the following error, swap before we
-				// get out of this function to reduce scope it needs to be applied on
-				_, err = p.parse()
-				if err != nil && strings.Contains(err.Error(), "month out of range") {
-					// create the option to reverse the preference
-					preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
-					// turn off the retry to avoid endless recursion
-					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
-					modifiedOpts := append(opts, preferMonthFirst, retryAmbiguousDateWithSwap)
-					putBackParser(p)
-					p, err = parseTime(datestr, time.Local, modifiedOpts...)
-				}
-			}
-
-		}()
 	}
 
 	// IMPORTANT: we may need to modify the datestr while we are parsing (e.g., to
@@ -2584,6 +2561,12 @@ func (p *parser) nextIs(i int, b byte) bool {
 
 func (p *parser) setEntireFormat(format []byte) {
 	// Copy so that we don't lose this pooled format byte slice
+	oldLen := len(p.format)
+	newLen := len(format)
+	if oldLen != newLen {
+		// guaranteed to work because of the allocated capacity for format buffers
+		p.format = p.format[:newLen]
+	}
 	copy(p.format, format)
 	p.formatSetLen = len(format)
 }
@@ -2780,12 +2763,41 @@ func (p *parser) trimExtra(onlyTrimFormat bool) {
 	}
 }
 
-func (p *parser) parse() (time.Time, error) {
+func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption) (t time.Time, err error) {
+	if p == nil {
+		return time.Time{}, unknownErr("")
+	}
 	if p.t != nil {
 		return *p.t, nil
 	}
 	if len(p.fullMonth) > 0 {
 		p.setFullMonth(p.fullMonth)
+	}
+
+	if p.retryAmbiguousDateWithSwap && p.ambiguousMD {
+		// month out of range signifies that a day/month swap is the correct solution to an ambiguous date
+		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
+		// by retrying in this case, we can fix a common situation with no assumptions
+		defer func() {
+			// if actual time parsing errors out with the following error, swap before we
+			// get out of this function to reduce scope it needs to be applied on
+			if err != nil && strings.Contains(err.Error(), "month out of range") {
+				// create the option to reverse the preference
+				preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
+				// turn off the retry to avoid endless recursion
+				retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
+				modifiedOpts := append(originalOpts, preferMonthFirst, retryAmbiguousDateWithSwap)
+				var newParser *parser
+				newParser, err = parseTime(p.datestr, originalLoc, modifiedOpts...)
+				defer putBackParser(newParser)
+				if err == nil {
+					t, err = newParser.parse(originalLoc, modifiedOpts...)
+					// The caller might use the format and datestr, so copy that back to the original parser
+					p.setEntireFormat(newParser.format)
+					p.datestr = newParser.datestr
+				}
+			}
+		}()
 	}
 
 	// Make sure that the entire string matched to a known format that was detected
