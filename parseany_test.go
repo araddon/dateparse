@@ -446,6 +446,9 @@ var testInputs = []dateTest{
 	// Git log default date format - https://github.com/araddon/dateparse/pull/92
 	{in: "Thu Apr 7 15:13:13 2005 -0700", out: "2005-04-07 22:13:13 +0000 UTC"},
 	{in: "Tue Dec 12 23:07:11 2023 -0700", out: "2023-12-13 06:07:11 +0000 UTC"},
+	// RabbitMQ log format - https://github.com/araddon/dateparse/pull/122
+	{in: "8-Mar-2018::14:09:27", out: "2018-03-08 14:09:27 +0000 UTC"},
+	{in: "08-03-2018::02:09:29 PM", out: "2018-03-08 14:09:29 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000
@@ -827,6 +830,10 @@ var testParseErrors = []dateTest{
 	{in: "2014-02-13 00:00:00 utc", err: true}, // lowercase timezones are not valid
 	{in: "2014-02-13t00:00:00.0z", err: true},  // lowercase 't' separator is not supported
 	{in: "2014-02-13T00:00:00.0z", err: true},  // lowercase 'z' zulu timezone indicator not a valid format
+	// Invalid variants of RabbitMQ log format
+	{in: "8-Mar-2018:14:09:27", err: true},
+	{in: "8-Mar-2018: 14:09:27", err: true},
+	{in: "8-Mar-2018:::14:09:27", err: true},
 }
 
 func TestParseErrors(t *testing.T) {
@@ -1093,5 +1100,5 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	MustParse("Tue Dec 12 23:07:11 2023 -0700")
+	MustParse("8-Mar-2018::14:09:27")
 }

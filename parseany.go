@@ -598,44 +598,76 @@ iterRunes:
 			//   13-Feb-03   ambiguous
 			//   28-Feb-03   ambiguous
 			//   29-Jun-2016  dd-month(alpha)-yyyy
+			//   8-Mar-2018::
 			// dateDigitDashDigitDash:
 			//   29-06-2026
+			//   08-03-18:: ambiguous (dd-mm-yy or yy-mm-dd)
 			switch r {
-			case ' ':
-				// we need to find if this was 4 digits, aka year
-				// or 2 digits which makes it ambiguous year/day
-				length := i - (p.moi + p.molen + 1)
-				if length == 4 {
-					p.yearlen = 4
-					p.set(p.yeari, "2006")
-					// We now also know that part1 was the day
-					p.dayi = 0
-					p.daylen = p.part1Len
-					if !p.setDay() {
-						return p, unknownErr(datestr)
+			case ' ', ':':
+				doubleColonTimeConnector := false
+				if r == ':' {
+					p.link++
+					if p.link == 2 {
+						if i+1 < len(p.datestr) {
+							// only legitimate content to follow "::" is the start of the time
+							nextChar, _ := utf8.DecodeRuneInString(p.datestr[i+1:])
+							if unicode.IsDigit(nextChar) {
+								doubleColonTimeConnector = true
+							}
+						}
+						if !doubleColonTimeConnector {
+							return p, unknownErr(datestr)
+						}
 					}
-				} else if length == 2 {
-					// We have no idea if this is
-					// yy-mon-dd   OR  dd-mon-yy
-					// (or for dateDigitDashDigitDash, yy-mm-dd  OR  dd-mm-yy)
-					//
-					// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
-					// which is a horrible assumption, but seems to be the convention for
-					// dates that are formatted in this way.
-					p.ambiguousMD = true
-					p.yearlen = 2
-					p.set(p.yeari, "06")
-					// We now also know that part1 was the day
-					p.dayi = 0
-					p.daylen = p.part1Len
-					if !p.setDay() {
-						return p, unknownErr(datestr)
-					}
-				} else {
+				} else if p.link > 0 {
 					return p, unknownErr(datestr)
 				}
-				p.stateTime = timeStart
-				break iterRunes
+				if r == ' ' || doubleColonTimeConnector {
+					// we need to find if this was 4 digits, aka year
+					// or 2 digits which makes it ambiguous year/day
+					var sepLen int
+					if doubleColonTimeConnector {
+						sepLen = 2
+					} else {
+						sepLen = 1
+					}
+					length := i - (p.moi + p.molen + sepLen)
+					if length == 4 {
+						p.yearlen = 4
+						p.set(p.yeari, "2006")
+						// We now also know that part1 was the day
+						p.dayi = 0
+						p.daylen = p.part1Len
+						if !p.setDay() {
+							return p, unknownErr(datestr)
+						}
+					} else if length == 2 {
+						// We have no idea if this is
+						// yy-mon-dd   OR  dd-mon-yy
+						// (or for dateDigitDashDigitDash, yy-mm-dd  OR  dd-mm-yy)
+						//
+						// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
+						// which is a horrible assumption, but seems to be the convention for
+						// dates that are formatted in this way.
+						p.ambiguousMD = true
+						p.yearlen = 2
+						p.set(p.yeari, "06")
+						// We now also know that part1 was the day
+						p.dayi = 0
+						p.daylen = p.part1Len
+						if !p.setDay() {
+							return p, unknownErr(datestr)
+						}
+					} else {
+						return p, unknownErr(datestr)
+					}
+					p.stateTime = timeStart
+					break iterRunes
+				}
+			default:
+				if !unicode.IsDigit(r) && !unicode.IsLetter(r) && p.link > 0 {
+					return p, unknownErr(datestr)
+				}
 			}
 
 		case dateDigitYearSlash:
@@ -2397,6 +2429,7 @@ type parser struct {
 	fullMonth                  string
 	parsedAMPM                 bool
 	skip                       int
+	link                       int
 	extra                      int
 	part1Len                   int
 	yeari                      int
