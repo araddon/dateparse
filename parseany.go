@@ -454,6 +454,11 @@ iterRunes:
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
+				p.yearlen = i - 2
+				p.moi = i + 1
+				if !p.setYear() {
+					return p, unknownErr(datestr)
+				}
 			case ',':
 				return p, unknownErr(datestr)
 			case 's', 'S', 'r', 'R', 't', 'T', 'n', 'N':
@@ -889,8 +894,26 @@ iterRunes:
 			//   2014年04月08日
 			//               weekday  %Y年%m月%e日 %A %I:%M %p
 			// 2013年07月18日 星期四 10:27 上午
-			if r == ' ' {
+			switch r {
+			case '月':
+				// month
+				p.molen = i - p.moi - 2
+				p.dayi = i + 1
+				if !p.setMonth() {
+					return p, unknownErr(datestr)
+				}
+			case '日':
+				// day
+				p.daylen = i - p.dayi - 2
+				if !p.setDay() {
+					return p, unknownErr(datestr)
+				}
+			case ' ':
+				if p.daylen <= 0 {
+					return p, unknownErr(datestr)
+				}
 				p.stateDate = dateDigitChineseYearWs
+				p.stateTime = timeStart
 				break iterRunes
 			}
 		case dateDigitDot:
@@ -2305,11 +2328,11 @@ iterRunes:
 	case dateDigitChineseYear:
 		// dateDigitChineseYear
 		//   2014年04月08日
-		p.setEntireFormat([]byte("2006年01月02日"))
+		//   2014年4月12日
 		return p, nil
 
 	case dateDigitChineseYearWs:
-		p.setEntireFormat([]byte("2006年01月02日 15:04:05"))
+		//   2014年04月08日 00:00:00 ...
 		return p, nil
 
 	case dateAlphaSlashDigitSlash:
