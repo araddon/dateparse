@@ -97,6 +97,13 @@ func BenchmarkParseAnyErrors(b *testing.B) {
 	}
 }
 
+func BenchmarkParseAmbiguous(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		MustParse("13/02/2014 04:08:09 +0000 UTC", RetryAmbiguousDateWithSwap(true))
+	}
+}
+
 /*
 func BenchmarkParseDateString(b *testing.B) {
 	b.ReportAllocs()

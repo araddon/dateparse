@@ -254,6 +254,7 @@ var testInputs = []dateTest{
 	{in: "04:02:2014 04:08:09.123", out: "2014-04-02 04:08:09.123 +0000 UTC"},
 	{in: "04:02:2014 04:08:09.12312", out: "2014-04-02 04:08:09.12312 +0000 UTC"},
 	{in: "04:02:2014 04:08:09.123123", out: "2014-04-02 04:08:09.123123 +0000 UTC"},
+	{in: "04:01:2014 04:08:09", out: "2014-01-04 04:08:09 +0000 UTC", preferDayFirst: true},
 	//  mm/dd/yy hh:mm:ss AM
 	{in: "04/02/2014 04:08:09am", out: "2014-04-02 04:08:09 +0000 UTC"},
 	{in: "04/02/2014 04:08:09 AM", out: "2014-04-02 04:08:09 +0000 UTC"},
@@ -537,8 +538,10 @@ var testInputs = []dateTest{
 	{in: "2017-07-19 03:21:51+00:00", out: "2017-07-19 03:21:51 +0000 UTC"},
 	//   yyyy:mm:dd hh:mm:ss+00:00
 	{in: "2012:08:03 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
-	//   dd:mm:yyyy hh:mm:ss+00:00
+	//   mm:dd:yyyy hh:mm:ss+00:00
 	{in: "08:03:2012 18:31:59+00:00", out: "2012-08-03 18:31:59 +0000 UTC"},
+	{in: "08:04:2012 18:31:59+00:00", out: "2012-04-08 18:31:59 +0000 UTC", preferDayFirst: true},
+	{in: "24:03:2012 18:31:59+00:00", out: "2012-03-24 18:31:59 +0000 UTC", retryAmbiguous: true},
 	//   yyyy-mm-dd hh:mm:ss.000+00:00 PST
 	{in: "2012-08-03 18:31:59.000+00:00 PST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "America/Los_Angeles", zname: "PST"},
 	{in: "2012-08-03 18:31:59.000+00:00 CEST", out: "2012-08-03 18:31:59 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
@@ -1068,9 +1071,21 @@ func TestPreferMonthFirst(t *testing.T) {
 	ts, err := ParseAny("04/02/2014 04:08:09 +0000 UTC")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("4/02/2014 04:08:09 +0000 UTC")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("04/2/2014 04:08:09 +0000 UTC")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
 	preferMonthFirstTrue := PreferMonthFirst(true)
 	ts, err = ParseAny("04/02/2014 04:08:09 +0000 UTC", preferMonthFirstTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("4/02/2014 04:08:09 +0000 UTC", preferMonthFirstTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("04/2/2014 04:08:09 +0000 UTC", preferMonthFirstTrue)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
@@ -1079,16 +1094,26 @@ func TestPreferMonthFirst(t *testing.T) {
 	ts, err = ParseAny("04/02/2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("4/02/2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("04/2/2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	// default is false
 	_, err := ParseAny("13/02/2014 04:08:09 +0000 UTC")
 	assert.NotEqual(t, nil, err)
+	_, err = ParseAny("13/2/2014 04:08:09 +0000 UTC")
+	assert.NotEqual(t, nil, err)
 
 	// will fail error if the month preference cannot work due to the value being larger than 12
 	retryAmbiguousDateWithSwapFalse := RetryAmbiguousDateWithSwap(false)
 	_, err = ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapFalse)
+	assert.NotEqual(t, nil, err)
+	_, err = ParseAny("13/2/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapFalse)
 	assert.NotEqual(t, nil, err)
 
 	// will retry with the other month preference if this error is detected
@@ -1096,9 +1121,13 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	ts, err := ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts, err = ParseAny("13/2/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	MustParse("8-Mar-2018::14:09:27")
+	ts := MustParse("03:08:2012 18:31:59+00:00", PreferMonthFirst(false))
+	assert.Equal(t, "2012-08-03 18:31:59 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }

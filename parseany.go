@@ -342,6 +342,7 @@ iterRunes:
 					// 03/31/2005
 					// 31/03/2005
 					p.ambiguousMD = true
+					p.ambiguousRetryable = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							// 03/31/2005
@@ -364,8 +365,8 @@ iterRunes:
 				}
 
 			case ':':
-				// 03/31/2005
-				// 2014/02/24
+				// 03:31:2005
+				// 2014:02:24
 				p.stateDate = dateDigitColon
 				if i == 4 {
 					p.yearlen = i
@@ -375,6 +376,7 @@ iterRunes:
 					}
 				} else {
 					p.ambiguousMD = true
+					p.ambiguousRetryable = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							p.molen = i
@@ -382,6 +384,14 @@ iterRunes:
 								return p, unknownErr(datestr)
 							}
 							p.dayi = i + 1
+						}
+					} else {
+						if p.daylen == 0 {
+							p.daylen = i
+							if !p.setDay() {
+								return p, unknownErr(datestr)
+							}
+							p.moi = i + 1
 						}
 					}
 				}
@@ -399,6 +409,7 @@ iterRunes:
 					}
 				} else if i <= 2 {
 					p.ambiguousMD = true
+					p.ambiguousRetryable = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							// 03.31.2005
@@ -641,7 +652,7 @@ iterRunes:
 						// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
 						// which is a horrible assumption, but seems to be the convention for
 						// dates that are formatted in this way.
-						p.ambiguousMD = true
+						p.ambiguousMD = true // not retryable
 						p.yearlen = 2
 						p.set(p.yeari, "06")
 						// We now also know that part1 was the day
@@ -786,6 +797,11 @@ iterRunes:
 					if !p.setDay() {
 						return p, unknownErr(datestr)
 					}
+				} else if p.molen == 0 {
+					p.molen = i - p.moi
+					if !p.setMonth() {
+						return p, unknownErr(datestr)
+					}
 				}
 				break iterRunes
 			case ':':
@@ -802,6 +818,14 @@ iterRunes:
 					if p.daylen == 0 {
 						p.daylen = i - p.dayi
 						if !p.setDay() {
+							return p, unknownErr(datestr)
+						}
+						p.yeari = i + 1
+					}
+				} else {
+					if p.molen == 0 {
+						p.molen = i - p.moi
+						if !p.setMonth() {
 							return p, unknownErr(datestr)
 						}
 						p.yeari = i + 1
@@ -2260,7 +2284,7 @@ iterRunes:
 				// We are going to ASSUME (bad, bad) that it is dd-mon-yy (dd-mm-yy),
 				// which is a horrible assumption, but seems to be the convention for
 				// dates that are formatted in this way.
-				p.ambiguousMD = true
+				p.ambiguousMD = true // not retryable
 				p.yearlen = 2
 				p.set(p.yeari, "06")
 				// We now also know that part1 was the day
@@ -2417,6 +2441,7 @@ type parser struct {
 	preferMonthFirst           bool
 	retryAmbiguousDateWithSwap bool
 	ambiguousMD                bool
+	ambiguousRetryable         bool
 	allowPartialStringMatch    bool
 	stateDate                  dateState
 	stateTime                  timeState
@@ -2774,7 +2799,7 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 		p.setFullMonth(p.fullMonth)
 	}
 
-	if p.retryAmbiguousDateWithSwap && p.ambiguousMD {
+	if p.retryAmbiguousDateWithSwap && p.ambiguousMD && p.ambiguousRetryable {
 		// month out of range signifies that a day/month swap is the correct solution to an ambiguous date
 		// this is because it means that a day is being interpreted as a month and overflowing the valid value for that
 		// by retrying in this case, we can fix a common situation with no assumptions
@@ -2782,19 +2807,35 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 			// if actual time parsing errors out with the following error, swap before we
 			// get out of this function to reduce scope it needs to be applied on
 			if err != nil && strings.Contains(err.Error(), "month out of range") {
-				// create the option to reverse the preference
-				preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
-				// turn off the retry to avoid endless recursion
-				retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
-				modifiedOpts := append(originalOpts, preferMonthFirst, retryAmbiguousDateWithSwap)
-				var newParser *parser
-				newParser, err = parseTime(p.datestr, originalLoc, modifiedOpts...)
-				defer putBackParser(newParser)
-				if err == nil {
-					t, err = newParser.parse(originalLoc, modifiedOpts...)
-					// The caller might use the format and datestr, so copy that back to the original parser
-					p.setEntireFormat(newParser.format)
-					p.datestr = newParser.datestr
+				// simple optimized case where mm and dd can be swapped directly
+				if p.molen == 2 && p.daylen == 2 {
+					moi := p.moi
+					p.moi = p.dayi
+					p.dayi = moi
+					if !p.setDay() || !p.setMonth() {
+						err = unknownErr(p.datestr)
+					} else {
+						if p.loc == nil {
+							t, err = time.Parse(bytesToString(p.format), p.datestr)
+						} else {
+							t, err = time.ParseInLocation(bytesToString(p.format), p.datestr, p.loc)
+						}
+					}
+				} else {
+					// create the option to reverse the preference
+					preferMonthFirst := PreferMonthFirst(!p.preferMonthFirst)
+					// turn off the retry to avoid endless recursion
+					retryAmbiguousDateWithSwap := RetryAmbiguousDateWithSwap(false)
+					modifiedOpts := append(originalOpts, preferMonthFirst, retryAmbiguousDateWithSwap)
+					var newParser *parser
+					newParser, err = parseTime(p.datestr, originalLoc, modifiedOpts...)
+					defer putBackParser(newParser)
+					if err == nil {
+						t, err = newParser.parse(originalLoc, modifiedOpts...)
+						// The caller might use the format and datestr, so copy that back to the original parser
+						p.setEntireFormat(newParser.format)
+						p.datestr = newParser.datestr
+					}
 				}
 			}
 		}()
@@ -2824,9 +2865,10 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 	if p.loc == nil {
 		// gou.Debugf("parse layout=%q input=%q   \ntx, err := time.Parse(%q, %q)", string(p.format), p.datestr, string(p.format), p.datestr)
 		return time.Parse(bytesToString(p.format), p.datestr)
+	} else {
+		//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.ParseInLocation(%q, %q, %v)", string(p.format), p.datestr, string(p.format), p.datestr, p.loc)
+		return time.ParseInLocation(bytesToString(p.format), p.datestr, p.loc)
 	}
-	//gou.Debugf("parse layout=%q input=%q   \ntx, err := time.ParseInLocation(%q, %q, %v)", string(p.format), p.datestr, string(p.format), p.datestr, p.loc)
-	return time.ParseInLocation(bytesToString(p.format), p.datestr, p.loc)
 }
 func isDay(alpha string) bool {
 	for _, day := range days {
