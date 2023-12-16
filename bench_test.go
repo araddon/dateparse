@@ -40,6 +40,63 @@ func BenchmarkParseAny(b *testing.B) {
 	}
 }
 
+func BenchmarkBigShotgunParse(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testInputs {
+			// This is the non dateparse traditional approach
+			_, _ = parseShotgunStyle(t.in)
+		}
+	}
+}
+
+func BenchmarkBigParseAny(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testInputs {
+			_, _ = ParseAny(t.in)
+		}
+	}
+}
+
+func BenchmarkBigParseIn(b *testing.B) {
+	b.ReportAllocs()
+	loc, _ := time.LoadLocation("America/New_York")
+	for i := 0; i < b.N; i++ {
+		for _, t := range testInputs {
+			_, _ = ParseIn(t.in, loc)
+		}
+	}
+}
+
+func BenchmarkBigParseRetryAmbiguous(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testInputs {
+			_, _ = ParseAny(t.in, RetryAmbiguousDateWithSwap(true))
+		}
+	}
+}
+
+func BenchmarkShotgunParseErrors(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testParseErrors {
+			// This is the non dateparse traditional approach
+			_, _ = parseShotgunStyle(t.in)
+		}
+	}
+}
+
+func BenchmarkParseAnyErrors(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, t := range testParseErrors {
+			_, _ = ParseAny(t.in)
+		}
+	}
+}
+
 /*
 func BenchmarkParseDateString(b *testing.B) {
 	b.ReportAllocs()
