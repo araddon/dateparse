@@ -122,6 +122,7 @@ const (
 	timeWsOffsetColonAlpha
 	timeWsOffsetColon
 	timeWsYear // 16
+	timeWsYearOffset
 	timeOffset
 	timeOffsetColon
 	timeOffsetColonAlpha
@@ -997,13 +998,14 @@ iterRunes:
 			}
 
 		case dateAlpha:
-			// dateAlphaWS
+			// dateAlphaWs
 			//  Mon Jan _2 15:04:05 2006
 			//  Mon Jan _2 15:04:05 MST 2006
 			//  Mon Jan 02 15:04:05 -0700 2006
+			//  Mon Jan 02 15:04:05 2006 -0700
 			//  Mon Aug 10 15:44:11 UTC+0100 2015
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
-			//  dateAlphaWSDigit
+			//  dateAlphaWsDigit
 			//    May 8, 2009 5:57:51 PM
 			//    oct 1, 1970
 			//  dateAlphaWsMonth
@@ -1135,6 +1137,7 @@ iterRunes:
 			//   Mon Jan _2 15:04:05 2006
 			//   Mon Jan _2 15:04:05 MST 2006
 			//   Mon Jan 02 15:04:05 -0700 2006
+			//   Mon Jan 02 15:04:05 2006 -0700
 			//   Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
 			// dateAlphaWsDigit
@@ -1663,7 +1666,9 @@ iterRunes:
 				//     timeWsOffsetColonAlpha
 				//       00:12:00 +00:00 UTC
 				// timeWsYear
-				//     00:12:00 2008
+				//   00:12:00 2008
+				//   timeWsYearOffset
+				//     00:12:00 2008 -0700
 				// timeZ
 				//   15:04:05.99Z
 				switch r {
@@ -1686,6 +1691,23 @@ iterRunes:
 						// 00:12:00 2008
 						p.stateTime = timeWsYear
 						p.yeari = i
+					}
+				}
+			case timeWsYear:
+				// timeWsYearOffset
+				//   00:12:00 2008 -0700
+				switch r {
+				case ' ':
+					p.yearlen = i - p.yeari
+					if !p.setYear() {
+						return p, unknownErr(datestr)
+					}
+				case '+', '-':
+					p.offseti = i
+					p.stateTime = timeWsYearOffset
+				default:
+					if !unicode.IsDigit(r) {
+						return p, unknownErr(datestr)
 					}
 				}
 			case timeWsAlpha:
@@ -2049,7 +2071,7 @@ iterRunes:
 			if p.mslen >= 10 {
 				return p, fmt.Errorf("fractional seconds in %q too long near %q", datestr, string(p.datestr[p.msi:p.mslen]))
 			}
-		case timeOffset, timeWsOffset:
+		case timeOffset, timeWsOffset, timeWsYearOffset:
 			switch len(p.datestr) - p.offseti {
 			case 3:
 				// 19:55:00+01 (or 19:55:00 +01)

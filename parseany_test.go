@@ -443,6 +443,9 @@ var testInputs = []dateTest{
 	{in: "4/2/2014, 04:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
 	{in: "04/02/2014, 04:08 AM", out: "2014-04-02 04:08:00 +0000 UTC"},
 	{in: "04/02/2014, 04:08 PM", out: "2014-04-02 16:08:00 +0000 UTC"},
+	// Git log default date format - https://github.com/araddon/dateparse/pull/92
+	{in: "Thu Apr 7 15:13:13 2005 -0700", out: "2005-04-07 22:13:13 +0000 UTC"},
+	{in: "Tue Dec 12 23:07:11 2023 -0700", out: "2023-12-13 06:07:11 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss,000
 	{in: "2014-05-11 08:20:13,787", out: "2014-05-11 08:20:13.787 +0000 UTC"},
 	//   yyyy-mm-dd hh:mm:ss +0000
@@ -1090,5 +1093,5 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	MustParse("Jul 9, 2012 at 5:02am (EST)")
+	MustParse("Tue Dec 12 23:07:11 2023 -0700")
 }
