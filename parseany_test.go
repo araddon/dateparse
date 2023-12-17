@@ -756,46 +756,52 @@ func TestParse(t *testing.T) {
 		assert.NotEqual(t, nil, err)
 	})
 
-	for _, th := range testInputs {
-		t.Run(th.in, func(t *testing.T) {
-			var ts time.Time
-			defer func() {
-				if r := recover(); r != nil {
-					t.Fatalf("error: %s", r)
+	for _, simpleErrorMessage := range []bool{false, true} {
+		for _, th := range testInputs {
+			t.Run(fmt.Sprintf("simpleerr-%v-%s", simpleErrorMessage, th.in), func(t *testing.T) {
+				var ts time.Time
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("error: %s", r)
+					}
+				}()
+				parserOptions := []ParserOption{
+					PreferMonthFirst(!th.preferDayFirst),
+					RetryAmbiguousDateWithSwap(th.retryAmbiguous),
+					SimpleErrorMessages(simpleErrorMessage),
 				}
-			}()
-			parserOptions := []ParserOption{PreferMonthFirst(!th.preferDayFirst), RetryAmbiguousDateWithSwap(th.retryAmbiguous)}
-			if len(th.loc) > 0 {
-				loc, err := time.LoadLocation(th.loc)
-				if err != nil {
-					t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+				if len(th.loc) > 0 {
+					loc, err := time.LoadLocation(th.loc)
+					if err != nil {
+						t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+					}
+					ts, err = ParseIn(th.in, loc, parserOptions...)
+					if err != nil {
+						t.Fatalf("expected to parse %q but got %v", th.in, err)
+					}
+					got := fmt.Sprintf("%v", ts.In(time.UTC))
+					assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+					if th.out != got {
+						t.Fatalf("whoops, got %s, expected %s", got, th.out)
+					}
+					if len(th.zname) > 0 {
+						gotZone, _ := ts.Zone()
+						assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
+					}
+				} else {
+					ts = MustParse(th.in, parserOptions...)
+					got := fmt.Sprintf("%v", ts.In(time.UTC))
+					assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
+					if th.out != got {
+						t.Fatalf("whoops, got %s, expected %s", got, th.out)
+					}
+					if len(th.zname) > 0 {
+						gotZone, _ := ts.Zone()
+						assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
+					}
 				}
-				ts, err = ParseIn(th.in, loc, parserOptions...)
-				if err != nil {
-					t.Fatalf("expected to parse %q but got %v", th.in, err)
-				}
-				got := fmt.Sprintf("%v", ts.In(time.UTC))
-				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-				if th.out != got {
-					t.Fatalf("whoops, got %s, expected %s", got, th.out)
-				}
-				if len(th.zname) > 0 {
-					gotZone, _ := ts.Zone()
-					assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
-				}
-			} else {
-				ts = MustParse(th.in, parserOptions...)
-				got := fmt.Sprintf("%v", ts.In(time.UTC))
-				assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-				if th.out != got {
-					t.Fatalf("whoops, got %s, expected %s", got, th.out)
-				}
-				if len(th.zname) > 0 {
-					gotZone, _ := ts.Zone()
-					assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
-				}
-			}
-		})
+			})
+		}
 	}
 
 	// some errors

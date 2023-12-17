@@ -1,7 +1,7 @@
 Go Date Parser 
 ---------------------------
 
-Parse many date strings without knowing format in advance.  Uses a scanner to read bytes and use a state machine to find format.  Much faster than shotgun based parse methods.  See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison.
+Parse many date strings without knowing format in advance.  Uses a scanner to read bytes and use a state machine to find format.  Much faster than shotgun based parse methods.  See [bench_test.go](https://github.com/araddon/dateparse/blob/master/bench_test.go) for performance comparison. See the critical note below about timezones.
 
 
 [![Code Coverage](https://codecov.io/gh/araddon/dateparse/branch/master/graph/badge.svg)](https://codecov.io/gh/araddon/dateparse)
@@ -9,7 +9,7 @@ Parse many date strings without knowing format in advance.  Uses a scanner to re
 [![Build Status](https://travis-ci.org/araddon/dateparse.svg?branch=master)](https://travis-ci.org/araddon/dateparse)
 [![Go ReportCard](https://goreportcard.com/badge/araddon/dateparse)](https://goreportcard.com/report/araddon/dateparse)
 
-**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous if this is not desired behavior, use `ParseStrict` which will fail on ambiguous date strings. This can be adjusted using the `PreferMonthFirst` parser option.
+**MM/DD/YYYY VS DD/MM/YYYY** Right now this uses mm/dd/yyyy WHEN ambiguous if this is not desired behavior, use `ParseStrict` which will fail on ambiguous date strings. This can be adjusted using the `PreferMonthFirst` parser option. Some ambiguous formats can fail (e.g., trying to parse 31/03/2023 as the default month-first format `MM/DD/YYYY`), but can be automatically retried with `RetryAmbiguousDateWithSwap`.
 
 ```go
 
@@ -21,10 +21,23 @@ t, err := dateparse.ParseStrict("3/1/2014")
 > returns error 
 
 // Return a string that represents the layout to parse the given date-time.
+// For certain highly complex date formats, ParseFormat may not be accurate,
+// even if ParseAny is able to correctly parse it (e.g., anything that starts
+// with a weekday).
 layout, err := dateparse.ParseFormat("May 8, 2009 5:57:51 PM")
 > "Jan 2, 2006 3:04:05 PM"
 
 ```
+
+Performance Considerations
+----------------------------------
+
+Internally a memory pool is used to minimize allocation overhead. If you could
+be frequently parsing text that does not match any format, consider turning on
+the the `SimpleErrorMessages` option. This will make error messages have no
+contextual details, but will reduce allocation overhead 13x and will be 4x
+faster (most of the time is spent in generating a complex error message if the
+option is off (default)).
 
 Timezone Considerations
 ----------------------------------

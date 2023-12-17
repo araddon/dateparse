@@ -71,9 +71,11 @@ func BenchmarkBigParseIn(b *testing.B) {
 
 func BenchmarkBigParseRetryAmbiguous(b *testing.B) {
 	b.ReportAllocs()
+	opts := []ParserOption{RetryAmbiguousDateWithSwap(true)}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, t := range testInputs {
-			_, _ = ParseAny(t.in, RetryAmbiguousDateWithSwap(true))
+			_, _ = ParseAny(t.in, opts...)
 		}
 	}
 }
@@ -90,17 +92,48 @@ func BenchmarkShotgunParseErrors(b *testing.B) {
 
 func BenchmarkParseAnyErrors(b *testing.B) {
 	b.ReportAllocs()
+	opts := []ParserOption{SimpleErrorMessages(true)}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, t := range testParseErrors {
-			_, _ = ParseAny(t.in)
+			_, _ = ParseAny(t.in, opts...)
+		}
+	}
+}
+
+func BenchmarkBigParseAnyErrors(b *testing.B) {
+	b.ReportAllocs()
+
+	opts := []ParserOption{SimpleErrorMessages(true)}
+	// manufacture a bunch of different tests with random errors put in them
+	var testBigErrorInputs []string
+	for index, t := range testInputs {
+		b := []byte(t.in)
+		spread := 4 + (index % 4)
+		startingIndex := spread % len(b)
+		for i := startingIndex; i < len(b); i += spread {
+			b[i] = '?'
+		}
+		testBigErrorInputs = append(testBigErrorInputs, string(b))
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, in := range testBigErrorInputs {
+			_, err := ParseAny(in, opts...)
+			if err == nil {
+				panic(fmt.Sprintf("expected parsing to fail: %s", in))
+			}
 		}
 	}
 }
 
 func BenchmarkParseAmbiguous(b *testing.B) {
 	b.ReportAllocs()
+	opts := []ParserOption{RetryAmbiguousDateWithSwap(true)}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		MustParse("13/02/2014 04:08:09 +0000 UTC", RetryAmbiguousDateWithSwap(true))
+		MustParse("13/02/2014 04:08:09 +0000 UTC", opts...)
 	}
 }
 

@@ -137,14 +137,25 @@ var (
 	ErrAmbiguousMMDD     = fmt.Errorf("this date has ambiguous mm/dd vs dd/mm type format")
 	ErrCouldntFindFormat = fmt.Errorf("could not find format for")
 	ErrUnexpectedTail    = fmt.Errorf("unexpected content after date/time: ")
+	ErrUnknownTZOffset   = fmt.Errorf("TZ offset not recognized")
+	ErrUnknownTimeZone   = fmt.Errorf("timezone not recognized")
+	ErrFracSecTooLong    = fmt.Errorf("fractional seconds too long")
 )
 
-func unknownErr(datestr string) error {
-	return fmt.Errorf("%w %q", ErrCouldntFindFormat, datestr)
+func (p *parser) unknownErr(datestr string) error {
+	if p == nil || !p.simpleErrorMessages {
+		return fmt.Errorf("%w %q", ErrCouldntFindFormat, datestr)
+	} else {
+		return ErrCouldntFindFormat
+	}
 }
 
-func unexpectedTail(tail string) error {
-	return fmt.Errorf("%w %q", ErrUnexpectedTail, tail)
+func (p *parser) unexpectedTail(tailStart int) error {
+	if p != nil && !p.simpleErrorMessages {
+		return fmt.Errorf("%w %q", ErrUnexpectedTail, p.datestr[tailStart:])
+	} else {
+		return ErrUnexpectedTail
+	}
 }
 
 // go 1.20 allows us to convert a byte slice to a string without a memory allocation.
@@ -283,12 +294,15 @@ iterRunes:
 		// gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, p.datestr)
 		switch p.stateDate {
 		case dateStart:
-			if unicode.IsDigit(r) {
+			// NOTE: don't use unicode.IsDigit and unicode.IsLetter here because
+			// we don't expect non-ANSI chars to start a valid date/time format.
+			// This will let us quickly reject strings that begin with any non-ANSI char.
+			if '0' <= r && r <= '9' {
 				p.stateDate = dateDigit
-			} else if unicode.IsLetter(r) {
+			} else if ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') {
 				p.stateDate = dateAlpha
 			} else {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateDigit:
 
@@ -317,7 +331,7 @@ iterRunes:
 					p.yearlen = i // since it was start of datestr, i=len
 					p.moi = i + 1
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateDigitYearSlash
 				} else {
@@ -332,7 +346,7 @@ iterRunes:
 						p.daylen = 2
 						p.dayi = 0
 						if !p.setDay() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						continue
 					}
@@ -346,21 +360,21 @@ iterRunes:
 							// 03/31/2005
 							p.molen = i
 							if !p.setMonth() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.dayi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					} else {
 						if p.daylen == 0 {
 							p.daylen = i
 							if !p.setDay() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.moi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				}
@@ -373,7 +387,7 @@ iterRunes:
 					p.yearlen = i
 					p.moi = i + 1
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else {
 					p.ambiguousMD = true
@@ -382,21 +396,21 @@ iterRunes:
 						if p.molen == 0 {
 							p.molen = i
 							if !p.setMonth() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.dayi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					} else {
 						if p.daylen == 0 {
 							p.daylen = i
 							if !p.setDay() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.moi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				}
@@ -410,7 +424,7 @@ iterRunes:
 					p.yearlen = i
 					p.moi = i + 1
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else if i <= 2 {
 					p.ambiguousMD = true
@@ -420,21 +434,21 @@ iterRunes:
 							// 03.31.2005
 							p.molen = i
 							if !p.setMonth() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.dayi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					} else {
 						if p.daylen == 0 {
 							p.daylen = i
 							if !p.setDay() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 							p.moi = i + 1
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				}
@@ -454,7 +468,7 @@ iterRunes:
 					p.yearlen = i
 					p.moi = i + 1
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateYearWs
 				} else if i == 6 {
@@ -470,10 +484,10 @@ iterRunes:
 				p.yearlen = i - 2
 				p.moi = i + 1
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case ',':
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			case 's', 'S', 'r', 'R', 't', 'T', 'n', 'N':
 				// 1st January 2018
 				// 2nd Jan 2018 23:59
@@ -482,7 +496,7 @@ iterRunes:
 				i--
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				continue
 			}
@@ -503,18 +517,18 @@ iterRunes:
 			//     2013-Feb-03
 			//     2013-February-03
 			switch r {
-			case '-':
+			case '-', '\u2212':
 				p.molen = i - p.moi
 				p.dayi = i + 1
 				p.stateDate = dateYearDashDash
 				if !p.setMonth() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			default:
 				if unicode.IsLetter(r) {
 					p.stateDate = dateYearDashAlpha
 				} else if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -532,14 +546,14 @@ iterRunes:
 				p.daylen = i - p.dayi
 				p.stateDate = dateYearDashDashOffset
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case ' ':
 				p.daylen = i - p.dayi
 				p.stateDate = dateYearDashDashWs
 				p.stateTime = timeStart
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			case 'T':
@@ -547,12 +561,12 @@ iterRunes:
 				p.stateDate = dateYearDashDashT
 				p.stateTime = timeStart
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -561,7 +575,7 @@ iterRunes:
 			//  2006-01-02T15:04:05Z07:00
 			//  2020-08-17T17:00:00:000+0100
 			// (this state should never be reached, we break out when in this state)
-			return p, unknownErr(datestr)
+			return p, p.unknownErr(datestr)
 
 		case dateYearDashDashOffset:
 			//  2020-07-20+00:00
@@ -570,7 +584,7 @@ iterRunes:
 				p.set(p.offseti, "-07:00")
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -579,7 +593,7 @@ iterRunes:
 			//   2013-Feb-03
 			//   2013-February-03
 			switch r {
-			case '-':
+			case '-', '\u2212':
 				p.molen = i - p.moi
 				// Must be a valid short or long month
 				if p.molen == 3 {
@@ -593,12 +607,12 @@ iterRunes:
 						p.dayi = i + 1
 						p.stateDate = dateYearDashDash
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 			default:
 				if !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -612,28 +626,28 @@ iterRunes:
 				p.stateDate = dateDigitDashDigit
 				p.moi = i
 			} else {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateDigitDashAlpha:
 			// 13-Feb-03
 			// 28-Feb-03
 			// 29-Jun-2016
 			switch r {
-			case '-':
+			case '-', '\u2212':
 				p.molen = i - p.moi
 				p.set(p.moi, "Jan")
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
 			default:
 				if !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
 		case dateDigitDashDigit:
 			// 29-06-2026
 			switch r {
-			case '-':
+			case '-', '\u2212':
 				//      X
 				// 29-06-2026
 				p.molen = i - p.moi
@@ -642,11 +656,11 @@ iterRunes:
 					p.yeari = i + 1
 					p.stateDate = dateDigitDashDigitDash
 				} else {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -673,11 +687,11 @@ iterRunes:
 							}
 						}
 						if !doubleColonTimeConnector {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				} else if p.link > 0 {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				if r == ' ' || doubleColonTimeConnector {
 					// we need to find if this was 4 digits, aka year
@@ -696,7 +710,7 @@ iterRunes:
 						p.dayi = 0
 						p.daylen = p.part1Len
 						if !p.setDay() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					} else if length == 2 {
 						// We have no idea if this is
@@ -713,17 +727,17 @@ iterRunes:
 						p.dayi = 0
 						p.daylen = p.part1Len
 						if !p.setDay() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateTime = timeStart
 					break iterRunes
 				}
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -739,7 +753,7 @@ iterRunes:
 				if p.daylen == 0 {
 					p.daylen = i - p.dayi
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 				break iterRunes
@@ -747,13 +761,13 @@ iterRunes:
 				if p.molen == 0 {
 					p.molen = i - p.moi
 					if !p.setMonth() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.dayi = i + 1
 				}
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -778,15 +792,15 @@ iterRunes:
 							p.yeari = i + 1
 							p.stateDate = dateDigitSlashAlphaSlash
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				} else {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			default:
 				if !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -799,13 +813,13 @@ iterRunes:
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -827,7 +841,7 @@ iterRunes:
 					if p.daylen == 0 {
 						p.daylen = i - p.dayi
 						if !p.setDay() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						p.yeari = i + 1
 					}
@@ -835,7 +849,7 @@ iterRunes:
 					if p.molen == 0 {
 						p.molen = i - p.moi
 						if !p.setMonth() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						p.yeari = i + 1
 					}
@@ -851,13 +865,13 @@ iterRunes:
 						i++
 					}
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -878,17 +892,17 @@ iterRunes:
 				if p.yearlen == 0 {
 					p.yearlen = i - p.yeari
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else if p.daylen == 0 {
 					p.daylen = i - p.dayi
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else if p.molen == 0 {
 					p.molen = i - p.moi
 					if !p.setMonth() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 				break iterRunes
@@ -898,7 +912,7 @@ iterRunes:
 					if p.molen == 0 {
 						p.molen = i - p.moi
 						if !p.setMonth() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						p.dayi = i + 1
 					}
@@ -906,7 +920,7 @@ iterRunes:
 					if p.daylen == 0 {
 						p.daylen = i - p.dayi
 						if !p.setDay() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						p.yeari = i + 1
 					}
@@ -914,14 +928,14 @@ iterRunes:
 					if p.molen == 0 {
 						p.molen = i - p.moi
 						if !p.setMonth() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 						p.yeari = i + 1
 					}
 				}
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -941,7 +955,7 @@ iterRunes:
 				p.dayi = 0
 				p.daylen = p.part1Len
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateTime = timeStart
 				if i > p.daylen+len(" Sep") { //  November etc
@@ -956,7 +970,7 @@ iterRunes:
 						p.fullMonth = possibleFullMonth
 						p.stateDate = dateDigitWsMoYear
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else {
 					// If len=3, the might be Feb or May?  Ie ambigous abbreviated but
@@ -970,7 +984,7 @@ iterRunes:
 				}
 			default:
 				if !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -984,19 +998,19 @@ iterRunes:
 			case ',':
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				i++
 				break iterRunes
 			case ' ':
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1017,11 +1031,11 @@ iterRunes:
 						p.dayi = i + 1
 						p.stateDate = dateYearWsMonthWs
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 			} else if !unicode.IsLetter(r) {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateYearWsMonthWs:
 			// 2013 Jan 06 15:04:05
@@ -1040,7 +1054,7 @@ iterRunes:
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1055,24 +1069,24 @@ iterRunes:
 				p.molen = i - p.moi - 2
 				p.dayi = i + 1
 				if !p.setMonth() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case '日':
 				// day
 				p.daylen = i - p.dayi - 2
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case ' ':
 				if p.daylen <= 0 {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateDate = dateDigitChineseYearWs
 				p.stateTime = timeStart
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 		case dateDigitDot:
@@ -1088,7 +1102,7 @@ iterRunes:
 					p.daylen = i - p.dayi
 					p.yeari = i + 1
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateDigitDotDot
 				} else if p.dayi == 0 && p.yearlen == 0 {
@@ -1096,7 +1110,7 @@ iterRunes:
 					p.molen = i - p.moi
 					p.yeari = i + 1
 					if !p.setMonth() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateDigitDotDot
 				} else {
@@ -1105,12 +1119,12 @@ iterRunes:
 					p.molen = i - p.moi
 					p.dayi = i + 1
 					if !p.setMonth() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateDigitDotDot
 				}
 			} else if !unicode.IsDigit(r) {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateDigitDotDot:
@@ -1126,14 +1140,14 @@ iterRunes:
 				p.daylen = i - p.dayi
 				p.stateDate = dateDigitDotDotOffset
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case ' ':
 				p.daylen = i - p.dayi
 				p.stateDate = dateDigitDotDotWs
 				p.stateTime = timeStart
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			case 'T':
@@ -1141,12 +1155,12 @@ iterRunes:
 				p.stateDate = dateDigitDotDotT
 				p.stateTime = timeStart
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1155,7 +1169,7 @@ iterRunes:
 			//  2006-01-02T15:04:05Z07:00
 			//  2020-08-17T17:00:00:000+0100
 			// (should be unreachable, we break in this state)
-			return p, unknownErr(datestr)
+			return p, p.unknownErr(datestr)
 
 		case dateDigitDotDotOffset:
 			//  2020-07-20+00:00
@@ -1164,7 +1178,7 @@ iterRunes:
 				p.set(p.offseti, "-07:00")
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1233,7 +1247,7 @@ iterRunes:
 						p.dayi = i + 1
 						break
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 
 				} else if i == 3 {
@@ -1245,7 +1259,7 @@ iterRunes:
 					//   May  8 17:57:51 2009
 					p.stateDate = dateAlphaWs
 				} else {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 
 			case r == ',':
@@ -1262,7 +1276,7 @@ iterRunes:
 						p.skip = i + 2
 						i++
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 			case r == '.':
@@ -1278,7 +1292,7 @@ iterRunes:
 					putBackParser(p)
 					return parseTime(newDateStr, loc, opts...)
 				} else {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			case r == '/':
 				//    X
@@ -1301,12 +1315,12 @@ iterRunes:
 						p.fullMonth = possibleFullMonth
 						p.stateDate = dateAlphaSlash
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 			default:
 				if !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1338,7 +1352,7 @@ iterRunes:
 			case r == ' ':
 				// continue
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlphaWsDigit:
@@ -1353,13 +1367,13 @@ iterRunes:
 			if r == ',' {
 				p.daylen = i - p.dayi
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateDate = dateAlphaWsDigitMore
 			} else if r == ' ' {
 				p.daylen = i - p.dayi
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.yeari = i + 1
 				p.stateDate = dateAlphaWsDigitYearMaybe
@@ -1368,7 +1382,7 @@ iterRunes:
 				p.stateDate = dateVariousDaySuffix
 				i--
 			} else if !unicode.IsDigit(r) {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateAlphaWsDigitYearMaybe:
 			//       x
@@ -1387,11 +1401,11 @@ iterRunes:
 				// must be year format, not 15:04
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				break iterRunes
 			} else if !unicode.IsDigit(r) {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateAlphaWsDigitMore:
 			//       x
@@ -1404,7 +1418,7 @@ iterRunes:
 				p.yeari = i + 1
 				p.stateDate = dateAlphaWsDigitMoreWs
 			} else {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateAlphaWsDigitMoreWs:
 			//            x
@@ -1425,13 +1439,13 @@ iterRunes:
 				p.stateDate = dateAlphaWsDigitMoreWsYear
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateTime = timeStart
 				break iterRunes
 			default:
 				if r != '\'' && !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1448,7 +1462,7 @@ iterRunes:
 						return parseTime(newDateStr, loc, opts...)
 					}
 				}
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			case 'n', 'N':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
@@ -1457,7 +1471,7 @@ iterRunes:
 						return parseTime(newDateStr, loc, opts...)
 					}
 				}
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			case 's', 'S':
 				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 					if len(p.datestr) > i+2 {
@@ -1466,7 +1480,7 @@ iterRunes:
 						return parseTime(newDateStr, loc, opts...)
 					}
 				}
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			case 'r', 'R':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
@@ -1475,9 +1489,9 @@ iterRunes:
 						return parseTime(newDateStr, loc, opts...)
 					}
 				}
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlphaFullMonthWs:
@@ -1493,13 +1507,13 @@ iterRunes:
 				if p.nextIs(i, ' ') {
 					p.daylen = i - p.dayi
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.yeari = i + 2
 					p.stateDate = dateAlphaFullMonthWsDayWs
 					i++
 				} else {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 
 			case r == ' ':
@@ -1507,7 +1521,7 @@ iterRunes:
 				// January 02 2006, 15:04:05
 				p.daylen = i - p.dayi
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.yeari = i + 1
 				p.stateDate = dateAlphaFullMonthWsDayWs
@@ -1520,12 +1534,12 @@ iterRunes:
 				// January 2nd, 2006, 15:04:05
 				p.daylen = i - p.dayi
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateDate = dateVariousDaySuffix
 				i--
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case dateAlphaFullMonthWsDayWs:
 			//                  X
@@ -1537,7 +1551,7 @@ iterRunes:
 			case ',':
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateTime = timeStart
 				i++
@@ -1545,13 +1559,13 @@ iterRunes:
 			case ' ':
 				p.yearlen = i - p.yeari
 				if !p.setYear() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateTime = timeStart
 				break iterRunes
 			default:
 				if !unicode.IsDigit(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
@@ -1564,7 +1578,7 @@ iterRunes:
 				p.stateDate = dateAlphaWsDigit
 				p.dayi = i
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlphaSlash:
@@ -1577,7 +1591,7 @@ iterRunes:
 				p.stateDate = dateAlphaSlashDigit
 				p.dayi = i
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlphaSlashDigit:
@@ -1593,13 +1607,13 @@ iterRunes:
 				p.yeari = i + 1
 				p.daylen = i - p.dayi
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 				p.stateDate = dateAlphaSlashDigitSlash
 			case unicode.IsDigit(r):
 				// continue
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlphaSlashDigitSlash:
@@ -1610,7 +1624,7 @@ iterRunes:
 				p.stateTime = timeStart
 				break iterRunes
 			default:
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateWeekdayComma:
@@ -1624,12 +1638,12 @@ iterRunes:
 			switch r {
 			case ' ':
 				fallthrough
-			case '-':
+			case '-', '\u2212':
 				if p.moi == 0 {
 					p.moi = i + 1
 					p.daylen = i - p.dayi
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else if p.yeari == 0 {
 					p.yeari = i + 1
@@ -1637,7 +1651,7 @@ iterRunes:
 					if p.molen == 3 {
 						p.set(p.moi, "Jan")
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				} else {
 					p.stateTime = timeStart
@@ -1645,7 +1659,7 @@ iterRunes:
 				}
 			default:
 				if !unicode.IsDigit(r) && !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 		case dateWeekdayAbbrevComma:
@@ -1663,13 +1677,13 @@ iterRunes:
 					offset++
 				}
 				fallthrough
-			case '-':
+			case '-', '\u2212':
 				if p.dayi == 0 {
 					p.dayi = i + 1
 				} else if p.moi == 0 {
 					p.daylen = i - p.dayi
 					if !p.setDay() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.moi = i + 1
 				} else if p.yeari == 0 {
@@ -1677,30 +1691,30 @@ iterRunes:
 					if p.molen == 3 {
 						p.set(p.moi, "Jan")
 					} else {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.yeari = i + 1
 				} else {
 					p.yearlen = i - p.yeari - offset
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 					p.stateTime = timeStart
 					break iterRunes
 				}
 			default:
 				if !unicode.IsDigit(r) && !unicode.IsLetter(r) {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			}
 
 		default:
 			// Reaching an unhandled state unexpectedly should always fail parsing
-			return p, unknownErr(datestr)
+			return p, p.unknownErr(datestr)
 		}
 	}
 	if !p.coalesceDate(i) {
-		return p, unknownErr(datestr)
+		return p, p.unknownErr(datestr)
 	}
 	if p.stateTime == timeStart {
 		// increment first one, since the i++ occurs at end of loop
@@ -1811,7 +1825,7 @@ iterRunes:
 							// skip 'M'
 							i++
 						default:
-							return p, unexpectedTail(p.datestr[i:])
+							return p, p.unexpectedTail(i)
 						}
 					}
 				case ' ':
@@ -1900,14 +1914,14 @@ iterRunes:
 				case ' ':
 					p.yearlen = i - p.yeari
 					if !p.setYear() {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				case '+', '-':
 					p.offseti = i
 					p.stateTime = timeWsYearOffset
 				default:
 					if !unicode.IsDigit(r) {
-						return p, unknownErr(datestr)
+						return p, p.unknownErr(datestr)
 					}
 				}
 			case timeWsAlpha:
@@ -1961,7 +1975,7 @@ iterRunes:
 						if i+1 == len(p.datestr) {
 							p.stateTime = timeWsAlphaRParen
 						} else {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				}
@@ -2002,7 +2016,7 @@ iterRunes:
 					p.yearlen = i - p.yeari + 1
 					if p.yearlen == 4 {
 						if !p.setYear() {
-							return p, unknownErr(datestr)
+							return p, p.unknownErr(datestr)
 						}
 					}
 				}
@@ -2016,7 +2030,7 @@ iterRunes:
 				isTwoLetterWord := ((i+1) == len(p.datestr) || p.nextIs(i, ' '))
 				if (r == 'm' || r == 'M') && isTwoLetterWord {
 					if p.parsedAMPM {
-						return p, unexpectedTail(p.datestr[i:])
+						return p, p.unexpectedTail(i)
 					}
 					// This isn't a time zone after all...
 					p.tzi = 0
@@ -2042,7 +2056,7 @@ iterRunes:
 					p.stateTime = timeWs
 				} else {
 					// unexpected garbage after AM/PM indicator, fail
-					return p, unexpectedTail(p.datestr[i:])
+					return p, p.unexpectedTail(i)
 				}
 
 			case timeWsOffset:
@@ -2092,7 +2106,7 @@ iterRunes:
 						p.yearlen = i - p.yeari + 1
 						if p.yearlen == 4 {
 							if !p.setYear() {
-								return p, unknownErr(datestr)
+								return p, p.unknownErr(datestr)
 							}
 						}
 					case unicode.IsLetter(r):
@@ -2178,11 +2192,11 @@ iterRunes:
 						i++
 						p.stateTime = timePeriodAMPM
 					default:
-						return p, unexpectedTail(p.datestr[i:])
+						return p, p.unexpectedTail(i)
 					}
 				default:
 					if !unicode.IsDigit(r) {
-						return p, unexpectedTail(p.datestr[i:])
+						return p, p.unexpectedTail(i)
 					}
 				}
 			case timePeriodAMPM:
@@ -2193,11 +2207,11 @@ iterRunes:
 					p.offseti = i
 					p.stateTime = timeOffset
 				default:
-					return p, unexpectedTail(p.datestr[i:])
+					return p, p.unexpectedTail(i)
 				}
 			case timeZ:
 				// nothing expected can come after Z
-				return p, unexpectedTail(p.datestr[i:])
+				return p, p.unexpectedTail(i)
 			}
 		}
 
@@ -2210,12 +2224,20 @@ iterRunes:
 				// may or may not have a space on the end
 				if offsetLen == 7 {
 					if p.datestr[p.offseti+6] != ' ' {
-						return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:p.offseti+offsetLen])
+						if p.simpleErrorMessages {
+							return p, ErrUnknownTZOffset
+						} else {
+							return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:p.offseti+offsetLen])
+						}
 					}
 				}
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:p.offseti+offsetLen])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTZOffset
+				} else {
+					return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:p.offseti+offsetLen])
+				}
 			}
 			// process timezone
 			switch len(p.datestr) - p.tzi {
@@ -2225,7 +2247,11 @@ iterRunes:
 			case 4:
 				p.set(p.tzi, "MST ")
 			default:
-				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTimeZone
+				} else {
+					return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
+				}
 			}
 		case timeWsAlpha:
 			switch len(p.datestr) - p.tzi {
@@ -2235,7 +2261,11 @@ iterRunes:
 			case 4:
 				p.set(p.tzi, "MST ")
 			default:
-				return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTimeZone
+				} else {
+					return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
+				}
 			}
 
 		case timeWsAlphaRParen:
@@ -2244,12 +2274,12 @@ iterRunes:
 		case timeWsAlphaWs:
 			p.yearlen = i - p.yeari
 			if !p.setYear() {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case timeWsYear:
 			p.yearlen = i - p.yeari
 			if !p.setYear() {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		case timeWsAlphaZoneOffsetWsExtra:
 			p.trimExtra(false)
@@ -2263,13 +2293,21 @@ iterRunes:
 			case 6:
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, p.datestr[p.offseti:i])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTZOffset
+				} else {
+					return p, fmt.Errorf("%w %q near %q (must be 2 or 4 digits optional colon)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:i])
+				}
 			}
 
 		case timePeriod:
 			p.mslen = i - p.msi
 			if p.mslen >= 10 {
-				return p, fmt.Errorf("fractional seconds in %q too long near %q", datestr, p.datestr[p.msi:p.mslen])
+				if p.simpleErrorMessages {
+					return p, ErrFracSecTooLong
+				} else {
+					return p, fmt.Errorf("%w in %q near %q", ErrFracSecTooLong, datestr, p.datestr[p.msi:p.mslen])
+				}
 			}
 		case timeOffset, timeWsOffset, timeWsYearOffset:
 			switch len(p.datestr) - p.offseti {
@@ -2280,7 +2318,11 @@ iterRunes:
 				// 19:55:00+0100 (or 19:55:00 +0100)
 				p.set(p.offseti, "-0700")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (must be 2 or 4 digits optional colon)", datestr, p.datestr[p.offseti:])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTZOffset
+				} else {
+					return p, fmt.Errorf("%w %q near %q (must be 2 or 4 digits optional colon)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:])
+				}
 			}
 
 		case timeWsOffsetWs:
@@ -2295,7 +2337,11 @@ iterRunes:
 					// 13:31:51.999 +01:00 CEST
 					p.set(p.tzi, "MST ")
 				default:
-					return p, fmt.Errorf("timezone not recognized %q near %q (must be 3 or 4 characters)", datestr, p.datestr[p.tzi:])
+					if p.simpleErrorMessages {
+						return p, ErrUnknownTimeZone
+					} else {
+						return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
+					}
 				}
 			}
 		case timeOffsetColon, timeWsOffsetColon:
@@ -2305,7 +2351,11 @@ iterRunes:
 			case 6:
 				p.set(p.offseti, "-07:00")
 			default:
-				return p, fmt.Errorf("TZ offset not recognized %q near %q (expected offset like -07:00)", datestr, p.datestr[p.offseti:])
+				if p.simpleErrorMessages {
+					return p, ErrUnknownTZOffset
+				} else {
+					return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:])
+				}
 			}
 		}
 		p.coalesceTime(i)
@@ -2352,7 +2402,7 @@ iterRunes:
 			p.setEntireFormat([]byte("2006"))
 			return p, nil
 		} else if len(p.datestr) < 4 {
-			return p, fmt.Errorf("unrecognized format, too short %v", datestr)
+			return p, p.unknownErr(datestr)
 		}
 		if !t.IsZero() {
 			if loc == nil {
@@ -2418,7 +2468,7 @@ iterRunes:
 				p.dayi = 0
 				p.daylen = p.part1Len
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			} else if length == 2 {
 				// We have no idea if this is
@@ -2435,10 +2485,10 @@ iterRunes:
 				p.dayi = 0
 				p.daylen = p.part1Len
 				if !p.setDay() {
-					return p, unknownErr(datestr)
+					return p, p.unknownErr(datestr)
 				}
 			} else {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		}
 
@@ -2452,7 +2502,7 @@ iterRunes:
 			// 2014.05
 			p.molen = i - p.moi
 			if !p.setMonth() {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 			return p, nil
 		}
@@ -2495,7 +2545,7 @@ iterRunes:
 		if p.stateTime == timeIgnore && p.yearlen == 0 {
 			p.yearlen = i - p.yeari
 			if !p.setYear() {
-				return p, unknownErr(datestr)
+				return p, p.unknownErr(datestr)
 			}
 		}
 		return p, nil
@@ -2507,7 +2557,7 @@ iterRunes:
 		// oct 1, 1970
 		p.yearlen = i - p.yeari
 		if !p.setYear() {
-			return p, unknownErr(datestr)
+			return p, p.unknownErr(datestr)
 		}
 		return p, nil
 
@@ -2579,7 +2629,7 @@ iterRunes:
 
 	}
 
-	return p, unknownErr(datestr)
+	return p, p.unknownErr(datestr)
 }
 
 type parser struct {
@@ -2589,6 +2639,7 @@ type parser struct {
 	ambiguousMD                bool
 	ambiguousRetryable         bool
 	allowPartialStringMatch    bool
+	simpleErrorMessages        bool
 	stateDate                  dateState
 	stateTime                  timeState
 	format                     []byte
@@ -2690,11 +2741,22 @@ func AllowPartialStringMatch(allowPartialStringMatch bool) ParserOption {
 	}
 }
 
+// SimpleErrorMessages is an option that will cause returned error messages to contain less detail,
+// but it will avoid allocating any memory for the custom error message. If you expect to attempt
+// to parse a lot of text that is not valid, this could help reduce GC pressure.
+func SimpleErrorMessages(simpleErrorMessages bool) ParserOption {
+	return func(p *parser) error {
+		p.simpleErrorMessages = simpleErrorMessages
+		return nil
+	}
+}
+
 // Creates a new parser. The caller must call putBackParser on the returned parser when done with it.
 func newParser(dateStr string, loc *time.Location, opts ...ParserOption) (*parser, error) {
 	dateStrLen := len(dateStr)
 	if dateStrLen > longestPossibleDateStr {
-		return nil, unknownErr(dateStr)
+		var nilParser *parser
+		return nil, nilParser.unknownErr(dateStr)
 	}
 
 	// Make sure to re-use the format byte slice from the pooled parser struct
@@ -2936,7 +2998,8 @@ func (p *parser) trimExtra(onlyTrimFormat bool) {
 
 func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption) (t time.Time, err error) {
 	if p == nil {
-		return time.Time{}, unknownErr("")
+		var nilParser *parser
+		return time.Time{}, nilParser.unknownErr("")
 	}
 	if p.t != nil {
 		return *p.t, nil
@@ -2959,7 +3022,7 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 					p.moi = p.dayi
 					p.dayi = moi
 					if !p.setDay() || !p.setMonth() {
-						err = unknownErr(p.datestr)
+						err = p.unknownErr(p.datestr)
 					} else {
 						if p.loc == nil {
 							t, err = time.Parse(bytesToString(p.format), p.datestr)
@@ -2993,7 +3056,7 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 		// any numbers or letters in the format string.
 		validFormatTo := findProperEnd(bytesToString(p.format), p.formatSetLen, len(p.format), false, false, true)
 		if validFormatTo < len(p.format) {
-			return time.Time{}, unexpectedTail(p.datestr[p.formatSetLen:])
+			return time.Time{}, p.unexpectedTail(p.formatSetLen)
 		}
 	}
 
