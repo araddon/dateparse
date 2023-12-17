@@ -137,6 +137,13 @@ func BenchmarkParseAmbiguous(b *testing.B) {
 	}
 }
 
+func BenchmarkParseWeekdayAndFullMonth(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		MustParse("Monday 02 December 2006 03:04:05 PM UTC")
+	}
+}
+
 /*
 func BenchmarkParseDateString(b *testing.B) {
 	b.ReportAllocs()

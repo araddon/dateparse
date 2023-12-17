@@ -19,36 +19,36 @@ import (
 // 	gou.SetColorOutput()
 // }
 
-var days = []string{
-	"mon",
-	"tue",
-	"wed",
-	"thu",
-	"fri",
-	"sat",
-	"sun",
-	"monday",
-	"tuesday",
-	"wednesday",
-	"thursday",
-	"friday",
-	"saturday",
-	"sunday",
+var knownDays = map[string]struct{}{
+	"mon":       {},
+	"tue":       {},
+	"wed":       {},
+	"thu":       {},
+	"fri":       {},
+	"sat":       {},
+	"sun":       {},
+	"monday":    {},
+	"tuesday":   {},
+	"wednesday": {},
+	"thursday":  {},
+	"friday":    {},
+	"saturday":  {},
+	"sunday":    {},
 }
 
-var months = []string{
-	"january",
-	"february",
-	"march",
-	"april",
-	"may",
-	"june",
-	"july",
-	"august",
-	"september",
-	"october",
-	"november",
-	"december",
+var knownMonths = map[string]struct{}{
+	"january":   {},
+	"february":  {},
+	"march":     {},
+	"april":     {},
+	"may":       {},
+	"june":      {},
+	"july":      {},
+	"august":    {},
+	"september": {},
+	"october":   {},
+	"november":  {},
+	"december":  {},
 }
 
 type dateState uint8
@@ -3080,21 +3080,10 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 	}
 }
 func isDay(alpha string) bool {
-	for _, day := range days {
-		if alpha == day {
-			return true
-		}
-	}
-	return false
+	_, ok := knownDays[alpha]
+	return ok
 }
 func isMonthFull(alpha string) bool {
-	if len(alpha) > len("september") {
-		return false
-	}
-	for _, month := range months {
-		if alpha == month {
-			return true
-		}
-	}
-	return false
+	_, ok := knownMonths[alpha]
+	return ok
 }
