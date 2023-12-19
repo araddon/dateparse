@@ -1259,7 +1259,7 @@ iterRunes:
 					// using skip throws off indices used by other code; saner to restart
 					newDateStr := p.datestr[i+1:]
 					putBackParser(p)
-					return parseTime(newDateStr, loc)
+					return parseTime(newDateStr, loc, opts...)
 				}
 
 				//      X

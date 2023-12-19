@@ -701,6 +701,9 @@ var testInputs = []dateTest{
 	{in: "19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", preferDayFirst: true},
 	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", retryAmbiguous: true},
 	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", preferDayFirst: true},
+	// For certain parse modes that restart parsing, make sure that parsing options are passed along!
+	{in: "Monday 19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", retryAmbiguous: true},
+	{in: "Monday 19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", preferDayFirst: true},
 	// https://github.com/araddon/dateparse/issues/105
 	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", retryAmbiguous: true},
 	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", preferDayFirst: true},
