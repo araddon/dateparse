@@ -1143,12 +1143,26 @@ iterRunes:
 					return p, p.unknownErr(datestr)
 				}
 			case ' ':
+				if p.daylen == 0 && p.molen > 0 && p.yearlen > 0 {
 				p.daylen = i - p.dayi
-				p.stateDate = dateDigitDotDotWs
-				p.stateTime = timeStart
 				if !p.setDay() {
 					return p, p.unknownErr(datestr)
 				}
+				} else if p.molen == 0 && p.daylen > 0 && p.yearlen > 0 {
+					p.molen = i - p.moi
+					if !p.setMonth() {
+						return p, p.unknownErr(datestr)
+					}
+				} else if p.yearlen == 0 && p.daylen > 0 && p.molen > 0 {
+					p.yearlen = i - p.yeari
+					if !p.setYear() {
+						return p, p.unknownErr(datestr)
+					}
+				} else {
+					return p, p.unknownErr(datestr)
+				}
+				p.stateDate = dateDigitDotDotWs
+				p.stateTime = timeStart
 				break iterRunes
 			case 'T':
 				p.daylen = i - p.dayi

@@ -676,6 +676,7 @@ var testInputs = []dateTest{
 	{in: "3.31.2014", out: "2014-03-31 00:00:00 +0000 UTC"},
 	{in: "3.3.2014", out: "2014-03-03 00:00:00 +0000 UTC"},
 	{in: "03.31.2014", out: "2014-03-31 00:00:00 +0000 UTC"},
+	{in: "03.31.2014 10:11:59 MST", out: "2014-03-31 10:11:59 +0000 UTC", zname: "MST"},
 	//   mm.dd.yy
 	{in: "08.21.71", out: "1971-08-21 00:00:00 +0000 UTC"},
 	//   dd.mm.yyyy (see https://github.com/araddon/dateparse/issues/129 and https://github.com/araddon/dateparse/issues/28 and https://github.com/araddon/dateparse/pull/133)
@@ -1198,6 +1199,6 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	ts := MustParse("03:08:2012 18:31:59+00:00", PreferMonthFirst(false))
-	assert.Equal(t, "2012-08-03 18:31:59 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts := MustParse("03.31.2014 10:11:59 MST-0700", PreferMonthFirst(true))
+	assert.Equal(t, "2014-03-31 17:11:59 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
