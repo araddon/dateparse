@@ -1769,13 +1769,12 @@ iterRunes:
 					if p.seci == 0 {
 						// 22:18+0530
 						p.minlen = i - p.mini
+					} else if p.seclen == 0 {
+						p.seclen = i - p.seci
+					} else if p.msi > 0 && p.mslen == 0 {
+						p.mslen = i - p.msi
 					} else {
-						if p.seclen == 0 {
-							p.seclen = i - p.seci
-						}
-						if p.msi > 0 && p.mslen == 0 {
-							p.mslen = i - p.msi
-						}
+						return p, p.unknownErr(datestr)
 					}
 					p.offseti = i
 				case '.', ',':
@@ -1806,6 +1805,8 @@ iterRunes:
 							// September 17, 2012 at 5:00pm UTC-05
 							i++         // skip ' '
 							p.houri = 0 // reset hour
+						} else {
+							return p, p.unknownErr(datestr)
 						}
 					} else {
 						// Could be AM/PM
@@ -1813,13 +1814,17 @@ iterRunes:
 						isTwoLetterWord := ((i+2) == len(p.datestr) || p.nextIs(i+1, ' '))
 						switch {
 						case isLower && p.nextIs(i, 'm') && isTwoLetterWord && !p.parsedAMPM:
-							p.coalesceTime(i)
+							if !p.coalesceTime(i) {
+								return p, p.unknownErr(datestr)
+							}
 							p.set(i, "pm")
 							p.parsedAMPM = true
 							// skip 'm'
 							i++
 						case !isLower && p.nextIs(i, 'M') && isTwoLetterWord && !p.parsedAMPM:
-							p.coalesceTime(i)
+							if !p.coalesceTime(i) {
+								return p, p.unknownErr(datestr)
+							}
 							p.set(i, "PM")
 							p.parsedAMPM = true
 							// skip 'M'
@@ -1829,7 +1834,9 @@ iterRunes:
 						}
 					}
 				case ' ':
-					p.coalesceTime(i)
+					if !p.coalesceTime(i) {
+						return p, p.unknownErr(datestr)
+					}
 					p.stateTime = timeWs
 				case ':':
 					if p.mini == 0 {
@@ -1841,7 +1848,11 @@ iterRunes:
 					} else if p.seci > 0 {
 						// 18:31:59:257    ms uses colon, wtf
 						p.seclen = i - p.seci
-						p.set(p.seci, "05")
+						if p.seclen == 2 {
+							p.set(p.seci, "05")
+						} else {
+							return p, p.unknownErr(datestr)
+						}
 						p.msi = i + 1
 
 						// gross, gross, gross.   manipulating the datestr is horrible.
@@ -1861,6 +1872,8 @@ iterRunes:
 				//   15:04:05-07:00
 				if r == ':' {
 					p.stateTime = timeOffsetColon
+				} else if !unicode.IsDigit(r) {
+					return p, p.unknownErr(datestr)
 				}
 			case timeWs:
 				// timeWsAlpha
@@ -1905,6 +1918,10 @@ iterRunes:
 						// 00:12:00 2008
 						p.stateTime = timeWsYear
 						p.yeari = i
+					} else if r == '(' {
+						// (start of time zone description, ignore)
+					} else {
+						return p, p.unknownErr(datestr)
 					}
 				}
 			case timeWsYear:
@@ -1953,6 +1970,8 @@ iterRunes:
 						p.set(p.tzi, " MST")
 					} else if p.tzlen == 3 {
 						p.set(p.tzi, "MST")
+					} else if p.tzlen > 0 {
+						return p, p.unknownErr(datestr)
 					}
 					p.stateTime = timeWsAlphaZoneOffset
 					p.offseti = i
@@ -1965,6 +1984,8 @@ iterRunes:
 						p.set(p.tzi, " MST")
 					} else if p.tzlen == 3 {
 						p.set(p.tzi, "MST")
+					} else if p.tzlen > 0 {
+						return p, p.unknownErr(datestr)
 					}
 					if r == ' ' {
 						p.stateTime = timeWsAlphaWs
@@ -1997,6 +2018,10 @@ iterRunes:
 						p.yeari = i + 1
 					}
 					p.stateTime = timeWsAlphaZoneOffsetWs
+				default:
+					if r != ':' && !unicode.IsDigit(r) {
+						return p, p.unknownErr(datestr)
+					}
 				}
 			case timeWsAlphaZoneOffsetWs:
 				// timeWsAlphaZoneOffsetWs
@@ -2018,7 +2043,11 @@ iterRunes:
 						if !p.setYear() {
 							return p, p.unknownErr(datestr)
 						}
+					} else if p.yearlen > 4 {
+						return p, p.unknownErr(datestr)
 					}
+				} else {
+					return p, p.unknownErr(datestr)
 				}
 			case timeWsAMPMMaybe:
 				// timeWsAMPMMaybe
@@ -2045,6 +2074,8 @@ iterRunes:
 						p.set(p.houri, "03")
 					} else if p.hourlen == 1 {
 						p.set(p.houri, "3")
+					} else {
+						return p, p.unknownErr(datestr)
 					}
 				} else {
 					p.stateTime = timeWsAlpha
@@ -2078,6 +2109,10 @@ iterRunes:
 					p.set(p.offseti, "-0700")
 					p.yeari = i + 1
 					p.stateTime = timeWsOffsetWs
+				default:
+					if !unicode.IsDigit(r) {
+						return p, p.unknownErr(datestr)
+					}
 				}
 			case timeWsOffsetWs:
 				// 17:57:51 -0700 2009
@@ -2091,6 +2126,8 @@ iterRunes:
 					if p.datestr[i-1] == 'm' {
 						p.extra = i - 2
 						p.trimExtra(false)
+					} else {
+						return p, p.unknownErr(datestr)
 					}
 				case '+', '-', '(':
 					// This really doesn't seem valid, but for some reason when round-tripping a go date
@@ -2100,6 +2137,8 @@ iterRunes:
 					p.extra = i - 1
 					p.stateTime = timeWsOffset
 					p.trimExtra(false)
+				case ' ':
+					// continue
 				default:
 					switch {
 					case unicode.IsDigit(r):
@@ -2108,12 +2147,16 @@ iterRunes:
 							if !p.setYear() {
 								return p, p.unknownErr(datestr)
 							}
+						} else if p.yearlen > 4 {
+							return p, p.unknownErr(datestr)
 						}
 					case unicode.IsLetter(r):
 						// 15:04:05 -0700 MST
 						if p.tzi == 0 {
 							p.tzi = i
 						}
+					default:
+						return p, p.unknownErr(datestr)
 					}
 				}
 
@@ -2136,6 +2179,8 @@ iterRunes:
 					}
 					p.tzi = i
 					break iterTimeRunes
+				} else if r != ' ' && !unicode.IsDigit(r) {
+					return p, p.unknownErr(datestr)
 				}
 			case timePeriod:
 				// 15:04:05.999999999
@@ -2155,7 +2200,9 @@ iterRunes:
 				switch r {
 				case ' ':
 					p.mslen = i - p.msi
-					p.coalesceTime(i)
+					if !p.coalesceTime(i) {
+						return p, p.unknownErr(datestr)
+					}
 					p.stateTime = timeWs
 				case '+', '-':
 					p.mslen = i - p.msi
@@ -2177,7 +2224,9 @@ iterRunes:
 					switch {
 					case isLower && p.nextIs(i, 'm') && isTwoLetterWord && !p.parsedAMPM:
 						p.mslen = i - p.msi
-						p.coalesceTime(i)
+						if !p.coalesceTime(i) {
+							return p, p.unknownErr(datestr)
+						}
 						p.set(i, "pm")
 						p.parsedAMPM = true
 						// skip 'm'
@@ -2185,7 +2234,9 @@ iterRunes:
 						p.stateTime = timePeriodAMPM
 					case !isLower && p.nextIs(i, 'M') && isTwoLetterWord && !p.parsedAMPM:
 						p.mslen = i - p.msi
-						p.coalesceTime(i)
+						if !p.coalesceTime(i) {
+							return p, p.unknownErr(datestr)
+						}
 						p.set(i, "PM")
 						p.parsedAMPM = true
 						// skip 'M'
@@ -2269,7 +2320,7 @@ iterRunes:
 			}
 
 		case timeWsAlphaRParen:
-			// continue
+			// nothing extra to do
 
 		case timeWsAlphaWs:
 			p.yearlen = i - p.yeari
@@ -2358,7 +2409,9 @@ iterRunes:
 				}
 			}
 		}
-		p.coalesceTime(i)
+		if !p.coalesceTime(i) {
+			return p, p.unknownErr(datestr)
+		}
 	}
 
 	switch p.stateDate {
@@ -2401,7 +2454,7 @@ iterRunes:
 		} else if len(p.datestr) == len("2014") {
 			p.setEntireFormat([]byte("2006"))
 			return p, nil
-		} else if len(p.datestr) < 4 {
+		} else {
 			return p, p.unknownErr(datestr)
 		}
 		if !t.IsZero() {
@@ -2412,6 +2465,8 @@ iterRunes:
 			t = t.In(loc)
 			p.t = &t
 			return p, nil
+		} else {
+			return p, p.unknownErr(datestr)
 		}
 	case dateDigitSt:
 		// 171113 14:14:20
@@ -2435,6 +2490,8 @@ iterRunes:
 			p.set(p.offseti, "-0700")
 		case 6:
 			p.set(p.offseti, "-07:00")
+		default:
+			return p, p.unknownErr(datestr)
 		}
 		return p, nil
 
@@ -2530,6 +2587,8 @@ iterRunes:
 			p.set(p.offseti, "-0700")
 		case 6:
 			p.set(p.offseti, "-07:00")
+		default:
+			return p, p.unknownErr(datestr)
 		}
 		return p, nil
 
@@ -2906,7 +2965,7 @@ func (p *parser) ts() string {
 func (p *parser) ds() string {
 	return fmt.Sprintf("%s d:(%d:%d) m:(%d:%d) y:(%d:%d)", p.datestr, p.dayi, p.daylen, p.moi, p.molen, p.yeari, p.yearlen)
 }
-func (p *parser) coalesceTime(end int) {
+func (p *parser) coalesceTime(end int) bool {
 	// 03:04:05
 	// 15:04:05
 	// 3:04:05
@@ -2917,6 +2976,8 @@ func (p *parser) coalesceTime(end int) {
 			p.set(p.houri, "15")
 		} else if p.hourlen == 1 {
 			p.set(p.houri, "3")
+		} else {
+			return false
 		}
 	}
 	if p.mini > 0 {
@@ -2925,8 +2986,10 @@ func (p *parser) coalesceTime(end int) {
 		}
 		if p.minlen == 2 {
 			p.set(p.mini, "04")
-		} else {
+		} else if p.minlen == 1 {
 			p.set(p.mini, "4")
+		} else {
+			return false
 		}
 	}
 	if p.seci > 0 {
@@ -2935,8 +2998,10 @@ func (p *parser) coalesceTime(end int) {
 		}
 		if p.seclen == 2 {
 			p.set(p.seci, "05")
-		} else {
+		} else if p.seclen == 1 {
 			p.set(p.seci, "5")
+		} else {
+			return false
 		}
 	}
 
@@ -2949,6 +3014,7 @@ func (p *parser) coalesceTime(end int) {
 			p.formatSetLen = endPos
 		}
 	}
+	return true
 }
 func (p *parser) setFullMonth(month string) {
 	oldLen := len(p.format)
