@@ -9,9 +9,6 @@ import (
 /*
 go test -bench Parse
 
-BenchmarkShotgunParse			50000	     37588 ns/op	   13258 B/op	     167 allocs/op
-BenchmarkDateparseParseAny		500000	      5752 ns/op	       0 B/op	       0 allocs/op
-
 // Aarons Laptop Lenovo 900 Feb 2018
 BenchmarkShotgunParse-4   	   50000	     30045 ns/op	   13136 B/op	     169 allocs/op
 BenchmarkParseAny-4       	  200000	      8627 ns/op	     144 B/op	       3 allocs/op
@@ -20,6 +17,20 @@ BenchmarkParseAny-4       	  200000	      8627 ns/op	     144 B/op	       3 allo
 BenchmarkShotgunParse-8   	   50000	     33940 ns/op	   13136 B/op	     169 allocs/op
 BenchmarkParseAny-8   	  		200000	     10146 ns/op	     912 B/op	      29 allocs/op
 BenchmarkParseDateString-8   	10000	    123077 ns/op	     208 B/op	      13 allocs/op
+
+// Klondike Dragon Dec 2023
+cpu: 12th Gen Intel(R) Core(TM) i7-1255U
+BenchmarkShotgunParse-12                           62788             18113 ns/op           19448 B/op        474 allocs/op
+BenchmarkParseAny-12                              347020              3455 ns/op              48 B/op          2 allocs/op
+BenchmarkBigShotgunParse-12                         1226            951271 ns/op         1214937 B/op      27245 allocs/op
+BenchmarkBigParseAny-12                             4234            267893 ns/op           27492 B/op        961 allocs/op
+BenchmarkBigParseIn-12                              4032            280900 ns/op           30422 B/op       1033 allocs/op
+BenchmarkBigParseRetryAmbiguous-12                  4453            282475 ns/op           29558 B/op       1030 allocs/op
+BenchmarkShotgunParseErrors-12                     19240             62641 ns/op           67080 B/op       1679 allocs/op
+BenchmarkParseAnyErrors-12                        185677              6179 ns/op             752 B/op         23 allocs/op
+BenchmarkBigParseAnyErrors-12                      26688             44885 ns/op             480 B/op         94 allocs/op
+BenchmarkParseAmbiguous-12                       1590302               752.9 ns/op           296 B/op          7 allocs/op
+BenchmarkParseWeekdayAndFullMonth-12             2141109               555.0 ns/op            16 B/op          2 allocs/op
 */
 func BenchmarkShotgunParse(b *testing.B) {
 	b.ReportAllocs()
