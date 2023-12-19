@@ -635,9 +635,22 @@ iterRunes:
 			switch r {
 			case '-', '\u2212':
 				p.molen = i - p.moi
+
+				// Must be a valid short or long month
+				if p.molen == 3 {
 				p.set(p.moi, "Jan")
 				p.yeari = i + 1
 				p.stateDate = dateDigitDashAlphaDash
+				} else {
+					possibleFullMonth := strings.ToLower(p.datestr[p.moi:(p.moi + p.molen)])
+					if i > 3 && isMonthFull(possibleFullMonth) {
+						p.fullMonth = possibleFullMonth
+						p.yeari = i + 1
+						p.stateDate = dateDigitDashAlphaDash
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+				}
 			default:
 				if !unicode.IsLetter(r) {
 					return p, p.unknownErr(datestr)

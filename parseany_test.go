@@ -403,7 +403,7 @@ var testInputs = []dateTest{
 	{in: "15-Jan-2017", out: "2017-01-15 00:00:00 +0000 UTC"},
 	{in: "28-Feb-02 15:16:17", out: "2002-02-28 15:16:17 +0000 UTC"},
 	{in: "15-Jan-18 15:16:17", out: "2018-01-15 15:16:17 +0000 UTC"},
-	{in: "15-Jan-2017 15:16:17", out: "2017-01-15 15:16:17 +0000 UTC"},
+	{in: "15-September-2017 15:16:17", out: "2017-09-15 15:16:17 +0000 UTC"},
 	//   dd-mm-yy (digit month - potentially ambiguous) - https://github.com/araddon/dateparse/issues/139
 	{in: "28-02-02", out: "2002-02-28 00:00:00 +0000 UTC"},
 	{in: "15-01-18", out: "2018-01-15 00:00:00 +0000 UTC"},
