@@ -638,9 +638,9 @@ iterRunes:
 
 				// Must be a valid short or long month
 				if p.molen == 3 {
-				p.set(p.moi, "Jan")
-				p.yeari = i + 1
-				p.stateDate = dateDigitDashAlphaDash
+					p.set(p.moi, "Jan")
+					p.yeari = i + 1
+					p.stateDate = dateDigitDashAlphaDash
 				} else {
 					possibleFullMonth := strings.ToLower(p.datestr[p.moi:(p.moi + p.molen)])
 					if i > 3 && isMonthFull(possibleFullMonth) {
@@ -1157,10 +1157,10 @@ iterRunes:
 				}
 			case ' ':
 				if p.daylen == 0 && p.molen > 0 && p.yearlen > 0 {
-				p.daylen = i - p.dayi
-				if !p.setDay() {
-					return p, p.unknownErr(datestr)
-				}
+					p.daylen = i - p.dayi
+					if !p.setDay() {
+						return p, p.unknownErr(datestr)
+					}
 				} else if p.molen == 0 && p.daylen > 0 && p.yearlen > 0 {
 					p.molen = i - p.moi
 					if !p.setMonth() {
