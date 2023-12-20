@@ -1,6 +1,20 @@
 // Package dateparse parses date-strings without knowing the format
 // in advance, using a fast lex based approach to eliminate shotgun
-// attempts.  It leans towards US style dates when there is a conflict.
+// attempts.  Validates comprehensively to avoid false positives.
+//
+// By default it leans towards US style dates when there is a
+// conflict.  This can be adjusted using the `PreferMonthFirst`
+// parser option. Some ambiguous formats can fail (e.g., trying to
+// parse `31/03/2023“ as the default month-first format
+// `MM/DD/YYYY`), but can be automatically retried with
+// `RetryAmbiguousDateWithSwap`.
+//
+// Consider turning on the the `SimpleErrorMessages` option if you
+// will be attempting to parse many strings that do not match any
+// known format and you need to maximize performance.
+//
+// See README.md for key points on how timezone/location parsing
+// works in go, as this can be counterintuitive initially.
 package dateparse
 
 import (
@@ -184,7 +198,7 @@ func ParseAny(datestr string, opts ...ParserOption) (time.Time, error) {
 // rules.  Using location arg, if timezone/offset info exists in the
 // datestring, it uses the given location rules for any zone interpretation.
 // That is, MST means one thing when using America/Denver and something else
-// in other locations.
+// in other locations. See README for a more detailed explanation.
 func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, loc, opts...)
 	defer putBackParser(p)
@@ -232,8 +246,12 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 	return t
 }
 
-// ParseFormat parse's an unknown date-time string and returns a layout
+// ParseFormat parses an unknown date-time string and returns a layout
 // string that can parse this (and exact same format) other date-time strings.
+//
+// In certain edge cases, this may produce a format string of a different
+// length than the input string. If this happens, it's an edge case that
+// requires individually parsing each time.
 //
 //	layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
 //	// layout = "2006-01-02 15:04:05"
