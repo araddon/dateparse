@@ -19,6 +19,7 @@ type dateTest struct {
 	preferDayFirst      bool
 	retryAmbiguous      bool
 	expectAmbiguous     bool
+	allowWeekdayPrefix  bool
 }
 
 var testInputs = []dateTest{
@@ -81,6 +82,7 @@ var testInputs = []dateTest{
 	{in: "Mon 30 Sep 2018 09:09:09 PM CEST", out: "2018-09-30 21:09:09 +0000 UTC", zname: "CEST"},
 	{in: "Mon 02 Jan 2006", out: "2006-01-02 00:00:00 +0000 UTC"},
 	{in: "Monday 02 Jan 2006 03:04:05 PM UTC", out: "2006-01-02 15:04:05 +0000 UTC", zname: "UTC"},
+	{in: "SUNDAY, July 05 2015", out: "2015-07-05 00:00:00 +0000 UTC", zname: "UTC"},
 	// RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
 	{in: "Mon Jan 02 15:04:05 -0700 2006", out: "2006-01-02 22:04:05 +0000 UTC"},
 	{in: "Thu May 08 11:57:51 -0700 2009", out: "2009-05-08 18:57:51 +0000 UTC"},
@@ -222,8 +224,9 @@ var testInputs = []dateTest{
 	{in: "Fri, 03-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 03-Jul-15 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	{in: "Fri, 03-Jul-15 08:08:08 PST", out: "2015-07-03 16:08:08 +0000 UTC", loc: "America/Los_Angeles", zname: "PDT"},
-	{in: "Fri, 03-Jul 2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "PST"},
-	{in: "Fri, 03-Jul 2015 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
+	{in: "Fri, 03-Jul-2015", out: "2015-07-03 00:00:00 +0000 UTC"},
+	{in: "Fri, 03-Jul-2015 08:08:08 PST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "PST"},
+	{in: "Fri, 03-Jul-2015 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	{in: "Fri, 3-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 3-Jul-15 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
 	{in: "Fri, 03-Jul-15 8:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
@@ -697,22 +700,22 @@ var testInputs = []dateTest{
 	{in: "08/04/2014 22:05", out: "2014-04-08 22:05:00 +0000 UTC", preferDayFirst: true},
 	{in: "2/04/2014 03:00:51", out: "2014-02-04 03:00:51 +0000 UTC", preferDayFirst: false},
 	{in: "2/04/2014 03:00:51", out: "2014-04-02 03:00:51 +0000 UTC", preferDayFirst: true},
-	{in: "19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", retryAmbiguous: true},
-	{in: "19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", preferDayFirst: true},
-	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", retryAmbiguous: true},
+	{in: "19/03/2012 10:11:56", out: "2012-03-19 10:11:56 +0000 UTC", retryAmbiguous: true},
+	{in: "19/03/2012 10:11:57", out: "2012-03-19 10:11:57 +0000 UTC", preferDayFirst: true},
+	{in: "19/03/2012 10:11:58.3186369", out: "2012-03-19 10:11:58.3186369 +0000 UTC", retryAmbiguous: true},
 	{in: "19/03/2012 10:11:59.3186369", out: "2012-03-19 10:11:59.3186369 +0000 UTC", preferDayFirst: true},
 	// For certain parse modes that restart parsing, make sure that parsing options are passed along!
-	{in: "Monday 19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", retryAmbiguous: true},
-	{in: "Monday 19/03/2012 10:11:59", out: "2012-03-19 10:11:59 +0000 UTC", preferDayFirst: true},
+	{in: "Monday 19/03/2012 10:11:50", out: "2012-03-19 10:11:50 +0000 UTC", retryAmbiguous: true},
+	{in: "Monday 19/03/2012 10:11:51", out: "2012-03-19 10:11:51 +0000 UTC", preferDayFirst: true},
 	// https://github.com/araddon/dateparse/issues/105
 	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", retryAmbiguous: true},
 	{in: "20/5/2006 19:51:45", out: "2006-05-20 19:51:45 +0000 UTC", preferDayFirst: true},
 	//  yyyymmdd and similar
-	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC"},
-	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC"},
-	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC"},
+	{in: "2014", out: "2014-01-01 00:00:00 +0000 UTC", allowWeekdayPrefix: false},
+	{in: "20140601", out: "2014-06-01 00:00:00 +0000 UTC", allowWeekdayPrefix: false},
+	{in: "20140722105203", out: "2014-07-22 10:52:03 +0000 UTC", allowWeekdayPrefix: false},
 	// https://github.com/araddon/dateparse/issues/143
-	{in: "20140722105203.364", out: "2014-07-22 10:52:03.364 +0000 UTC"},
+	{in: "20140722105203.364", out: "2014-07-22 10:52:03.364 +0000 UTC", allowWeekdayPrefix: false},
 	// yymmdd hh:mm:yy  mysql log  https://github.com/araddon/dateparse/issues/119
 	// 080313 05:21:55 mysqld started
 	// 080313 5:21:55 InnoDB: Started; log sequence number 0 43655
@@ -721,11 +724,11 @@ var testInputs = []dateTest{
 	{in: "190910 11:51:49", out: "2019-09-10 11:51:49 +0000 UTC"},
 
 	// all digits:  unix secs, ms etc
-	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", zname: "UTC"},
-	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver", zname: "MDT"},
-	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC"},
-	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC"},
-	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC"},
+	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", zname: "UTC", allowWeekdayPrefix: false},
+	{in: "1332151919", out: "2012-03-19 10:11:59 +0000 UTC", loc: "America/Denver", zname: "MDT", allowWeekdayPrefix: false},
+	{in: "1384216367111", out: "2013-11-12 00:32:47.111 +0000 UTC", allowWeekdayPrefix: false},
+	{in: "1384216367111222", out: "2013-11-12 00:32:47.111222 +0000 UTC", allowWeekdayPrefix: false},
+	{in: "1384216367111222333", out: "2013-11-12 00:32:47.111222333 +0000 UTC", allowWeekdayPrefix: false},
 
 	// other
 	{in: "Wed,  8 Feb 2023 19:00:46 +1100 (AEDT)", out: "2023-02-08 08:00:46 +0000 UTC"},
@@ -742,6 +745,10 @@ var testInputs = []dateTest{
 	{in: "2014.02.13T08:33:44.555", out: "2014-02-13 08:33:44.555 +0000 UTC"},
 	{in: "2014.02.13T08:33:44.555 PM -0700 MST", out: "2014-02-14 03:33:44.555 +0000 UTC", zname: "MST"},
 	{in: "2014.02.13-0200", out: "2014-02-13 02:00:00 +0000 UTC"},
+	// Whitespace up front is now allowed
+	{in: " 2018-01-02 17:08:09 -07:00", out: "2018-01-03 00:08:09 +0000 UTC"},
+	{in: "   2018-01-02 17:08:09 -07:00", out: "2018-01-03 00:08:09 +0000 UTC"},
+	{in: "       2018-01-02 17:08:09 -07:00", out: "2018-01-03 00:08:09 +0000 UTC"},
 }
 
 func TestParse(t *testing.T) {
@@ -761,51 +768,70 @@ func TestParse(t *testing.T) {
 		assert.NotEqual(t, nil, err)
 	})
 
+	allDays := make([]string, 0, len(knownDays))
+	for day := range knownDays {
+		allDays = append(allDays, day)
+	}
+
+	i := 0
 	for _, simpleErrorMessage := range []bool{false, true} {
-		for _, th := range testInputs {
-			t.Run(fmt.Sprintf("simpleerr-%v-%s", simpleErrorMessage, th.in), func(t *testing.T) {
-				var ts time.Time
-				defer func() {
-					if r := recover(); r != nil {
-						t.Fatalf("error: %s", r)
+		for _, addWeekday := range []bool{false, true} {
+			for _, th := range testInputs {
+				i++
+				prefix := ""
+				if addWeekday && th.allowWeekdayPrefix {
+					prefix = allDays[i%len(allDays)]
+					if i%2 == 1 {
+						prefix += ","
 					}
-				}()
-				parserOptions := []ParserOption{
-					PreferMonthFirst(!th.preferDayFirst),
-					RetryAmbiguousDateWithSwap(th.retryAmbiguous),
-					SimpleErrorMessages(simpleErrorMessage),
+					prefix += " "
 				}
-				if len(th.loc) > 0 {
-					loc, err := time.LoadLocation(th.loc)
-					if err != nil {
-						t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+				fullInput := prefix + th.in
+
+				t.Run(fmt.Sprintf("simpleerr-%v-%s", simpleErrorMessage, fullInput), func(t *testing.T) {
+					var ts time.Time
+					defer func() {
+						if r := recover(); r != nil {
+							t.Fatalf("error: %s", r)
+						}
+					}()
+					parserOptions := []ParserOption{
+						PreferMonthFirst(!th.preferDayFirst),
+						RetryAmbiguousDateWithSwap(th.retryAmbiguous),
+						SimpleErrorMessages(simpleErrorMessage),
 					}
-					ts, err = ParseIn(th.in, loc, parserOptions...)
-					if err != nil {
-						t.Fatalf("expected to parse %q but got %v", th.in, err)
+					if len(th.loc) > 0 {
+						loc, err := time.LoadLocation(th.loc)
+						if err != nil {
+							t.Fatalf("Expected to load location %q but got %v", th.loc, err)
+						}
+						ts, err = ParseIn(fullInput, loc, parserOptions...)
+						if err != nil {
+							t.Fatalf("expected to parse %q but got %v", fullInput, err)
+						}
+						got := fmt.Sprintf("%v", ts.In(time.UTC))
+						assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, fullInput)
+						if th.out != got {
+							t.Fatalf("whoops, got %s, expected %s", got, th.out)
+						}
+						if len(th.zname) > 0 {
+							gotZone, _ := ts.Zone()
+							assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, fullInput)
+						}
+					} else {
+						ts = MustParse(fullInput, parserOptions...)
+						got := fmt.Sprintf("%v", ts.In(time.UTC))
+						assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, fullInput)
+						if th.out != got {
+							t.Fatalf("whoops, got %s, expected %s", got, th.out)
+						}
+						if len(th.zname) > 0 {
+							gotZone, _ := ts.Zone()
+							assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, fullInput)
+						}
 					}
-					got := fmt.Sprintf("%v", ts.In(time.UTC))
-					assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-					if th.out != got {
-						t.Fatalf("whoops, got %s, expected %s", got, th.out)
-					}
-					if len(th.zname) > 0 {
-						gotZone, _ := ts.Zone()
-						assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
-					}
-				} else {
-					ts = MustParse(th.in, parserOptions...)
-					got := fmt.Sprintf("%v", ts.In(time.UTC))
-					assert.Equal(t, th.out, got, "Expected %q but got %q from %q", th.out, got, th.in)
-					if th.out != got {
-						t.Fatalf("whoops, got %s, expected %s", got, th.out)
-					}
-					if len(th.zname) > 0 {
-						gotZone, _ := ts.Zone()
-						assert.Equal(t, th.zname, gotZone, "Expected zname %q but got %q from %q", th.zname, gotZone, th.in)
-					}
-				}
-			})
+				})
+			}
 		}
 	}
 
@@ -868,12 +894,10 @@ var testParseErrors = []dateTest{
 	{in: `{"hello"}`, err: true},
 	{in: "2009-15-12T22:15Z", err: true},
 	{in: "5,000-9,999", err: true},
-	{in: "xyzq-baad"},
+	{in: "xyzq-baad", err: true},
 	{in: "oct.-7-1970", err: true},
 	{in: "septe. 7, 1970", err: true},
 	{in: "SeptemberRR 7th, 1970", err: true},
-	// this is just testing the empty space up front
-	{in: " 2018-01-02 17:08:09 -07:00", err: true},
 	// a semantic version number should not be interpreted as a date
 	{in: "1.22.3-78888", err: true},
 	// a semantic version number that starts with a date should not be interpreted as a date
@@ -1203,6 +1227,6 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	ts := MustParse("03.31.2014 10:11:59 MST-0700", PreferMonthFirst(true))
-	assert.Equal(t, "2014-03-31 17:11:59 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts := MustParse("Monday 19/03/2012 00:00:00", RetryAmbiguousDateWithSwap(true))
+	assert.Equal(t, "2012-03-19 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }

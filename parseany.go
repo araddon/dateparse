@@ -112,8 +112,6 @@ const (
 	dateAlphaSlash
 	dateAlphaSlashDigit
 	dateAlphaSlashDigitSlash
-	dateWeekdayComma
-	dateWeekdayAbbrevComma
 	dateYearWs
 	dateYearWsMonthWs
 )
@@ -308,10 +306,13 @@ iterRunes:
 		if bytesConsumed > 1 {
 			i += bytesConsumed - 1
 		}
+		adjustedI := i - p.skip
 
 		// gou.Debugf("i=%d r=%s state=%d   %s", i, string(r), p.stateDate, p.datestr)
 		switch p.stateDate {
 		case dateStart:
+			// Note that we can reach this state either at the very start of the string,
+			// or after skipping something (like a weekday, etc).
 			// NOTE: don't use unicode.IsDigit and unicode.IsLetter here because
 			// we don't expect non-ANSI chars to start a valid date/time format.
 			// This will let us quickly reject strings that begin with any non-ANSI char.
@@ -319,6 +320,10 @@ iterRunes:
 				p.stateDate = dateDigit
 			} else if ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') {
 				p.stateDate = dateAlpha
+			} else if r == ' ' {
+				// we can safely ignore whitespace at the start of strings (helps with
+				// situations where we skipped a weekday and came back to this state)
+				p.skip = i + 1
 			} else {
 				return p, p.unknownErr(datestr)
 			}
@@ -330,12 +335,12 @@ iterRunes:
 				// 2013-Feb-03
 				// 13-Feb-03
 				// 29-Jun-2016
-				if i == 4 {
+				if adjustedI == 4 {
 					p.stateDate = dateYearDash
-					p.yeari = 0
-					p.yearlen = i
+					p.yeari = p.skip
+					p.yearlen = i - p.skip
 					p.moi = i + 1
-					p.set(0, "2006")
+					p.set(p.skip, "2006")
 				} else {
 					p.stateDate = dateDigitDash
 				}
@@ -344,9 +349,10 @@ iterRunes:
 				// 03/31/2005
 				// 2014/02/24
 				p.stateDate = dateDigitSlash
-				if i == 4 {
+				if adjustedI == 4 {
 					// 2014/02/24  -  Year first /
-					p.yearlen = i // since it was start of datestr, i=len
+					p.yeari = p.skip
+					p.yearlen = i - p.skip
 					p.moi = i + 1
 					if !p.setYear() {
 						return p, p.unknownErr(datestr)
@@ -362,7 +368,7 @@ iterRunes:
 						p.stateDate = dateDigitSlashAlpha
 						p.moi = i + 1
 						p.daylen = 2
-						p.dayi = 0
+						p.dayi = p.skip
 						if !p.setDay() {
 							return p, p.unknownErr(datestr)
 						}
@@ -376,7 +382,8 @@ iterRunes:
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							// 03/31/2005
-							p.molen = i
+							p.moi = p.skip
+							p.molen = i - p.skip
 							if !p.setMonth() {
 								return p, p.unknownErr(datestr)
 							}
@@ -386,7 +393,8 @@ iterRunes:
 						}
 					} else {
 						if p.daylen == 0 {
-							p.daylen = i
+							p.dayi = p.skip
+							p.daylen = i - p.skip
 							if !p.setDay() {
 								return p, p.unknownErr(datestr)
 							}
@@ -401,8 +409,9 @@ iterRunes:
 				// 03:31:2005
 				// 2014:02:24
 				p.stateDate = dateDigitColon
-				if i == 4 {
-					p.yearlen = i
+				if adjustedI == 4 {
+					p.yeari = p.skip
+					p.yearlen = i - p.skip
 					p.moi = i + 1
 					if !p.setYear() {
 						return p, p.unknownErr(datestr)
@@ -412,7 +421,8 @@ iterRunes:
 					p.ambiguousRetryable = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
-							p.molen = i
+							p.moi = p.skip
+							p.molen = i - p.skip
 							if !p.setMonth() {
 								return p, p.unknownErr(datestr)
 							}
@@ -422,7 +432,8 @@ iterRunes:
 						}
 					} else {
 						if p.daylen == 0 {
-							p.daylen = i
+							p.dayi = p.skip
+							p.daylen = i - p.skip
 							if !p.setDay() {
 								return p, p.unknownErr(datestr)
 							}
@@ -438,19 +449,21 @@ iterRunes:
 				// 08.21.71
 				// 2014.05
 				p.stateDate = dateDigitDot
-				if i == 4 {
-					p.yearlen = i
+				if adjustedI == 4 {
+					p.yeari = p.skip
+					p.yearlen = i - p.skip
 					p.moi = i + 1
 					if !p.setYear() {
 						return p, p.unknownErr(datestr)
 					}
-				} else if i <= 2 {
+				} else if adjustedI <= 2 {
 					p.ambiguousMD = true
 					p.ambiguousRetryable = true
 					if p.preferMonthFirst {
 						if p.molen == 0 {
 							// 03.31.2005
-							p.molen = i
+							p.moi = p.skip
+							p.molen = i - p.skip
 							if !p.setMonth() {
 								return p, p.unknownErr(datestr)
 							}
@@ -460,7 +473,8 @@ iterRunes:
 						}
 					} else {
 						if p.daylen == 0 {
-							p.daylen = i
+							p.dayi = p.skip
+							p.daylen = i - p.skip
 							if !p.setDay() {
 								return p, p.unknownErr(datestr)
 							}
@@ -482,24 +496,26 @@ iterRunes:
 				// 12 Feb 2006, 19:17
 				// 12 Feb 2006, 19:17:22
 				// 2013 Jan 06 15:04:05
-				if i == 4 {
-					p.yearlen = i
+				if adjustedI == 4 {
+					p.yeari = p.skip
+					p.yearlen = i - p.skip
 					p.moi = i + 1
 					if !p.setYear() {
 						return p, p.unknownErr(datestr)
 					}
 					p.stateDate = dateYearWs
-				} else if i == 6 {
+				} else if adjustedI == 6 {
 					p.stateDate = dateDigitSt
 				} else {
 					p.stateDate = dateDigitWs
-					p.dayi = 0
-					p.daylen = i
+					p.dayi = p.skip
+					p.daylen = i - p.skip
 				}
 			case '年':
 				// Chinese Year
 				p.stateDate = dateDigitChineseYear
-				p.yearlen = i - 2
+				p.yeari = p.skip
+				p.yearlen = i - 2 - p.skip
 				p.moi = i + 1
 				if !p.setYear() {
 					return p, p.unknownErr(datestr)
@@ -518,10 +534,10 @@ iterRunes:
 				}
 				continue
 			}
-			p.part1Len = i
+			p.part1Len = i - p.skip
 
 		case dateDigitSt:
-			p.set(0, "060102")
+			p.set(p.skip, "060102")
 			i = i - 1
 			p.stateTime = timeStart
 			break iterRunes
@@ -738,7 +754,7 @@ iterRunes:
 						p.yearlen = 4
 						p.set(p.yeari, "2006")
 						// We now also know that part1 was the day
-						p.dayi = 0
+						p.dayi = p.skip
 						p.daylen = p.part1Len
 						if !p.setDay() {
 							return p, p.unknownErr(datestr)
@@ -755,7 +771,7 @@ iterRunes:
 						p.yearlen = 2
 						p.set(p.yeari, "06")
 						// We now also know that part1 was the day
-						p.dayi = 0
+						p.dayi = p.skip
 						p.daylen = p.part1Len
 						if !p.setDay() {
 							return p, p.unknownErr(datestr)
@@ -983,13 +999,13 @@ iterRunes:
 			case ' ':
 				p.yeari = i + 1
 				//p.yearlen = 4
-				p.dayi = 0
+				p.dayi = p.skip
 				p.daylen = p.part1Len
 				if !p.setDay() {
 					return p, p.unknownErr(datestr)
 				}
 				p.stateTime = timeStart
-				if i > p.daylen+len(" Sep") { //  November etc
+				if adjustedI > p.daylen+len(" Sep") { //  November etc
 					// If this is a legit full month, then change the string we're parsing
 					// to compensate for the longest month, and do the same with the format string. We
 					// must maintain a corresponding length/content and this is the easiest
@@ -1252,18 +1268,6 @@ iterRunes:
 			//        Oct/07/1970
 			//        February/ 7/1970
 			//        February/07/1970
-			//
-			// dateWeekdayComma
-			//   Monday, 02 Jan 2006 15:04:05 MST
-			//   Monday, 02-Jan-06 15:04:05 MST
-			//   Monday, 02 Jan 2006 15:04:05 -0700
-			//   Monday, 02 Jan 2006 15:04:05 +0100
-			// dateWeekdayAbbrevComma
-			//   Mon, 02 Jan 2006 15:04:05 MST
-			//   Mon, 02 Jan 2006 15:04:05 -0700
-			//   Thu, 13 Jul 2017 08:58:40 +0100
-			//   Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-			//   Mon, 02-Jan-06 15:04:05 MST
 			switch {
 			case r == ' ':
 				// This could be a weekday or a month, detect and parse both cases.
@@ -1272,21 +1276,17 @@ iterRunes:
 				//   Tuesday 05 May 2020, 05:05:05
 				//   Mon Jan  2 15:04:05 2006
 				//   Monday Jan  2 15:04:05 2006
-				maybeDayOrMonth := strings.ToLower(p.datestr[0:i])
+				maybeDayOrMonth := strings.ToLower(p.datestr[p.skip:i])
 				if isDay(maybeDayOrMonth) {
-					// using skip throws off indices used by other code; saner to restart
-					newDateStr := p.datestr[i+1:]
-					putBackParser(p)
-					return parseTime(newDateStr, loc, opts...)
-				}
-
-				//      X
-				// April 8, 2009
-				if i > 3 {
+					p.skip = i + 1
+					p.stateDate = dateStart
+				} else if adjustedI > 3 {
+					//      X
+					// April 8, 2009
 					// Expecting a full month name at this point
 					if isMonthFull(maybeDayOrMonth) {
-						p.moi = 0
-						p.molen = i
+						p.moi = p.skip
+						p.molen = i - p.skip
 						p.fullMonth = maybeDayOrMonth
 						p.stateDate = dateAlphaFullMonthWs
 						p.dayi = i + 1
@@ -1295,7 +1295,7 @@ iterRunes:
 						return p, p.unknownErr(datestr)
 					}
 
-				} else if i == 3 {
+				} else if adjustedI == 3 {
 					// dateAlphaWs
 					//   May 05, 2005, 05:05:05
 					//   May 05 2005, 05:05:05
@@ -1309,14 +1309,11 @@ iterRunes:
 
 			case r == ',':
 				// Mon, 02 Jan 2006
-
-				if i == 3 {
-					p.stateDate = dateWeekdayAbbrevComma
-					p.set(0, "Mon")
-				} else {
-					maybeDay := strings.ToLower(p.datestr[0:i])
+				// Monday, 02 Jan 2006
+				if adjustedI >= 3 && p.nextIs(i, ' ') {
+					maybeDay := strings.ToLower(p.datestr[p.skip:i])
 					if isDay(maybeDay) {
-						p.stateDate = dateWeekdayComma
+						p.stateDate = dateStart
 						// Just skip past the weekday, it contains no valuable info
 						p.skip = i + 2
 						i++
@@ -1328,12 +1325,13 @@ iterRunes:
 				// sept. 28, 2017
 				// jan. 28, 2017
 				p.stateDate = dateAlphaPeriodWsDigit
-				if i == 3 {
-					p.molen = i
-					p.set(0, "Jan")
-				} else if i == 4 {
+				if adjustedI == 3 {
+					p.moi = p.skip
+					p.molen = i - p.skip
+					p.set(p.skip, "Jan")
+				} else if adjustedI == 4 {
 					// gross
-					newDateStr := p.datestr[0:i-1] + p.datestr[i:]
+					newDateStr := p.datestr[p.skip:i-1] + p.datestr[i:]
 					putBackParser(p)
 					return parseTime(newDateStr, loc, opts...)
 				} else {
@@ -1347,15 +1345,15 @@ iterRunes:
 				// February/ 7/1970
 				// February/07/1970
 				// Must be a valid short or long month
-				if i == 3 {
-					p.moi = 0
+				if adjustedI == 3 {
+					p.moi = p.skip
 					p.molen = i - p.moi
 					p.set(p.moi, "Jan")
 					p.stateDate = dateAlphaSlash
 				} else {
-					possibleFullMonth := strings.ToLower(p.datestr[:i])
-					if i > 3 && isMonthFull(possibleFullMonth) {
-						p.moi = 0
+					possibleFullMonth := strings.ToLower(p.datestr[p.skip:i])
+					if adjustedI > 3 && isMonthFull(possibleFullMonth) {
+						p.moi = p.skip
 						p.molen = i - p.moi
 						p.fullMonth = possibleFullMonth
 						p.stateDate = dateAlphaSlash
@@ -1385,13 +1383,24 @@ iterRunes:
 			//   May 08 17:57:51 2009
 			//   oct 1, 1970
 			//   oct 7, '70
+			// (this state is only entered if the skip-adjusted length is 3)
 			switch {
 			case unicode.IsLetter(r):
-				p.set(0, "Mon")
-				p.stateDate = dateAlphaWsAlpha
-				p.set(i, "Jan")
+				// have to have a day of week and then at least a 3 digit month to follow
+				if adjustedI >= 3 && (i+3) < len(p.datestr) {
+					maybeDay := strings.ToLower(p.datestr[p.skip:i])
+					if isDay(maybeDay) {
+						p.skip = i
+						p.stateDate = dateAlphaWsAlpha
+						p.set(i, "Jan")
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+				} else {
+					return p, p.unknownErr(datestr)
+				}
 			case unicode.IsDigit(r):
-				p.set(0, "Jan")
+				p.set(p.skip, "Jan")
 				p.stateDate = dateAlphaWsDigit
 				p.dayi = i
 			case r == ' ':
@@ -1438,9 +1447,9 @@ iterRunes:
 			// Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
 			if r == ':' {
 				// Guessed wrong; was not a year
+				p.yeari = 0
 				i = i - 3
 				p.stateDate = dateAlphaWsDigit
-				p.yeari = 0
 				break iterRunes
 			} else if r == ' ' {
 				// must be year format, not 15:04
@@ -1502,7 +1511,7 @@ iterRunes:
 			case 't', 'T':
 				if p.nextIs(i, 'h') || p.nextIs(i, 'H') {
 					if len(p.datestr) > i+2 {
-						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						newDateStr := p.datestr[p.skip:i] + p.datestr[i+2:]
 						putBackParser(p)
 						return parseTime(newDateStr, loc, opts...)
 					}
@@ -1511,7 +1520,7 @@ iterRunes:
 			case 'n', 'N':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
-						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						newDateStr := p.datestr[p.skip:i] + p.datestr[i+2:]
 						putBackParser(p)
 						return parseTime(newDateStr, loc, opts...)
 					}
@@ -1520,7 +1529,7 @@ iterRunes:
 			case 's', 'S':
 				if p.nextIs(i, 't') || p.nextIs(i, 'T') {
 					if len(p.datestr) > i+2 {
-						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						newDateStr := p.datestr[p.skip:i] + p.datestr[i+2:]
 						putBackParser(p)
 						return parseTime(newDateStr, loc, opts...)
 					}
@@ -1529,7 +1538,7 @@ iterRunes:
 			case 'r', 'R':
 				if p.nextIs(i, 'd') || p.nextIs(i, 'D') {
 					if len(p.datestr) > i+2 {
-						newDateStr := p.datestr[0:i] + p.datestr[i+2:]
+						newDateStr := p.datestr[p.skip:i] + p.datestr[i+2:]
 						putBackParser(p)
 						return parseTime(newDateStr, loc, opts...)
 					}
@@ -1670,87 +1679,6 @@ iterRunes:
 				break iterRunes
 			default:
 				return p, p.unknownErr(datestr)
-			}
-
-		case dateWeekdayComma:
-			// Monday, 02 Jan 2006 15:04:05 MST
-			// Monday, 02 Jan 2006 15:04:05 -0700
-			// Monday, 02 Jan 2006 15:04:05 +0100
-			// Monday, 02-Jan-06 15:04:05 MST
-			if p.dayi == 0 {
-				p.dayi = i
-			}
-			switch r {
-			case ' ':
-				fallthrough
-			case '-', '\u2212':
-				if p.moi == 0 {
-					p.moi = i + 1
-					p.daylen = i - p.dayi
-					if !p.setDay() {
-						return p, p.unknownErr(datestr)
-					}
-				} else if p.yeari == 0 {
-					p.yeari = i + 1
-					p.molen = i - p.moi
-					if p.molen == 3 {
-						p.set(p.moi, "Jan")
-					} else {
-						return p, p.unknownErr(datestr)
-					}
-				} else {
-					p.stateTime = timeStart
-					break iterRunes
-				}
-			default:
-				if !unicode.IsDigit(r) && !unicode.IsLetter(r) {
-					return p, p.unknownErr(datestr)
-				}
-			}
-		case dateWeekdayAbbrevComma:
-			// Mon, 02 Jan 2006 15:04:05 MST
-			// Mon, 02 Jan 2006 15:04:05 -0700
-			// Thu, 13 Jul 2017 08:58:40 +0100
-			// Thu, 4 Jan 2018 17:53:36 +0000
-			// Tue, 11 Jul 2017 16:28:13 +0200 (CEST)
-			// Mon, 02-Jan-06 15:04:05 MST
-			var offset int
-			switch r {
-			case ' ':
-				for i+1 < len(p.datestr) && p.datestr[i+1] == ' ' {
-					i++
-					offset++
-				}
-				fallthrough
-			case '-', '\u2212':
-				if p.dayi == 0 {
-					p.dayi = i + 1
-				} else if p.moi == 0 {
-					p.daylen = i - p.dayi
-					if !p.setDay() {
-						return p, p.unknownErr(datestr)
-					}
-					p.moi = i + 1
-				} else if p.yeari == 0 {
-					p.molen = i - p.moi - offset
-					if p.molen == 3 {
-						p.set(p.moi, "Jan")
-					} else {
-						return p, p.unknownErr(datestr)
-					}
-					p.yeari = i + 1
-				} else {
-					p.yearlen = i - p.yeari - offset
-					if !p.setYear() {
-						return p, p.unknownErr(datestr)
-					}
-					p.stateTime = timeStart
-					break iterRunes
-				}
-			default:
-				if !unicode.IsDigit(r) && !unicode.IsLetter(r) {
-					return p, p.unknownErr(datestr)
-				}
 			}
 
 		default:
@@ -2567,7 +2495,7 @@ iterRunes:
 				p.yearlen = 4
 				p.set(p.yeari, "2006")
 				// We now also know that part1 was the day
-				p.dayi = 0
+				p.dayi = p.skip
 				p.daylen = p.part1Len
 				if !p.setDay() {
 					return p, p.unknownErr(datestr)
@@ -2584,7 +2512,7 @@ iterRunes:
 				p.yearlen = 2
 				p.set(p.yeari, "06")
 				// We now also know that part1 was the day
-				p.dayi = 0
+				p.dayi = p.skip
 				p.daylen = p.part1Len
 				if !p.setDay() {
 					return p, p.unknownErr(datestr)
@@ -2713,17 +2641,6 @@ iterRunes:
 	case dateAlphaSlashDigitSlash:
 		// Oct/ 7/1970
 		// February/07/1970
-		return p, nil
-
-	case dateWeekdayComma:
-		// Monday, 02 Jan 2006 15:04:05 -0700
-		// Monday, 02 Jan 2006 15:04:05 +0100
-		// Monday, 02-Jan-06 15:04:05 MST
-		return p, nil
-
-	case dateWeekdayAbbrevComma:
-		// Mon, 02-Jan-06 15:04:05 MST
-		// Mon, 02 Jan 2006 15:04:05 MST
 		return p, nil
 
 	case dateYearWsMonthWs:
@@ -3129,8 +3046,9 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 			if err != nil && strings.Contains(err.Error(), "month out of range") {
 				// simple optimized case where mm and dd can be swapped directly
 				if p.molen == 2 && p.daylen == 2 {
-					moi := p.moi
-					p.moi = p.dayi
+					// skipped bytes have already been removed, so compensate for that
+					moi := p.moi - p.skip
+					p.moi = p.dayi - p.skip
 					p.dayi = moi
 					if !p.setDay() || !p.setMonth() {
 						err = p.unknownErr(p.datestr)
