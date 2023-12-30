@@ -123,21 +123,19 @@ const (
 	timeWsAlpha
 	timeWsAlphaRParen
 	timeWsAlphaWs
-	timeWsAlphaZoneOffset // 6
+	timeWsAlphaWsYear
+	timeWsAlphaZoneOffset // 7
 	timeWsAlphaZoneOffsetWs
 	timeWsAlphaZoneOffsetWsYear
-	timeWsAlphaZoneOffsetWsExtra
+	timeWsOffsetWsTZDescInParen // overloaded, can come from timeWsAlphaWs, timeWsAlphaZoneOffsetWs, timeWsOffsetWs, timeWsOffsetWsAlphaZoneWs
 	timeWsAMPMMaybe
-	timeWsAMPM // 11
-	timeWsOffset
-	timeWsOffsetWs // 13
-	timeWsOffsetColonAlpha
-	timeWsOffsetColon
-	timeWsYear // 16
-	timeWsYearOffset
-	timeOffset
-	timeOffsetColon
-	timeOffsetColonAlpha
+	timeWsAMPM         // 12
+	timeWsOffset       // overloaded, can come from timeWs or timeWsYear
+	timeWsOffsetWs     // 14
+	timeWsOffsetWsYear // overloaded, can come from timeWsOffsetWs or timeWsOffsetWsAlphaZoneWs (ensures year is only set once)
+	timeWsOffsetWsAlphaZone
+	timeWsOffsetWsAlphaZoneWs
+	timeWsYear
 	timePeriod
 	timePeriodAMPM
 	timeZ
@@ -613,13 +611,8 @@ iterRunes:
 
 		case dateYearDashDashOffset:
 			//  2020-07-20+00:00
-			switch r {
-			case ':':
-				p.set(p.offseti, "-07:00")
-			default:
-				if !unicode.IsDigit(r) {
-					return p, p.unknownErr(datestr)
-				}
+			if r != ':' && !unicode.IsDigit(r) {
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateYearDashAlpha:
@@ -1234,13 +1227,8 @@ iterRunes:
 
 		case dateDigitDotDotOffset:
 			//  2020-07-20+00:00
-			switch r {
-			case ':':
-				p.set(p.offseti, "-07:00")
-			default:
-				if !unicode.IsDigit(r) {
-					return p, p.unknownErr(datestr)
-				}
+			if r != ':' && !unicode.IsDigit(r) {
+				return p, p.unknownErr(datestr)
 			}
 
 		case dateAlpha:
@@ -1251,6 +1239,7 @@ iterRunes:
 			//  Mon Jan 02 15:04:05 2006 -0700
 			//  Mon Aug 10 15:44:11 UTC+0100 2015
 			//  Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			//  Fri Jul 03 2015 18:04:07 GMT+01:00 (GMT Daylight Time)
 			//  dateAlphaWsDigit
 			//    May 8, 2009 5:57:51 PM
 			//    oct 1, 1970
@@ -1374,6 +1363,7 @@ iterRunes:
 			//   Mon Jan 02 15:04:05 -0700 2006
 			//   Mon Jan 02 15:04:05 2006 -0700
 			//   Fri Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			//   Fri Jul 03 2015 18:04:07 GMT+01:00 (GMT Daylight Time)
 			//   Mon Aug 10 15:44:11 UTC+0100 2015
 			// dateAlphaWsDigit
 			//   May 8, 2009 5:57:51 PM
@@ -1445,6 +1435,7 @@ iterRunes:
 			// May  8 17:57:51 2009
 			// May 08 17:57:51 2009
 			// Jul 03 2015 18:04:07 GMT+0100 (GMT Daylight Time)
+			// Jul 03 2015 18:04:07 GMT+01:00 (GMT Daylight Time)
 			if r == ':' {
 				// Guessed wrong; was not a year
 				p.yeari = 0
@@ -1702,7 +1693,6 @@ iterRunes:
 			}
 		}
 
-	iterTimeRunes:
 		for ; i < len(p.datestr); i++ {
 			r := rune(p.datestr[i])
 
@@ -1718,14 +1708,15 @@ iterRunes:
 				//   05:24:37 PM
 				//   06:20:00 UTC
 				//   06:20:00 UTC-05
-				//   00:12:00 +0000 UTC
-				//   22:18:00 +0000 UTC m=+0.000000001
-				//   15:04:05 -0700
-				//   15:04:05 -07:00
-				//   15:04:05 2008
-				// timeOffset
-				//   03:21:51+00:00
-				//   19:55:00+0100
+				//   timeWsYear
+				//     15:04:05 2008
+				//   timeWsOffset
+				//     00:12:00 +0000 UTC
+				//     22:18:00 +0000 UTC m=+0.000000001
+				//     03:21:51+00:00
+				//     19:55:00+0100
+				//     15:04:05 -0700
+				//     15:04:05 -07:00
 				// timePeriod
 				//   17:24:37.3186369
 				//   00:07:31.945167
@@ -1738,7 +1729,8 @@ iterRunes:
 				switch r {
 				case '-', '+':
 					//   03:21:51+00:00
-					p.stateTime = timeOffset
+					p.offseti = i
+					p.stateTime = timeWsOffset
 					if p.seci == 0 {
 						// 22:18+0530
 						p.minlen = i - p.mini
@@ -1746,10 +1738,11 @@ iterRunes:
 						p.seclen = i - p.seci
 					} else if p.msi > 0 && p.mslen == 0 {
 						p.mslen = i - p.msi
+					} else if p.parsedAMPM {
+						// time fully parsed, plus AM/PM indicator, this is OK
 					} else {
 						return p, p.unknownErr(datestr)
 					}
-					p.offseti = i
 				case '.', ',':
 					// NOTE: go 1.20 can now parse a string that has a comma delimiter properly
 					p.stateTime = timePeriod
@@ -1782,9 +1775,9 @@ iterRunes:
 							return p, p.unknownErr(datestr)
 						}
 					} else {
-						// Could be AM/PM
+						// Could be AM/PM (followed by whitespace or an offset)
 						isLower := r == 'a' || r == 'p'
-						isTwoLetterWord := ((i+2) == len(p.datestr) || p.nextIs(i+1, ' '))
+						isTwoLetterWord := ((i+2) == len(p.datestr) || (len(p.datestr) > i+2 && (p.datestr[i+2] == ' ' || p.datestr[i+2] == '+' || p.datestr[i+2] == '-')))
 						switch {
 						case isLower && p.nextIs(i, 'm') && isTwoLetterWord && !p.parsedAMPM:
 							if !p.coalesceTime(i) {
@@ -1838,37 +1831,27 @@ iterRunes:
 						p.stateTime = timePeriod
 					}
 				}
-			case timeOffset:
-				// 19:55:00+0100
-				// timeOffsetColon
-				//   15:04:05+07:00
-				//   15:04:05-07:00
-				if r == ':' {
-					p.stateTime = timeOffsetColon
-				} else if !unicode.IsDigit(r) {
-					return p, p.unknownErr(datestr)
-				}
 			case timeWs:
 				// timeWsAlpha
 				//   06:20:00 UTC
 				//   06:20:00 UTC-05
 				//   15:44:11 UTC+0100 2015
 				//   18:04:07 GMT+0100 (GMT Daylight Time)
+				//   18:04:07 GMT+01:00 (GMT Daylight Time)
 				//   17:57:51 MST 2009
 				//   timeWsAMPMMaybe
 				//     05:24:37 PM
 				// timeWsOffset
 				//   15:04:05 -0700
 				//   00:12:00 +0000 UTC
-				//   timeWsOffsetColon
-				//     15:04:05 -07:00
-				//     17:57:51 -0700 2009
-				//     timeWsOffsetColonAlpha
-				//       00:12:00 +00:00 UTC
+				//   15:04:05 -07:00
+				//   17:57:51 -0700 2009
+				//   00:12:00 +00:00 UTC
 				// timeWsYear
 				//   00:12:00 2008
-				//   timeWsYearOffset
+				//   merge to state timeWsOffset
 				//     00:12:00 2008 -0700
+				//     00:12:00 2008 -07:00
 				// timeZ
 				//   15:04:05.99Z
 				switch r {
@@ -1889,8 +1872,12 @@ iterRunes:
 						p.stateTime = timeWsAlpha
 					} else if unicode.IsDigit(r) {
 						// 00:12:00 2008
-						p.stateTime = timeWsYear
-						p.yeari = i
+						if p.yeari == 0 {
+							p.stateTime = timeWsYear
+							p.yeari = i
+						} else {
+							return p, p.unknownErr(datestr)
+						}
 					} else if r == '(' {
 						// (start of time zone description, ignore)
 					} else {
@@ -1898,19 +1885,33 @@ iterRunes:
 					}
 				}
 			case timeWsYear:
-				// timeWsYearOffset
+				// merge to state timeWsOffset
 				//   00:12:00 2008 -0700
+				//   00:12:00 2008 -07:00
 				switch r {
 				case ' ':
-					p.yearlen = i - p.yeari
-					if !p.setYear() {
-						return p, p.unknownErr(datestr)
+					if p.yearlen == 0 {
+						p.yearlen = i - p.yeari
+						if !p.setYear() {
+							return p, p.unknownErr(datestr)
+						}
+					} else {
+						// allow multiple trailing whitespace
 					}
 				case '+', '-':
-					p.offseti = i
-					p.stateTime = timeWsYearOffset
+					// The year must be followed by a space before an offset!
+					if p.yearlen > 0 {
+						p.offseti = i
+						p.stateTime = timeWsOffset
+					} else {
+						return p, p.unknownErr(datestr)
+					}
 				default:
-					if !unicode.IsDigit(r) {
+					if unicode.IsDigit(r) {
+						if p.yearlen > 0 {
+							return p, p.unknownErr(datestr)
+						}
+					} else {
 						return p, p.unknownErr(datestr)
 					}
 				}
@@ -1919,11 +1920,13 @@ iterRunes:
 				// 06:20:00 UTC-05
 				// 06:20:00 (EST)
 				// timeWsAlphaWs
-				//   17:57:51 MST 2009
+				//   timeWsAlphaWsYear
+				//     17:57:51 MST 2009
 				// timeWsAlphaZoneOffset
 				// timeWsAlphaZoneOffsetWs
 				//   timeWsAlphaZoneOffsetWsExtra
 				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//     18:04:07 GMT+01:00 (GMT Daylight Time)
 				//   timeWsAlphaZoneOffsetWsYear
 				//     15:44:11 UTC+0100 2015
 				switch r {
@@ -1962,7 +1965,6 @@ iterRunes:
 					}
 					if r == ' ' {
 						p.stateTime = timeWsAlphaWs
-						p.yeari = i + 1
 					} else {
 						// 06:20:00 (EST)
 						// This must be the end of the datetime or the format is unknown
@@ -1974,7 +1976,23 @@ iterRunes:
 					}
 				}
 			case timeWsAlphaWs:
+				// timeWsAlphaWsYear
 				//   17:57:51 MST 2009
+				if unicode.IsDigit(r) {
+					if p.yeari == 0 {
+						p.yeari = i
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+					p.stateTime = timeWsAlphaWsYear
+				} else if r == '(' {
+					p.extra = i - 1
+					p.stateTime = timeWsOffsetWsTZDescInParen
+				}
+			case timeWsAlphaWsYear:
+				if !unicode.IsDigit(r) {
+					return p, p.unknownErr(datestr)
+				}
 
 			case timeWsAlphaZoneOffset:
 				// 06:20:00 UTC-05
@@ -1982,13 +2000,13 @@ iterRunes:
 				// timeWsAlphaZoneOffsetWs
 				//   timeWsAlphaZoneOffsetWsExtra
 				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//     18:04:07 GMT+01:00 (GMT Daylight Time)
 				//   timeWsAlphaZoneOffsetWsYear
 				//     15:44:11 UTC+0100 2015
 				switch r {
 				case ' ':
-					p.set(p.offseti, "-0700")
-					if p.yeari == 0 {
-						p.yeari = i + 1
+					if err := p.setTZOffset(i, datestr); err != nil {
+						return p, err
 					}
 					p.stateTime = timeWsAlphaZoneOffsetWs
 				default:
@@ -2000,14 +2018,36 @@ iterRunes:
 				// timeWsAlphaZoneOffsetWs
 				//   timeWsAlphaZoneOffsetWsExtra
 				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//     18:04:07 GMT+01:00 (GMT Daylight Time)
 				//   timeWsAlphaZoneOffsetWsYear
 				//     15:44:11 UTC+0100 2015
 				if unicode.IsDigit(r) {
-					p.stateTime = timeWsAlphaZoneOffsetWsYear
-				} else {
+					if p.yeari == 0 {
+						p.yeari = i
+						p.stateTime = timeWsAlphaZoneOffsetWsYear
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+				} else if r == '(' {
 					p.extra = i - 1
-					p.stateTime = timeWsAlphaZoneOffsetWsExtra
+					p.stateTime = timeWsOffsetWsTZDescInParen
+				} else {
+					return p, p.unknownErr(datestr)
 				}
+			case timeWsOffsetWsTZDescInParen:
+				// timeWsAlphaZoneOffsetWs
+				//   timeWsAlphaZoneOffsetWsExtra
+				//     18:04:07 GMT+0100 (GMT Daylight Time)
+				//     18:04:07 GMT+01:00 (GMT Daylight Time)
+				if r == '(' {
+					return p, p.unknownErr(datestr)
+				} else if r == ')' {
+					// must be the end
+					if i != len(p.datestr)-1 {
+						return p, p.unknownErr(datestr)
+					}
+				}
+				// any other char is OK
 			case timeWsAlphaZoneOffsetWsYear:
 				// 15:44:11 UTC+0100 2015
 				if unicode.IsDigit(r) {
@@ -2069,18 +2109,24 @@ iterRunes:
 				//   timeWsOffsetWsOffset
 				//     17:57:51 -0700 -07
 				//   timeWsOffsetWs
-				//     17:57:51 -0700 2009
-				//     00:12:00 +0000 UTC
-				//   timeWsOffsetColon
 				//     15:04:05 -07:00
-				//     timeWsOffsetColonAlpha
+				//     timeWsOffsetWsYear
+				//       17:57:51 -0700 2009
+				//     timeWsOffsetWsAlphaZone
+				//       00:12:00 +0000 UTC
 				//       00:12:00 +00:00 UTC
+				//       timeWsOffsetWsAlphaZoneWs --> timeWsOffsetWsYear (overloaded)
+				//         00:12:00 +00:00 UTC 2009
+				//       timeWsOffsetWsTZDescInParen
+				//         00:12:00 +00:00 UTC (Universal Coordinated Time)
 				switch r {
 				case ':':
-					p.stateTime = timeWsOffsetColon
+					// Parse the case where an offset has a colon the same as timeWsOffset!
+					// continue
 				case ' ':
-					p.set(p.offseti, "-0700")
-					p.yeari = i + 1
+					if err := p.setTZOffset(i, datestr); err != nil {
+						return p, err
+					}
 					p.stateTime = timeWsOffsetWs
 				default:
 					if !unicode.IsDigit(r) {
@@ -2088,73 +2134,139 @@ iterRunes:
 					}
 				}
 			case timeWsOffsetWs:
-				// 17:57:51 -0700 2009
-				// 00:12:00 +0000 UTC
-				// 22:18:00.001 +0000 UTC m=+0.000000001
+				// timeWsOffsetWs
+				//   timeWsOffsetWsYear
+				//     17:57:51 -0700 2009
+				//     17:57:51 -07:00 2009
+				//   timeWsOffsetWsAlphaZone
+				//     00:12:00 +0000 UTC
+				//     00:12:00 +00:00 UTC
+				//     22:18:00.001 +0000 UTC m=+0.000000001
+				//     22:18:00.001 +00:00 UTC m=+0.000000001
 				// w Extra
 				//   17:57:51 -0700 -07
+				//   17:57:51 -07:00 -07
+				//   22:18:00.001 +0000 m=+0.000000001
+				//   00:00:00 +0300 (European Daylight Time)
+				//   00:00:00 +03:00 (European Daylight Time)
 				switch r {
-				case '=':
-					// eff you golang
-					if p.datestr[i-1] == 'm' {
-						p.extra = i - 2
-						p.trimExtra(false)
-					} else {
-						return p, p.unknownErr(datestr)
-					}
-				case '+', '-', '(':
+				case '+', '-':
 					// This really doesn't seem valid, but for some reason when round-tripping a go date
 					// their is an extra +03 printed out.  seems like go bug to me, but, parsing anyway.
 					// 00:00:00 +0300 +03
 					// 00:00:00 +0300 +0300
+					// 00:00:00 +03:00 +03
+					// 00:00:00 +03:00 +0300
 					p.extra = i - 1
-					p.stateTime = timeWsOffset
 					p.trimExtra(false)
+					p.stateTime = timeWsOffset
+				case '(':
+					// 00:00:00 +0300 (European Daylight Time)
+					// 00:00:00 +03:00 (European Daylight Time)
+					p.extra = i - 1
+					p.stateTime = timeWsOffsetWsTZDescInParen
 				case ' ':
 					// continue
 				default:
 					switch {
 					case unicode.IsDigit(r):
-						p.yearlen = i - p.yeari + 1
-						if p.yearlen == 4 {
-							if !p.setYear() {
-								return p, p.unknownErr(datestr)
-							}
-						} else if p.yearlen > 4 {
+						if p.yeari == 0 {
+							p.yeari = i
+						} else {
 							return p, p.unknownErr(datestr)
 						}
+						p.stateTime = timeWsOffsetWsYear
 					case unicode.IsLetter(r):
-						// 15:04:05 -0700 MST
-						if p.tzi == 0 {
-							p.tzi = i
+						if r == 'm' && p.nextIs(i, '=') {
+							// 22:18:00.001 +0000 UTC m=+0.000000001
+							// 22:18:00.001 +00:00 UTC m=+0.000000001
+							// very strange syntax!
+							p.extra = i - 1
+							p.trimExtra(false)
+						} else {
+							// 15:04:05 -0700 MST
+							// 15:04:05 -07:00 MST
+							// 15:04:05 -07:00 MST (Mountain Standard Time)
+							// 15:04:05 -07:00 MST 2006
+							if p.tzi == 0 {
+								p.tzi = i
+							} else {
+								return p, p.unknownErr(datestr)
+							}
+							p.stateTime = timeWsOffsetWsAlphaZone
 						}
 					default:
 						return p, p.unknownErr(datestr)
 					}
 				}
 
-			case timeOffsetColon, timeWsOffsetColon:
-				// timeOffsetColon
-				//   15:04:05-07:00
-				//   timeOffsetColonAlpha
-				//     2015-02-18 00:12:00+00:00 UTC
-				// timeWsOffsetColon
-				//   15:04:05 -07:00
-				//   timeWsOffsetColonAlpha
-				//     2015-02-18 00:12:00 +00:00 UTC
-				if unicode.IsLetter(r) {
-					// TODO: do we need to handle the m=+0.000000001 case?
-					// 2015-02-18 00:12:00 +00:00 UTC
-					if p.stateTime == timeWsOffsetColon {
-						p.stateTime = timeWsOffsetColonAlpha
+			case timeWsOffsetWsAlphaZone:
+				switch {
+				case r == ' ':
+					if p.tzi > 0 {
+						p.tzlen = i - p.tzi
+						switch p.tzlen {
+						case 3:
+							// 13:31:51.999 +01:00 CET
+							p.set(p.tzi, "MST")
+						case 4:
+							// 13:31:51.999 +01:00 CEST
+							p.set(p.tzi, "MST ")
+						default:
+							if p.simpleErrorMessages {
+								return p, ErrUnknownTimeZone
+							} else {
+								return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:p.tzi+p.tzlen])
+							}
+						}
 					} else {
-						p.stateTime = timeOffsetColonAlpha
+						return p, p.unknownErr(datestr)
 					}
-					p.tzi = i
-					break iterTimeRunes
-				} else if r != ' ' && !unicode.IsDigit(r) {
+					p.stateTime = timeWsOffsetWsAlphaZoneWs
+				case unicode.IsLetter(r):
+					// continue
+				}
+
+			case timeWsOffsetWsAlphaZoneWs:
+				switch r {
+				case '=':
+					// 22:18:00.001 +0000 UTC m=+0.000000001
+					// very strange syntax!
+					if p.datestr[i-1] == 'm' {
+						p.extra = i - 2
+						p.trimExtra(false)
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+				case '(':
+					// 00:00:00 -0600 MDT (Mountain Daylight Time)
+					// 00:00:00 -06:00 MDT (Mountain Daylight Time)
+					p.extra = i - 1
+					p.stateTime = timeWsOffsetWsTZDescInParen
+				case ' ':
+					// continue (extra whitespace)
+				case 'm':
+					if !p.nextIs(i, '=') {
+						return p, p.unknownErr(datestr)
+					}
+				default:
+					if unicode.IsDigit(r) {
+						if p.yeari == 0 {
+							p.yeari = i
+						} else {
+							return p, p.unknownErr(datestr)
+						}
+						p.stateTime = timeWsOffsetWsYear
+					} else {
+						return p, p.unknownErr(datestr)
+					}
+				}
+
+			case timeWsOffsetWsYear:
+				if !unicode.IsDigit(r) {
 					return p, p.unknownErr(datestr)
 				}
+
 			case timePeriod:
 				// 15:04:05.999999999
 				// 15:04:05.999999999
@@ -2167,7 +2279,7 @@ iterRunes:
 				//   00:07:31.945167
 				//   18:31:59.257000000
 				//   00:00:00.000
-				//   (note: if we have an offset (+/-) or whitespace (Ws) after this state, re-enter the timeWs or timeOffset
+				//   (note: if we have an offset (+/-) or whitespace (Ws) after this state, re-enter the timeWs or timeWsOffset
 				//    state above so that we do not have to duplicate all of the logic again for this parsing just because we
 				//    have parsed a fractional second...)
 				switch r {
@@ -2180,7 +2292,7 @@ iterRunes:
 				case '+', '-':
 					p.mslen = i - p.msi
 					p.offseti = i
-					p.stateTime = timeOffset
+					p.stateTime = timeWsOffset
 				case 'Z':
 					p.stateTime = timeZ
 					p.mslen = i - p.msi
@@ -2229,7 +2341,7 @@ iterRunes:
 					p.stateTime = timeWs
 				case '+', '-':
 					p.offseti = i
-					p.stateTime = timeOffset
+					p.stateTime = timeWsOffset
 				default:
 					return p, p.unexpectedTail(i)
 				}
@@ -2240,43 +2352,6 @@ iterRunes:
 		}
 
 		switch p.stateTime {
-		case timeOffsetColonAlpha, timeWsOffsetColonAlpha:
-			// process offset
-			offsetLen := i - p.offseti
-			switch offsetLen {
-			case 6, 7:
-				// may or may not have a space on the end
-				if offsetLen == 7 {
-					if p.datestr[p.offseti+6] != ' ' {
-						if p.simpleErrorMessages {
-							return p, ErrUnknownTZOffset
-						} else {
-							return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:p.offseti+offsetLen])
-						}
-					}
-				}
-				p.set(p.offseti, "-07:00")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTZOffset
-				} else {
-					return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:p.offseti+offsetLen])
-				}
-			}
-			// process timezone
-			switch len(p.datestr) - p.tzi {
-			case 3:
-				// 13:31:51.999 +01:00 CET
-				p.set(p.tzi, "MST")
-			case 4:
-				p.set(p.tzi, "MST ")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTimeZone
-				} else {
-					return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
-				}
-			}
 		case timeWsAlpha:
 			switch len(p.datestr) - p.tzi {
 			case 3:
@@ -2295,33 +2370,21 @@ iterRunes:
 		case timeWsAlphaRParen:
 			// nothing extra to do
 
-		case timeWsAlphaWs:
+		case timeWsYear, timeWsAlphaWsYear:
 			p.yearlen = i - p.yeari
 			if !p.setYear() {
 				return p, p.unknownErr(datestr)
 			}
-		case timeWsYear:
-			p.yearlen = i - p.yeari
-			if !p.setYear() {
+		case timeWsOffsetWsTZDescInParen:
+			// The last character must be a closing ')'
+			if len(p.datestr) <= 0 || p.datestr[i-1] != ')' {
 				return p, p.unknownErr(datestr)
 			}
-		case timeWsAlphaZoneOffsetWsExtra:
 			p.trimExtra(false)
 		case timeWsAlphaZoneOffset:
 			// 06:20:00 UTC-05
-			switch i - p.offseti {
-			case 2, 3, 4:
-				p.set(p.offseti, "-07")
-			case 5:
-				p.set(p.offseti, "-0700")
-			case 6:
-				p.set(p.offseti, "-07:00")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTZOffset
-				} else {
-					return p, fmt.Errorf("%w %q near %q (must be 2 or 4 digits optional colon)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:i])
-				}
+			if err := p.setTZOffset(i, datestr); err != nil {
+				return p, err
 			}
 
 		case timePeriod:
@@ -2333,24 +2396,26 @@ iterRunes:
 					return p, fmt.Errorf("%w in %q near %q", ErrFracSecTooLong, datestr, p.datestr[p.msi:p.mslen])
 				}
 			}
-		case timeOffset, timeWsOffset, timeWsYearOffset:
-			switch len(p.datestr) - p.offseti {
-			case 3:
-				// 19:55:00+01 (or 19:55:00 +01)
-				p.set(p.offseti, "-07")
-			case 5:
-				// 19:55:00+0100 (or 19:55:00 +0100)
-				p.set(p.offseti, "-0700")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTZOffset
-				} else {
-					return p, fmt.Errorf("%w %q near %q (must be 2 or 4 digits optional colon)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:])
-				}
+		case timeWsOffset:
+			// 17:57:51 -07:00 (or 19:55:00.799 +01:00)
+			// 15:04:05+07:00 (or 19:55:00.799+01:00)
+			// 17:57:51 2006 -07:00 (or 19:55:00.799 +01:00)
+			if err := p.setTZOffset(len(p.datestr), datestr); err != nil {
+				return p, err
 			}
 
-		case timeWsOffsetWs:
+		case timeWsOffsetWsYear:
 			// 17:57:51 -0700 2009
+			p.yearlen = len(p.datestr) - p.yeari
+			if p.yearlen == 4 {
+				if !p.setYear() {
+					return p, p.unknownErr(datestr)
+				}
+			} else if p.yearlen > 4 {
+				return p, p.unknownErr(datestr)
+			}
+
+		case timeWsOffsetWsAlphaZone:
 			// 00:12:00 +0000 UTC
 			if p.tzi > 0 {
 				switch len(p.datestr) - p.tzi {
@@ -2367,19 +2432,8 @@ iterRunes:
 						return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
 					}
 				}
-			}
-		case timeOffsetColon, timeWsOffsetColon:
-			// 17:57:51 -07:00 (or 19:55:00.799 +01:00)
-			// 15:04:05+07:00 (or 19:55:00.799+01:00)
-			switch len(p.datestr) - p.offseti {
-			case 6:
-				p.set(p.offseti, "-07:00")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTZOffset
-				} else {
-					return p, fmt.Errorf("%w %q near %q (expected offset like -07:00)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:])
-				}
+			} else {
+				return p, p.unknownErr(datestr)
 			}
 		}
 		if !p.coalesceTime(i) {
@@ -2458,13 +2512,8 @@ iterRunes:
 
 	case dateYearDashDashOffset:
 		///  2020-07-20+00:00
-		switch len(p.datestr) - p.offseti {
-		case 5:
-			p.set(p.offseti, "-0700")
-		case 6:
-			p.set(p.offseti, "-07:00")
-		default:
-			return p, p.unknownErr(datestr)
+		if err := p.setTZOffset(len(p.datestr), datestr); err != nil {
+			return p, err
 		}
 		return p, nil
 
@@ -2555,13 +2604,8 @@ iterRunes:
 
 	case dateDigitDotDotOffset:
 		//  2020.07.20+00:00
-		switch len(p.datestr) - p.offseti {
-		case 5:
-			p.set(p.offseti, "-0700")
-		case 6:
-			p.set(p.offseti, "-07:00")
-		default:
-			return p, p.unknownErr(datestr)
+		if err := p.setTZOffset(len(p.datestr), datestr); err != nil {
+			return p, err
 		}
 		return p, nil
 
@@ -2840,6 +2884,7 @@ func (p *parser) set(start int, val string) {
 		p.formatSetLen = endingPos
 	}
 }
+
 func (p *parser) setMonth() bool {
 	if p.molen == 2 {
 		p.set(p.moi, "01")
@@ -2863,6 +2908,7 @@ func (p *parser) setDay() bool {
 		return false
 	}
 }
+
 func (p *parser) setYear() bool {
 	if p.yearlen == 2 {
 		p.set(p.yeari, "06")
@@ -2873,6 +2919,25 @@ func (p *parser) setYear() bool {
 	} else {
 		return false
 	}
+}
+
+func (p *parser) setTZOffset(i int, datestr string) error {
+	offsetlen := i - p.offseti
+	switch offsetlen {
+	case 3:
+		p.set(p.offseti, "-07")
+	case 5:
+		p.set(p.offseti, "-0700")
+	case 6:
+		p.set(p.offseti, "-07:00")
+	default:
+		if p.simpleErrorMessages {
+			return ErrUnknownTZOffset
+		} else {
+			return fmt.Errorf("%w %q near %q (must be 2 or 4 digits optional colon)", ErrUnknownTZOffset, datestr, p.datestr[p.offseti:i])
+		}
+	}
+	return nil
 }
 
 // Find the proper end of the current component (scanning chars starting from start and going
