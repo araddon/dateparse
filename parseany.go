@@ -1895,9 +1895,8 @@ iterRunes:
 						if !p.setYear() {
 							return p, p.unknownErr(datestr)
 						}
-					} else {
-						// allow multiple trailing whitespace
 					}
+					// else allow multiple trailing whitespace
 				case '+', '-':
 					// The year must be followed by a space before an offset!
 					if p.yearlen > 0 {
@@ -1942,12 +1941,10 @@ iterRunes:
 					} else {
 						p.tzlen = i - p.tzi
 					}
-					if p.tzlen == 4 {
-						p.set(p.tzi, " MST")
-					} else if p.tzlen == 3 {
-						p.set(p.tzi, "MST")
-					} else if p.tzlen > 0 {
-						return p, p.unknownErr(datestr)
+					if p.tzlen > 0 {
+						if err := p.setTZName(datestr); err != nil {
+							return p, err
+						}
 					}
 					p.stateTime = timeWsAlphaZoneOffset
 					p.offseti = i
@@ -1956,12 +1953,8 @@ iterRunes:
 					// 17:57:51 MST
 					// 06:20:00 (EST)
 					p.tzlen = i - p.tzi
-					if p.tzlen == 4 {
-						p.set(p.tzi, " MST")
-					} else if p.tzlen == 3 {
-						p.set(p.tzi, "MST")
-					} else if p.tzlen > 0 {
-						return p, p.unknownErr(datestr)
+					if err := p.setTZName(datestr); err != nil {
+						return p, err
 					}
 					if r == ' ' {
 						p.stateTime = timeWsAlphaWs
@@ -2205,19 +2198,8 @@ iterRunes:
 				case r == ' ':
 					if p.tzi > 0 {
 						p.tzlen = i - p.tzi
-						switch p.tzlen {
-						case 3:
-							// 13:31:51.999 +01:00 CET
-							p.set(p.tzi, "MST")
-						case 4:
-							// 13:31:51.999 +01:00 CEST
-							p.set(p.tzi, "MST ")
-						default:
-							if p.simpleErrorMessages {
-								return p, ErrUnknownTimeZone
-							} else {
-								return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:p.tzi+p.tzlen])
-							}
+						if err := p.setTZName(datestr); err != nil {
+							return p, err
 						}
 					} else {
 						return p, p.unknownErr(datestr)
@@ -2353,18 +2335,9 @@ iterRunes:
 
 		switch p.stateTime {
 		case timeWsAlpha:
-			switch len(p.datestr) - p.tzi {
-			case 3:
-				// 13:31:51.999 +01:00 CET
-				p.set(p.tzi, "MST")
-			case 4:
-				p.set(p.tzi, "MST ")
-			default:
-				if p.simpleErrorMessages {
-					return p, ErrUnknownTimeZone
-				} else {
-					return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
-				}
+			p.tzlen = i - p.tzi
+			if err := p.setTZName(datestr); err != nil {
+				return p, err
 			}
 
 		case timeWsAlphaRParen:
@@ -2377,10 +2350,26 @@ iterRunes:
 			}
 		case timeWsOffsetWsTZDescInParen:
 			// The last character must be a closing ')'
-			if len(p.datestr) <= 0 || p.datestr[i-1] != ')' {
+			if i <= 0 || p.datestr[i-1] != ')' {
 				return p, p.unknownErr(datestr)
 			}
-			p.trimExtra(false)
+			// As a special case, if we don't yet have a timezone name,
+			// and the content in the paren is 3-4 characters, then treat
+			// this as a time zone name instead
+			if len(p.datestr) >= p.extra+1+3+1 {
+				parenContentsLen := (i - 1) - (p.extra + 2)
+				if p.tzi == 0 && (parenContentsLen >= 3 && parenContentsLen <= 4) {
+					p.tzi = p.extra + 2
+					p.tzlen = parenContentsLen
+					if err := p.setTZName(datestr); err != nil {
+						return p, err
+					}
+					p.extra = 0
+				}
+			}
+			if p.extra > 0 {
+				p.trimExtra(false)
+			}
 		case timeWsAlphaZoneOffset:
 			// 06:20:00 UTC-05
 			if err := p.setTZOffset(i, datestr); err != nil {
@@ -2418,19 +2407,9 @@ iterRunes:
 		case timeWsOffsetWsAlphaZone:
 			// 00:12:00 +0000 UTC
 			if p.tzi > 0 {
-				switch len(p.datestr) - p.tzi {
-				case 3:
-					// 13:31:51.999 +01:00 CET
-					p.set(p.tzi, "MST")
-				case 4:
-					// 13:31:51.999 +01:00 CEST
-					p.set(p.tzi, "MST ")
-				default:
-					if p.simpleErrorMessages {
-						return p, ErrUnknownTimeZone
-					} else {
-						return p, fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:])
-					}
+				p.tzlen = i - p.tzi
+				if err := p.setTZName(datestr); err != nil {
+					return p, err
 				}
 			} else {
 				return p, p.unknownErr(datestr)
@@ -2940,6 +2919,44 @@ func (p *parser) setTZOffset(i int, datestr string) error {
 	return nil
 }
 
+func (p *parser) setTZName(datestr string) error {
+	switch p.tzlen {
+	case 3:
+		p.set(p.tzi, "MST")
+	case 4:
+		p.set(p.tzi, "MST ")
+	default:
+		if p.simpleErrorMessages {
+			return ErrUnknownTimeZone
+		} else {
+			return fmt.Errorf("%w %q near %q (must be 3 or 4 characters)", ErrUnknownTimeZone, datestr, p.datestr[p.tzi:p.tzi+p.tzlen])
+		}
+	}
+	return nil
+}
+
+// Removes the characters at the given range from the format string.
+// Fills the end of the format string with spaces rather than shortening it.
+func (p *parser) removeRangeFromFormat(i, numBytes int) {
+	if i < 0 || i >= len(p.format) {
+		return
+	}
+	var startErase int
+	afterRemovedRange := i + numBytes
+	bytesToCopy := len(p.format) - afterRemovedRange
+	if bytesToCopy <= 0 {
+		// nothing to copy, erase everything from the removal point
+		startErase = i
+	} else {
+		copy(p.format[i:], p.format[afterRemovedRange:])
+		startErase = i + bytesToCopy
+	}
+	// fill in spaces to erase the moved content in its old location
+	for index := startErase; index < len(p.format); index++ {
+		p.format[index] = ' '
+	}
+}
+
 // Find the proper end of the current component (scanning chars starting from start and going
 // up until the end, and either returning at end or returning the first character that is
 // not allowed, as determined by allowNumeric, allowAlpha, and allowOther)
@@ -3097,6 +3114,26 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 	if p.t != nil {
 		return *p.t, nil
 	}
+
+	// Make sure that the entire string matched to a known format that was detected
+	if !p.allowPartialStringMatch && p.formatSetLen < len(p.format) {
+		// We can always ignore punctuation at the end of a date/time, but do not allow
+		// any numbers or letters in the format string.
+		validFormatTo := findProperEnd(bytesToString(p.format), p.formatSetLen, len(p.format), false, false, true)
+		if validFormatTo < len(p.format) {
+			return time.Time{}, p.unexpectedTail(p.formatSetLen)
+		}
+	}
+
+	// Special case where the TZ name is 4 characters long and followed by punctuation, will cause parsing problems
+	// with the format 'MST ' (will expect a whitespace that isn't there after 4 char timezone). Most robust
+	// solution is to remove the extra whitespace. Even though it will cause offsets after this point to not match
+	// between the datestr and format string, it's not an issue at this point.
+	if p.tzlen == 4 && p.tzi+4 < len(p.format) && p.format[p.tzi+3] == ' ' && p.format[p.tzi+4] != ' ' {
+		p.removeRangeFromFormat(p.tzi+3, 1)
+	}
+
+	// If we have a full month name, update the format string to use it (can change length of format string)
 	if len(p.fullMonth) > 0 {
 		p.setFullMonth(p.fullMonth)
 	}
@@ -3110,7 +3147,7 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 			// get out of this function to reduce scope it needs to be applied on
 			if err != nil && strings.Contains(err.Error(), "month out of range") {
 				// simple optimized case where mm and dd can be swapped directly
-				if p.molen == 2 && p.daylen == 2 {
+				if p.molen == 2 && p.daylen == 2 && len(p.fullMonth) <= 0 && (p.tzi == 0 || (p.moi < p.tzi && p.dayi < p.tzi)) {
 					// skipped bytes have already been removed, so compensate for that
 					moi := p.moi - p.skip
 					p.moi = p.dayi - p.skip
@@ -3144,17 +3181,10 @@ func (p *parser) parse(originalLoc *time.Location, originalOpts ...ParserOption)
 		}()
 	}
 
-	// Make sure that the entire string matched to a known format that was detected
-	if !p.allowPartialStringMatch && p.formatSetLen < len(p.format) {
-		// We can always ignore punctuation at the end of a date/time, but do not allow
-		// any numbers or letters in the format string.
-		validFormatTo := findProperEnd(bytesToString(p.format), p.formatSetLen, len(p.format), false, false, true)
-		if validFormatTo < len(p.format) {
-			return time.Time{}, p.unexpectedTail(p.formatSetLen)
-		}
+	if p.skip > len(p.format) {
+		p.skip = len(p.format)
 	}
-
-	if p.skip > 0 && len(p.format) > p.skip {
+	if p.skip > 0 {
 		// copy and then re-slice to shorten to avoid losing the header of the pooled format string
 		copy(p.format, p.format[p.skip:])
 		p.format = p.format[:len(p.format)-p.skip]

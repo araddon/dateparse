@@ -225,9 +225,11 @@ var testInputs = []dateTest{
 	{in: "Thu, 03 Jul 2017 8:08:04 +0100", out: "2017-07-03 07:08:04 +0000 UTC"},
 	{in: "Thu, 03 Jul 2017 8:8:4 +0100", out: "2017-07-03 07:08:04 +0000 UTC"},
 	//
-	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC"},
-	{in: "Tue, 5 Jul 2017 04:08:03 -0700 (MST)", out: "2017-07-05 11:08:03 +0000 UTC"},
+	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", zname: "CEST"},
+	{in: "Tue, 5 Jul 2017 04:08:03 -0700 (MST)", out: "2017-07-05 11:08:03 +0000 UTC", zname: "MST"},
 	{in: "Tue, 11 Jul 2017 04:08:03 +0200 (CEST)", out: "2017-07-11 02:08:03 +0000 UTC", loc: "Europe/Berlin", zname: "CEST"},
+	{in: "Tue, 11 Jul 2017 04:08:03 (CEST)", out: "2017-07-11 04:08:03 +0000 UTC", zname: "CEST"},
+	{in: "Tue, 5 Jul 2017 04:08:03 (MST)", out: "2017-07-05 04:08:03 +0000 UTC", zname: "MST"},
 	// day, dd-Mon-yy hh:mm:zz TZ
 	{in: "Fri, 03-Jul-15 08:08:08 MST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "MST"},
 	{in: "Fri, 03-Jul-15 08:08:08 CEST", out: "2015-07-03 08:08:08 +0000 UTC", zname: "CEST"},
@@ -330,14 +332,18 @@ var testInputs = []dateTest{
 	{in: "04/02/2014 04:08:09 AM", out: "2014-04-02 04:08:09 +0000 UTC"},
 	{in: "04/02/2014 04:08:09AM PST", out: "2014-04-02 04:08:09 +0000 UTC", zname: "PST"},
 	{in: "04/02/2014 04:08:09 AM PST", out: "2014-04-02 04:08:09 +0000 UTC", zname: "PST"},
+	{in: "04/02/2014 04:08:09 AM (PST)", out: "2014-04-02 04:08:09 +0000 UTC", zname: "PST"},
 	{in: "04/02/2014 04:08:09AM CEST", out: "2014-04-02 04:08:09 +0000 UTC", zname: "CEST"},
 	{in: "04/02/2014 04:08:09 AM CEST", out: "2014-04-02 04:08:09 +0000 UTC", zname: "CEST"},
+	{in: "04/02/2014 04:08:09 AM (CEST)", out: "2014-04-02 04:08:09 +0000 UTC", zname: "CEST"},
 	{in: "04/02/2014 04:08:09pm", out: "2014-04-02 16:08:09 +0000 UTC"},
 	{in: "04/02/2014 04:08:09 PM", out: "2014-04-02 16:08:09 +0000 UTC"},
 	{in: "04/02/2014 04:08:09PM PST", out: "2014-04-02 16:08:09 +0000 UTC", zname: "PST"},
 	{in: "04/02/2014 04:08:09 PM PST", out: "2014-04-02 16:08:09 +0000 UTC", zname: "PST"},
+	{in: "04/02/2014 04:08:09 PM (PST)", out: "2014-04-02 16:08:09 +0000 UTC", zname: "PST"},
 	{in: "04/02/2014 04:08:09pm CEST", out: "2014-04-02 16:08:09 +0000 UTC", zname: "CEST"},
 	{in: "04/02/2014 04:08:09 PM CEST", out: "2014-04-02 16:08:09 +0000 UTC", zname: "CEST"},
+	{in: "04/02/2014 04:08:09 PM (CEST)", out: "2014-04-02 16:08:09 +0000 UTC", zname: "CEST"},
 	{in: "04/02/2014 04:08am", out: "2014-04-02 04:08:00 +0000 UTC"},
 	{in: "04/02/2014 04:08 AM", out: "2014-04-02 04:08:00 +0000 UTC"},
 	{in: "04/02/2014 04:08pm", out: "2014-04-02 16:08:00 +0000 UTC"},
@@ -822,7 +828,7 @@ func TestParse(t *testing.T) {
 				}
 				fullInput := prefix + th.in
 
-				t.Run(fmt.Sprintf("simpleerr-%v-addweekday-%v-%s", simpleErrorMessage, addWeekday, fullInput), func(t *testing.T) {
+				t.Run(fmt.Sprintf("simpleerr-%v/addweekday-%v/%s", simpleErrorMessage, addWeekday, fullInput), func(t *testing.T) {
 					var ts time.Time
 					defer func() {
 						if r := recover(); r != nil {
@@ -1167,6 +1173,9 @@ func TestInLocation(t *testing.T) {
 	ts = MustParse("Tue, 5 Jul 2017 16:28:13 -0700 (MST)")
 	assert.Equal(t, "2017-07-05 23:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 
+	ts = MustParse("Tue, 5 Jul 2017 16:28:13 +0300 (CEST)")
+	assert.Equal(t, "2017-07-05 13:28:13 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
 	// Now we are going to use ParseIn() and see that it gives different answer
 	// with different zone, offset
 	time.Local = nil
@@ -1311,6 +1320,6 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 
 // Convenience function for debugging a particular broken test case
 func TestDebug(t *testing.T) {
-	ts := MustParse("Monday 19/03/2012 00:00:00", RetryAmbiguousDateWithSwap(true))
-	assert.Equal(t, "2012-03-19 00:00:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+	ts := MustParse("September 17, 2012 at 10:09am CEST+02", RetryAmbiguousDateWithSwap(true))
+	assert.Equal(t, "2012-09-17 08:09:00 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
