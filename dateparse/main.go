@@ -6,17 +6,32 @@ import (
 	"os"
 	"time"
 
+	"github.com/itlightning/dateparse"
 	"github.com/scylladb/termtables"
-	"github.com/araddon/dateparse"
 )
 
 var (
-	timezone = ""
-	datestr  = ""
+	timezone                   = ""
+	datestr                    = ""
+	retryAmbiguousDateWithSwap = false
+	preferDayFirst             = false
+	parserOptions              = []dateparse.ParserOption{}
 )
+
+func buildParserOptions() {
+	parserOptions = []dateparse.ParserOption{}
+	if retryAmbiguousDateWithSwap {
+		parserOptions = append(parserOptions, dateparse.RetryAmbiguousDateWithSwap(true))
+	}
+	if preferDayFirst {
+		parserOptions = append(parserOptions, dateparse.PreferMonthFirst(false))
+	}
+}
 
 func main() {
 	flag.StringVar(&timezone, "timezone", "", "Timezone aka `America/Los_Angeles` formatted time-zone")
+	flag.BoolVar(&retryAmbiguousDateWithSwap, "retry-ambiguous", false, "Retry ambiguous date/time formats (day-first vs month-first)")
+	flag.BoolVar(&preferDayFirst, "prefer-day-first", false, "Prefer day-first date format")
 	flag.Parse()
 
 	if len(flag.Args()) == 0 {
@@ -25,13 +40,17 @@ func main() {
 		./dateparse "2009-08-12T22:15:09.99Z" 
 
 		./dateparse --timezone="America/Denver" "2017-07-19 03:21:51+00:00"
+		./dateparse --prefer-day-first "28.09.2024"
+		./dateparse --retry-ambiguous "28.09.2024"
 		`)
 		return
 	}
 
+	buildParserOptions()
+
 	datestr = flag.Args()[0]
 
-	layout, err := dateparse.ParseFormat(datestr)
+	layout, err := dateparse.ParseFormat(datestr, parserOptions...)
 	if err != nil {
 		fatal(err)
 	}
@@ -82,7 +101,7 @@ type parser func(datestr string, loc *time.Location, utc bool) string
 
 func parseLocal(datestr string, loc *time.Location, utc bool) string {
 	time.Local = loc
-	t, err := dateparse.ParseLocal(datestr)
+	t, err := dateparse.ParseLocal(datestr, parserOptions...)
 	if err != nil {
 		return err.Error()
 	}
@@ -93,7 +112,7 @@ func parseLocal(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseIn(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseIn(datestr, loc)
+	t, err := dateparse.ParseIn(datestr, loc, parserOptions...)
 	if err != nil {
 		return err.Error()
 	}
@@ -104,7 +123,7 @@ func parseIn(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseAny(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseAny(datestr)
+	t, err := dateparse.ParseAny(datestr, parserOptions...)
 	if err != nil {
 		return err.Error()
 	}
@@ -115,7 +134,7 @@ func parseAny(datestr string, loc *time.Location, utc bool) string {
 }
 
 func parseStrict(datestr string, loc *time.Location, utc bool) string {
-	t, err := dateparse.ParseStrict(datestr)
+	t, err := dateparse.ParseStrict(datestr, parserOptions...)
 	if err != nil {
 		return err.Error()
 	}
