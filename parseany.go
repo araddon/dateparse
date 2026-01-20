@@ -170,15 +170,14 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 // Set Location to time.Local.  Same as ParseIn Location but lazily uses
 // the global time.Local variable for Location argument.
 //
-//     denverLoc, _ := time.LoadLocation("America/Denver")
-//     time.Local = denverLoc
+//	denverLoc, _ := time.LoadLocation("America/Denver")
+//	time.Local = denverLoc
 //
-//     t, err := dateparse.ParseLocal("3/1/2014")
+//	t, err := dateparse.ParseLocal("3/1/2014")
 //
 // Equivalent to:
 //
-//     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
-//
+//	t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, time.Local, opts...)
 	if err != nil {
@@ -204,9 +203,8 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 // ParseFormat parse's an unknown date-time string and returns a layout
 // string that can parse this (and exact same format) other date-time strings.
 //
-//     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
-//     // layout = "2006-01-02 15:04:05"
-//
+//	layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
+//	// layout = "2006-01-02 15:04:05"
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
@@ -1202,8 +1200,16 @@ iterRunes:
 					p.stateTime = timeZ
 					if p.seci == 0 {
 						p.minlen = i - p.mini
+						// Validate minute length if no seconds
+						if p.minlen > 2 || p.minlen < 1 {
+							return nil, unknownErr(datestr)
+						}
 					} else {
 						p.seclen = i - p.seci
+						// Validate second length
+						if p.seclen > 2 || p.seclen < 1 {
+							return nil, unknownErr(datestr)
+						}
 					}
 					// (Z)ulu time
 					p.loc = time.UTC
@@ -1246,9 +1252,17 @@ iterRunes:
 					if p.mini == 0 {
 						p.mini = i + 1
 						p.hourlen = i - p.houri
+						// Validate hour length, must be 1 or 2 digits
+						if p.hourlen > 2 || p.hourlen < 1 {
+							return nil, unknownErr(datestr)
+						}
 					} else if p.seci == 0 {
 						p.seci = i + 1
 						p.minlen = i - p.mini
+						// Validate minute length, must be 1 or 2 digits
+						if p.minlen > 2 || p.minlen < 1 {
+							return nil, unknownErr(datestr)
+						}
 					} else if p.seci > 0 {
 						// 18:31:59:257    ms uses colon, wtf
 						p.seclen = i - p.seci
