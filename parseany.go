@@ -170,15 +170,14 @@ func ParseIn(datestr string, loc *time.Location, opts ...ParserOption) (time.Tim
 // Set Location to time.Local.  Same as ParseIn Location but lazily uses
 // the global time.Local variable for Location argument.
 //
-//     denverLoc, _ := time.LoadLocation("America/Denver")
-//     time.Local = denverLoc
+//	denverLoc, _ := time.LoadLocation("America/Denver")
+//	time.Local = denverLoc
 //
-//     t, err := dateparse.ParseLocal("3/1/2014")
+//	t, err := dateparse.ParseLocal("3/1/2014")
 //
 // Equivalent to:
 //
-//     t, err := dateparse.ParseIn("3/1/2014", denverLoc)
-//
+//	t, err := dateparse.ParseIn("3/1/2014", denverLoc)
 func ParseLocal(datestr string, opts ...ParserOption) (time.Time, error) {
 	p, err := parseTime(datestr, time.Local, opts...)
 	if err != nil {
@@ -204,9 +203,8 @@ func MustParse(datestr string, opts ...ParserOption) time.Time {
 // ParseFormat parse's an unknown date-time string and returns a layout
 // string that can parse this (and exact same format) other date-time strings.
 //
-//     layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
-//     // layout = "2006-01-02 15:04:05"
-//
+//	layout, err := dateparse.ParseFormat("2013-02-01 00:00:00")
+//	// layout = "2006-01-02 15:04:05"
 func ParseFormat(datestr string, opts ...ParserOption) (string, error) {
 	p, err := parseTime(datestr, nil, opts...)
 	if err != nil {
@@ -426,6 +424,11 @@ iterRunes:
 				p.setMonth()
 			default:
 				if unicode.IsLetter(r) {
+					// 2013-Feb-03 starts the month on the letter.
+					// 2021-032T already has digits in the month field.
+					if i > p.moi {
+						return nil, unknownErr(datestr)
+					}
 					p.stateDate = dateYearDashAlphaDash
 				}
 			}
@@ -1785,6 +1788,12 @@ iterRunes:
 
 	case dateYearDash:
 		// 2006-01
+		// A longer field is left in the layout. time.Parse then reads
+		// 03 as an hour and 2 as a day, so 2021-032 becomes
+		// 2 January 2021 at 03:00.
+		if !p.yearMonthLenOK() {
+			return nil, unknownErr(datestr)
+		}
 		return p, nil
 
 	case dateYearDashDash:
@@ -1850,6 +1859,9 @@ iterRunes:
 		// 2014.05
 		p.molen = i - p.moi
 		p.setMonth()
+		if p.yearlen == 4 && p.dayi == 0 && !p.yearMonthLenOK() {
+			return nil, unknownErr(datestr)
+		}
 		return p, nil
 
 	case dateDigitDotDot:
@@ -1919,6 +1931,9 @@ iterRunes:
 
 	case dateDigitYearSlash:
 		// 2014/10/13
+		if p.dayi == 0 && !p.yearMonthLenOK() {
+			return nil, unknownErr(datestr)
+		}
 		return p, nil
 
 	case dateDigitColon:
@@ -1926,6 +1941,9 @@ iterRunes:
 		// 10:13:2014
 		// 01:02:2006
 		// 2014:10:13
+		if p.yearlen == 4 && p.dayi == 0 && !p.yearMonthLenOK() {
+			return nil, unknownErr(datestr)
+		}
 		return p, nil
 
 	case dateDigitChineseYear:
@@ -2044,6 +2062,10 @@ func (p *parser) set(start int, val string) {
 		p.format[start+i] = byte(r)
 	}
 }
+func (p *parser) yearMonthLenOK() bool {
+	return p.molen == 1 || p.molen == 2
+}
+
 func (p *parser) setMonth() {
 	if p.molen == 2 {
 		p.set(p.moi, "01")
