@@ -514,6 +514,13 @@ var testParseErrors = []dateTest{
 	{in: "29-06-2016", err: true},
 	// this is just testing the empty space up front
 	{in: " 2018-01-02 17:08:09 -07:00", err: true},
+	// 2021-032 was 2 January 2021 at 03:00. The extra digit stayed in the layout.
+	{in: "2021-032", err: true},
+	{in: "2021.032", err: true},
+	{in: "2021/032", err: true},
+	{in: "2021:032", err: true},
+	{in: "2021-999", err: true},
+	{in: "2021-032T00:00:00Z", err: true},
 }
 
 func TestParseErrors(t *testing.T) {
