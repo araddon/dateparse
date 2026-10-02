@@ -517,11 +517,6 @@ iterRunes:
 					p.daylen = p.part1Len
 					p.setDay()
 				} else if length == 2 {
-					// We have no idea if this is
-					// yy-mon-dd   OR  dd-mon-yy
-					//
-					// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
-					p.ambiguousMD = true
 					p.yearlen = 2
 					p.set(p.yeari, "06")
 					// We now also know that part1 was the day
@@ -1831,11 +1826,6 @@ iterRunes:
 			p.daylen = p.part1Len
 			p.setDay()
 		} else if length == 2 {
-			// We have no idea if this is
-			// yy-mon-dd   OR  dd-mon-yy
-			//
-			// We are going to ASSUME (bad, bad) that it is dd-mon-yy  which is a horible assumption
-			p.ambiguousMD = true
 			p.yearlen = 2
 			p.set(p.yeari, "06")
 			// We now also know that part1 was the day
