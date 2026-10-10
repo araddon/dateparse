@@ -206,6 +206,25 @@ var testInputs = []dateTest{
 	{in: "04/02/2014 4:8 PM", out: "2014-04-02 16:08:00 +0000 UTC"},
 	{in: "04/02/2014 04:08:09.123 AM", out: "2014-04-02 04:08:09.123 +0000 UTC"},
 	{in: "04/02/2014 04:08:09.123 PM", out: "2014-04-02 16:08:09.123 +0000 UTC"},
+	//  mm-dd-yyyy hh:mm:ss
+	{in: "01-02-2006 15:04:05", out: "2006-01-02 15:04:05 +0000 UTC"},
+	{in: "04-02-2014 04:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "4-2-2014 04:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "04-02-2014 4:08:09", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "04-02-2014 4:8:9", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "04-02-2014 04:08", out: "2014-04-02 04:08:00 +0000 UTC"},
+	{in: "04-02-2014 4:8", out: "2014-04-02 04:08:00 +0000 UTC"},
+	{in: "04-02-2014 04:08:09.123", out: "2014-04-02 04:08:09.123 +0000 UTC"},
+	{in: "04-02-2014 04:08:09.12312", out: "2014-04-02 04:08:09.12312 +0000 UTC"},
+	{in: "04-02-2014 04:08:09.123123", out: "2014-04-02 04:08:09.123123 +0000 UTC"},
+	{in: "04-02-2014 04:08:09 AM", out: "2014-04-02 04:08:09 +0000 UTC"},
+	{in: "04-02-2014 04:08:09 PM", out: "2014-04-02 16:08:09 +0000 UTC"},
+	{in: "04-02-2014 04:08 AM", out: "2014-04-02 04:08:00 +0000 UTC"},
+	{in: "04-02-2014 04:08 PM", out: "2014-04-02 16:08:00 +0000 UTC"},
+	{in: "04-02-2014 4:8 AM", out: "2014-04-02 04:08:00 +0000 UTC"},
+	{in: "04-02-2014 4:8 PM", out: "2014-04-02 16:08:00 +0000 UTC"},
+	{in: "04-02-2014 04:08:09.123 AM", out: "2014-04-02 04:08:09.123 +0000 UTC"},
+	{in: "04-02-2014 04:08:09.123 PM", out: "2014-04-02 16:08:09.123 +0000 UTC"},
 	//   yyyy/mm/dd
 	{in: "2014/04/02", out: "2014-04-02 00:00:00 +0000 UTC"},
 	{in: "2014/03/31", out: "2014-03-31 00:00:00 +0000 UTC"},
@@ -566,6 +585,9 @@ func TestParseLayout(t *testing.T) {
 		{in: "2009-08-12T22:15:09-0700", out: "2006-01-02T15:04:05-0700"},
 		//   yyyy-mm-ddThh:mm:ssZ
 		{in: "2009-08-12T22:15Z", out: "2006-01-02T15:04Z"},
+		//   mm-dd-yyyy hh:mm:ss
+		{in: "01-02-2006 15:04:05", out: "01-02-2006 15:04:05"},
+		{in: "04-02-2014 04:08:09", out: "01-02-2006 15:04:05"},
 	}
 
 	for _, th := range testParseFormat {
@@ -594,6 +616,9 @@ var testParseStrict = []dateTest{
 	//  mm/dd/yy hh:mm:ss
 	{in: "04/02/2014 04:08:09"},
 	{in: "4/2/2014 04:08:09"},
+	//  mm-dd-yyyy hh:mm:ss
+	{in: "04-02-2014 04:08:09"},
+	{in: "4-2-2014 04:08:09"},
 }
 
 func TestParseStrict(t *testing.T) {
@@ -741,6 +766,14 @@ func TestPreferMonthFirst(t *testing.T) {
 	ts, err = ParseAny("04/02/2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("04-02-2014 04:08:09 +0000 UTC")
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-04-02 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	ts, err = ParseAny("04-02-2014 04:08:09 +0000 UTC", preferMonthFirstFalse)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-04 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
 
 func TestRetryAmbiguousDateWithSwap(t *testing.T) {
@@ -756,6 +789,16 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	// will retry with the other month preference if this error is detected
 	retryAmbiguousDateWithSwapTrue := RetryAmbiguousDateWithSwap(true)
 	ts, err := ParseAny("13/02/2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
+
+	_, err = ParseAny("13-02-2014 04:08:09 +0000 UTC")
+	assert.NotEqual(t, nil, err)
+
+	_, err = ParseAny("13-02-2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapFalse)
+	assert.NotEqual(t, nil, err)
+
+	ts, err = ParseAny("13-02-2014 04:08:09 +0000 UTC", retryAmbiguousDateWithSwapTrue)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }

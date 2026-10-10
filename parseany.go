@@ -65,6 +65,8 @@ const (
 	dateDigitDash
 	dateDigitDashAlpha
 	dateDigitDashAlphaDash // 10
+	dateDigitDashDash
+	dateDigitDashDashWs
 	dateDigitDot
 	dateDigitDotDot
 	dateDigitSlash
@@ -482,9 +484,24 @@ iterRunes:
 		case dateDigitDash:
 			// 13-Feb-03
 			// 29-Jun-2016
+			// 01-02-2006 15:04:05
 			if unicode.IsLetter(r) {
 				p.stateDate = dateDigitDashAlpha
 				p.moi = i
+			} else if unicode.IsDigit(r) {
+				p.stateDate = dateDigitDashDash
+				p.ambiguousMD = true
+				if p.preferMonthFirst {
+					p.moi = 0
+					p.molen = p.part1Len
+					p.setMonth()
+					p.dayi = i
+				} else {
+					p.dayi = 0
+					p.daylen = p.part1Len
+					p.setDay()
+					p.moi = i
+				}
 			} else {
 				return nil, unknownErr(datestr)
 			}
@@ -530,6 +547,33 @@ iterRunes:
 					p.setDay()
 				}
 				p.stateTime = timeStart
+				break iterRunes
+			}
+
+		case dateDigitDashDash:
+			// 01-02-2006 15:04:05
+			switch r {
+			case '-', '\u2212':
+				if p.preferMonthFirst {
+					if p.daylen == 0 {
+						p.daylen = i - p.dayi
+						p.setDay()
+						p.yeari = i + 1
+					}
+				} else {
+					if p.molen == 0 {
+						p.molen = i - p.moi
+						p.setMonth()
+						p.yeari = i + 1
+					}
+				}
+			case ' ', 'T':
+				p.stateTime = timeStart
+				if p.yearlen == 0 {
+					p.yearlen = i - p.yeari
+					p.setYear()
+				}
+				p.stateDate = dateDigitDashDashWs
 				break iterRunes
 			}
 
@@ -1844,6 +1888,10 @@ iterRunes:
 			p.setDay()
 		}
 
+		return p, nil
+
+	case dateDigitDashDashWs:
+		// 01-02-2006 15:04:05
 		return p, nil
 
 	case dateDigitDot:
