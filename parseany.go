@@ -1222,7 +1222,7 @@ iterRunes:
 						switch {
 						case r == 'a' && p.nextIs(i, 'm'):
 							p.coalesceTime(i)
-							p.set(i, "am")
+							p.set(i, "pm")
 						case r == 'A' && p.nextIs(i, 'M'):
 							p.coalesceTime(i)
 							p.set(i, "PM")
@@ -1298,6 +1298,20 @@ iterRunes:
 					// Could be AM/PM or could be PST or similar
 					p.tzi = i
 					p.stateTime = timeWsAMPMMaybe
+				case 'a', 'p':
+					// Could be lowercase am/pm
+					if p.nextIs(i, 'm') {
+						p.stateTime = timeWsAMPM
+						p.set(i, "pm")
+						if p.hourlen == 2 {
+							p.set(p.houri, "03")
+						} else if p.hourlen == 1 {
+							p.set(p.houri, "3")
+						}
+					} else {
+						p.tzi = i
+						p.stateTime = timeWsAlpha
+					}
 				case '+', '-':
 					p.offseti = i
 					p.stateTime = timeWsOffset
