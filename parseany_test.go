@@ -759,3 +759,38 @@ func TestRetryAmbiguousDateWithSwap(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "2014-02-13 04:08:09 +0000 UTC", fmt.Sprintf("%v", ts.In(time.UTC)))
 }
+
+func TestLowercaseAMPM(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		hour int
+		min  int
+	}{
+		{"May 8, 2009 12:30 am", 0, 30},
+		{"May 8, 2009 12:30 pm", 12, 30},
+		{"May 8, 2009 5:15 am", 5, 15},
+		{"May 8, 2009 5:15 pm", 17, 15},
+		{"May 8, 2009 12:30am", 0, 30},
+		{"May 8, 2009 12:30pm", 12, 30},
+		{"May 8, 2009 5:15am", 5, 15},
+		{"May 8, 2009 5:15pm", 17, 15},
+		{"2009-05-08 12:30:45 am", 0, 30},
+		{"2009-05-08 12:30:45 pm", 12, 30},
+		{"2009-05-08 12:30 am", 0, 30},
+		{"May 8, 2009 11:59 pm", 23, 59},
+		{"May 8, 2009 11:59 am", 11, 59},
+		{"May 8, 2009 12:00 am", 0, 0},
+		{"May 8, 2009 12:00 pm", 12, 0},
+		{"May 8, 2009 12:30 AM", 0, 30},
+		{"May 8, 2009 12:30 PM", 12, 30},
+	} {
+		tm, err := ParseAny(tc.in)
+		if err != nil {
+			t.Errorf("%q: unexpected error %v", tc.in, err)
+			continue
+		}
+		if tm.Hour() != tc.hour || tm.Minute() != tc.min {
+			t.Errorf("%q: got %02d:%02d, want %02d:%02d", tc.in, tm.Hour(), tm.Minute(), tc.hour, tc.min)
+		}
+	}
+}
